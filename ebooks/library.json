@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "fileUrl": "/ebooks/pride.epub",
+    "cover": "/covers/pride.png"
+  },
+  {
+    "title": "The Lairs Reckoning",
+    "author": "August Jones",
+    "fileUrl": "/ebooks/liars.epub",
+    "cover": "/covers/liars.png"
+  }
+]
