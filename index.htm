@@ -1,2 +1,91 @@
-<script>
-const $=id=>document.getElementById(id),S=localStorage,bmKey=()=>`bookmarks_${currentBookUrl}`;let currentBookUrl="",book, rendition, bookmarks=[],xDown=null,yDown=null,swipeInProgress=false,currentFontSize=+S.getItem("reader-font-size")||100,currentFlow=S.getItem("reading-mode")||"swipe",lastNonNightTheme="light",openMenuType=null;const swipe=d=>{if(swipeInProgress)return;swipeInProgress=!0;const v=$("viewer");v.classList.add("swipe-transition"),v.style.transform=`translateX(${d==="next"?"-100%":"100%"})`,setTimeout(()=>{d==="next"?rendition.next():rendition.prev(),v.classList.remove("swipe-transition"),v.style.transform="",swipeInProgress=!1},300)},getCfi=()=>rendition?.currentLocation()?.start?.cfi,updateStar=()=>{const b=$("bookmark-toggle"),cfi=getCfi();if(!cfi)return b.textContent="☆";const e=bookmarks.some(bm=>bm.cfi===cfi);b.textContent=e?"★":"☆",b.style.color=e?"blue":""},updateBMUI=()=>{const c=$("bookmark-panel");c.innerHTML="";if(!bookmarks.length)return c.textContent="No bookmarks yet.";bookmarks.forEach(b=>{const d=document.createElement("div");d.textContent=`Page ${b.page||"?"} - ${b.snippet}`,d.onclick=()=>{rendition.display(b.cfi),$("bookmark-panel").classList.remove("open")},c.appendChild(d)})},toggleBM=()=>{const cfi=getCfi(),i=bookmarks.findIndex(b=>b.cfi===cfi);if(i!==-1)bookmarks.splice(i,1);else{let s="";rendition.getContents().forEach(cnt=>s||=cnt.document.body.textContent?.trim().slice(0,100));bookmarks.push({cfi,snippet:s+"...",page:rendition.location?.start?.index||"?"})}S.setItem(bmKey(),JSON.stringify(bookmarks)),updateStar(),updateBMUI()},loadBookmarks=()=>{bookmarks=JSON.parse(S.getItem(bmKey())||"[]"),updateBMUI(),updateStar()},changeTheme=t=>{document.body.className=`${t}-mode`,$("theme-toggle").textContent=t==="night"?"☀️":"🌙",$("theme-select").value=t,S.setItem("reader-theme",t),rendition?.getContents().forEach(c=>{let d=c.document,bg="#fff",fg="#000";if(t==="night")bg="#111",fg="#eee";else if(t==="sepia")bg="#f4ecd8";else if(t==="matcha")bg="#C3D8B6";d.documentElement.style.background=bg,d.body.style.background=bg,d.body.style.color=fg})},applyFont=()=>{const f=S.getItem("reader-font")||"-apple-system";$("font-switcher").value=f;if(!rendition)return;if(f==="OpenDyslexic"){const st=`@font-face{font-family:"OpenDyslexic";src:url("/fonts/OpenDyslexic-Regular.otf") format("opentype");}@font-face{font-family:"OpenDyslexic";src:url("/fonts/OpenDyslexic-Bold.otf") format("opentype");font-weight:bold;}body{font-family:"OpenDyslexic",sans-serif!important;}`;rendition.getContents().forEach(c=>{let d=c.document;if(!d.getElementById("OpenDyslexicStyle")){const e=document.createElement("style");e.id="OpenDyslexicStyle",e.innerHTML=st,d.head.appendChild(e)}})}else{rendition.themes.override("body",{"font-family":`${f},serif!important`}),rendition.getContents().forEach(c=>{let d=c.document,e=d.getElementById("fontOverrideStyle")||d.createElement("style");e.id="fontOverrideStyle",e.textContent=`body{font-family:${f},serif!important;}`,d.head.appendChild(e)})}},initBook=url=>{if(!url)return;currentBookUrl=url,bookmarks=[],rendition&&rendition.destroy(),book&&book.destroy(),book=ePub(url),book.ready.then(()=>{rendition=book.renderTo("viewer",{width:"100%",height:"100%",flow:currentFlow==="scrolled-doc"?"scrolled":"paginated",snap:currentFlow!=="scrolled-doc",spread:"always",direction:"ltr"}),rendition.display(S.getItem("last-location-"+url)||undefined),rendition.on("relocated",l=>{l?.start?.cfi&&S.setItem("last-location-"+url,l.start.cfi),updateStar()}),rendition.on("rendered",()=>{applyFont(),updateStar()}),applyFont(),loadBookmarks(),book.loaded.metadata.then(m=>{m.title&&($("book-title").textContent=m.title),m.creator&&($("book-author").textContent=m.creator)}),book.loaded.cover.then(c=>book.archive.createUrl(c,{base64:!0})).then(u=>{$("cover").src=u}).catch(()=>{}),book.loaded.navigation.then(nav=>{const toc=$("toc-panel");toc.innerHTML="",nav.toc.forEach(ch=>{if(!/contents/i.test(ch.label)){const a=document.createElement("a");a.textContent=ch.label,a.href="#",a.onclick=e=>{e.preventDefault(),rendition.display(ch.href),toc.classList.remove("open")},toc.appendChild(a)}})})})};["tap-left","tap-right"].forEach(id=>$(`${id}`).addEvent_
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ePub Reader</title>
+  <meta name="viewport" content="width=device-width,maximum-scale=1,user-scalable=no" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+  <style>
+    html,body{margin:0;padding:0;height:100%;font-family:sans-serif;background:#f5f5f5}
+    #library-container,#reader-container{position:relative;width:100%;height:100%;display:none}
+    #toolbar{position:fixed;top:0;left:0;right:0;height:40px;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:0 8px;background:#eee}
+    #toolbar button{background:none;border:none;font-size:18px;cursor:pointer}
+    #viewer{position:absolute;top:40px;left:0;right:0;bottom:0;overflow:hidden;touch-action:pan-x}
+    #tap-left,#tap-right{position:absolute;top:0;bottom:0;width:30%;z-index:5}
+    #tap-left{left:0}#tap-right{right:0}
+    #bookmark-panel,#toc-panel{position:fixed;top:40px;left:0;right:0;height:60vh;overflow:auto;background:#222;color:#fff;display:none;z-index:20}
+    #bookmark-panel.open,#toc-panel.open{display:block}
+    #bookmark-panel div,#toc-panel a{padding:8px;cursor:pointer}
+    #toc-panel a{color:#fff;text-decoration:none;display:block}
+    #toc-panel a:hover,#bookmark-panel div:hover{background:#333}
+    #settings-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#222;color:#fff;padding:20px;border-radius:8px;z-index:100;display:none}
+    #settings-modal.open{display:block}
+    select,button{margin:4px}
+  </style>
+</head>
+<body class="light-mode">
+  <div id="library-container"><h1>Library</h1><div id="library">Loading...</div></div>
+  <div id="reader-container">
+    <div id="toolbar">
+      <button id="menu-toggle">☰</button>
+      <button id="toc-toggle">📖</button>
+      <button id="bookmark-toggle">☆</button>
+      <button id="bookmark-dropdown">🔖</button>
+      <button id="settings-toggle">Aa</button>
+      <button id="theme-toggle">🌙</button>
+    </div>
+    <div id="viewer"><div id="tap-left"></div><div id="tap-right"></div></div>
+    <div id="bookmark-panel"></div>
+    <div id="toc-panel"></div>
+    <div id="settings-modal">
+      <label>Font: <select id="font-switcher">
+        <option value="-apple-system">System</option>
+        <option value="Georgia">Georgia</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+      </select></label><br/>
+      <label>Mode: <select id="reading-mode">
+        <option value="paginated">Page</option>
+        <option value="scrolled-doc">Scroll</option>
+        <option value="swipe">Swipe</option>
+      </select></label><br/>
+      <label>Theme: <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="sepia">Sepia</option>
+        <option value="night">Night</option>
+        <option value="matcha">Matcha</option>
+      </select></label><br/>
+      <button onclick="changeFontSize(-1)">A-</button><button onclick="changeFontSize(1)">A+</button>
+    </div>
+  </div>
+  <script>
+const $=id=>document.getElementById(id),S=localStorage;
+let book,rendition,bookmarks=[],currentBookUrl="",flow=S.getItem("reading-mode")||"swipe",font=+S.getItem("reader-font-size")||100,lastTheme="light";
+const key=()=>"bookmarks_"+currentBookUrl,getCfi=()=>rendition?.currentLocation()?.start?.cfi;
+const loadBookmarks=()=>{bookmarks=JSON.parse(S.getItem(key())||"[]");drawBookmarks();updateStar()};
+const updateStar=()=>{$("bookmark-toggle").textContent=bookmarks.some(b=>b.cfi===getCfi())?"★":"☆"};
+const drawBookmarks=()=>{const p=$("bookmark-panel");p.innerHTML="";bookmarks.forEach(b=>{const d=document.createElement("div");d.textContent=b.snippet||b.cfi;d.onclick=()=>rendition.display(b.cfi);p.appendChild(d)})};
+const toggleBookmark=()=>{const c=getCfi(),i=bookmarks.findIndex(b=>b.cfi===c);i>-1?bookmarks.splice(i,1):bookmarks.push({cfi:c,snippet:"Bookmark"});S.setItem(key(),JSON.stringify(bookmarks));drawBookmarks();updateStar()};
+const toggleTheme=t=>{document.body.className=`${t}-mode`;S.setItem("reader-theme",t);$("theme-select").value=t;$("theme-toggle").textContent=t==="night"?"☀️":"🌙"};
+const applyFont=()=>{const f=S.getItem("reader-font")||"-apple-system";$("font-switcher").value=f;rendition?.getContents().forEach(c=>{c.document.body.style.fontFamily=f})};
+const applyTheme=()=>{let b=document.body.className.includes("night")?"#111":"#fff";rendition?.getContents().forEach(c=>{c.document.body.style.background=b})};
+const initRendition=(m,cfi)=>{rendition=book.renderTo("viewer",{width:"100%",height:"100%",flow:m==="scrolled-doc"?"scrolled":"paginated",snap:m!=="scrolled-doc"});
+rendition.display(cfi);rendition.on("relocated",l=>{S.setItem("last-location-"+currentBookUrl,l.start.cfi);updateStar()});
+rendition.on("rendered",()=>{applyFont();applyTheme();updateStar()});};
+const initBook=url=>{book=ePub(url);currentBookUrl=url;book.ready.then(()=>{const cfi=S.getItem("last-location-"+url);initRendition(flow,cfi);book.loaded.navigation.then(nav=>{const t=$("toc-panel");t.innerHTML="";nav.toc.forEach(ch=>{const a=document.createElement("a");a.textContent=ch.label;a.href="#";a.onclick=e=>{e.preventDefault();rendition.display(ch.href)};t.appendChild(a)})});applyFont();loadBookmarks()})};
+const readBook=url=>{S.setItem("last-book",url);initBook(url);$("library-container").style.display="none";$("reader-container").style.display="block"};
+const loadLibrary=()=>{fetch("/ebooks/library.json").then(r=>r.json()).then(b=>{const l=$("library");l.innerHTML="";b.forEach(book=>{const d=document.createElement("div");d.textContent=book.title;d.style.cursor="pointer";d.onclick=()=>readBook(book.fileUrl);l.appendChild(d)})})};
+const changeFontSize=delta=>{font=Math.max(60,Math.min(200,font+delta*10));S.setItem("reader-font-size",font);rendition.themes.fontSize(font+"%")};
+$("bookmark-toggle").onclick=toggleBookmark;
+$("bookmark-dropdown").onclick=()=>$("bookmark-panel").classList.toggle("open");
+$("toc-toggle").onclick=()=>$("toc-panel").classList.toggle("open");
+$("theme-toggle").onclick=()=>{const t=document.body.classList.contains("night-mode")?lastTheme:"night";toggleTheme(t)};
+$("theme-select").onchange=e=>toggleTheme(e.target.value);
+$("font-switcher").onchange=e=>{S.setItem("reader-font",e.target.value);applyFont()};
+$("settings-toggle").onclick=()=>$("settings-modal").classList.toggle("open");
+$("reading-mode").onchange=e=>{flow=e.target.value;S.setItem("reading-mode",flow);if(book){const cfi=rendition?.location?.start?.cfi;rendition.destroy();initRendition(flow,cfi)}};
+$("tap-left").onclick=()=>rendition?.prev();$("tap-right").onclick=()=>rendition?.next();
+(()=>{const url=new URLSearchParams(location.search).get("book")||S.getItem("last-book");url?(readBook(url)):($("library-container").style.display="block");toggleTheme(S.getItem("reader-theme")||"light");loadLibrary()})();
+  </script>
+</body>
+</html>
