@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ePub Reader</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>My ePub Reader and Library</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <style>
@@ -14,11 +14,14 @@
       font-family: sans-serif;
       background: #f5f5f5;
     }
-
     body.light-mode { background: #f5f5f5; }
+    body.light-mode #toolbar { background: #eee; }
     body.sepia-mode { background: #f4ecd8; }
+    body.sepia-mode #toolbar { background: #e7dbc3; }
     body.matcha-mode { background: #C3D8B6; }
-    body.night-mode { background: #111; color: #eee; }
+    body.matcha-mode #toolbar { background: #B0CFA3; }
+    body.night-mode { background: #111 !important; }
+    body.night-mode #toolbar { background: #222 !important; }
 
     #toolbar {
       position: fixed;
@@ -26,21 +29,18 @@
       left: 0;
       right: 0;
       height: 44px;
-      background: #eee;
-      z-index: 1000;
+      z-index: 1002;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0 8px;
+      padding: 0 6px;
       box-sizing: border-box;
     }
-
     #toolbar-left, #toolbar-right {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-
     #toolbar button {
       background: transparent;
       border: none;
@@ -53,10 +53,7 @@
       justify-content: center;
       align-items: center;
     }
-
-    #toolbar button:hover {
-      opacity: 1;
-    }
+    #toolbar button:hover { opacity: 1; }
 
     #search-bar {
       display: flex;
@@ -66,7 +63,6 @@
       border-radius: 4px;
       padding: 2px 6px;
     }
-
     #search-bar input {
       border: none;
       font-size: 13px;
@@ -102,7 +98,6 @@
       padding: 4px 8px;
       cursor: pointer;
     }
-
     #search-results div:hover {
       background: #eee;
     }
@@ -122,10 +117,11 @@
 <body class="light-mode">
   <div id="toolbar">
     <div id="toolbar-left">
-      <button id="menu-toggle" title="Menu">☰</button>
-      <button id="toc-toggle" title="TOC">📖</button>
-      <button id="bookmark-toggle" title="Bookmark">☆</button>
-      <button id="settings-toggle" title="Settings">Aa</button>
+      <button id="menu-toggle" title="Main Menu">☰</button>
+      <button id="toc-toggle" title="Table of Contents">📖</button>
+      <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
+      <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
+      <button id="settings-toggle" title="Read Settings">Aa</button>
     </div>
     <div id="toolbar-right">
       <div id="search-bar">
@@ -141,16 +137,69 @@
   <div id="search-results"></div>
 
   <div id="viewer">
-    <!-- Book will render here -->
+    <div id="tap-left"></div>
+    <div id="tap-right"></div>
+    <div id="gesture-left"></div>
+    <div id="gesture-right"></div>
+  </div>
+
+  <div id="progress-bar"></div>
+  <div id="continue-bar">Continue</div>
+  <div id="bookmark-panel"></div>
+
+  <div id="menu-backdrop"></div>
+  <div id="expanded-menu">
+    <button class="close-menu" onclick="toggleMenu('menu')">×</button>
+    <div id="book-card">
+      <img id="cover" alt="Book Cover" />
+      <div id="book-title"></div>
+      <div id="book-author"></div>
+      <div id="contact-image"></div>
+    </div>
+    <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
+  </div>
+
+  <div id="toc-panel"></div>
+
+  <div id="settings-modal">
+    <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+    <h3>Reading Settings</h3>
+    <label for="font-switcher">Font</label>
+    <select id="font-switcher">
+      <option value="-apple-system">San Francisco (System)</option>
+      <option value="Helvetica Neue">Helvetica Neue</option>
+      <option value="Arial">Arial</option>
+      <option value="Courier New">Courier New</option>
+      <option value="Georgia">Georgia</option>
+      <option value="OpenDyslexic">OpenDyslexic</option>
+    </select>
+    <div class="font-size-buttons">
+      <button onclick="changeFontSize(-1)">A-</button>
+      <button onclick="changeFontSize(1)">A+</button>
+    </div>
+    <label for="reading-mode">Reading Mode</label>
+    <select id="reading-mode">
+      <option value="paginated">Page</option>
+      <option value="scrolled-doc">Scroll</option>
+      <option value="swipe">Swipe</option>
+    </select>
+    <label for="theme-select">Color Theme</label>
+    <select id="theme-select">
+      <option value="light">Light</option>
+      <option value="sepia">Sepia</option>
+      <option value="night">Night</option>
+      <option value="matcha">Matcha Green</option>
+    </select>
   </div>
 <script>
   let book, rendition;
   let currentBookUrl = "/ebooks/pride.epub";
   let totalLocations = 1;
+  let bookmarks = [];
 
   const viewer = document.getElementById("viewer");
-  const pagesReadEl = document.getElementById("pages-read");
   const sliderEl = document.getElementById("pageSlider");
+  const pagesReadEl = document.getElementById("pages-read");
   const searchInput = document.getElementById("searchInput");
   const searchResults = document.getElementById("search-results");
 
@@ -168,13 +217,15 @@
       width: "100%",
       height: "100%",
       flow: "paginated",
+      snap: true,
       spread: "always"
     });
 
     rendition.display();
 
-    rendition.on("relocated", (location) => {
+    rendition.on("relocated", location => {
       updatePageDisplay(location);
+      localStorage.setItem("last-location-" + url, location.start.cfi);
     });
 
     book.ready.then(() => {
@@ -185,11 +236,21 @@
       });
     });
 
+    book.loaded.metadata.then(meta => {
+      document.getElementById("book-title").textContent = meta.title || "Untitled";
+      document.getElementById("book-author").textContent = meta.creator || "";
+    });
+
+    book.loaded.cover
+      .then(coverUrl => book.archive.createUrl(coverUrl, { base64: true }))
+      .then(coverDataUrl => { document.getElementById("cover").src = coverDataUrl; })
+      .catch(() => console.warn("No cover image found."));
+
     searchInput.addEventListener("input", function () {
       const query = this.value.trim();
       if (!query || !book) return (searchResults.style.display = "none");
 
-      book.search(query).then((results) => {
+      book.search(query).then(results => {
         searchResults.innerHTML = "";
         results.slice(0, 10).forEach(result => {
           const div = document.createElement("div");
