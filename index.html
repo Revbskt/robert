@@ -584,7 +584,7 @@
     // Reader logic
     let book, rendition;
     let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
-    let currentFlow = localStorage.getItem("reading-mode") || "paginated";
+    let currentFlow = localStorage.getItem("reading-mode") || "swipe";
 
     // Swipe/tap handling for page vs. swipe mode
     function updateSwipeListeners() {
