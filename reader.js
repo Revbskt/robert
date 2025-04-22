@@ -77,6 +77,22 @@ function loadLibrary() {
     });
 }
 
+function cleanupReader() {
+  const viewer = document.getElementById("viewer");
+  if (viewer) {
+    viewer.removeEventListener("touchstart", handleTouchStart, false);
+    viewer.removeEventListener("touchend", handleTouchEnd, false);
+  }
+  const gestureLeft = document.getElementById("gesture-left");
+  const gestureRight = document.getElementById("gesture-right");
+  if (gestureLeft) gestureLeft.removeEventListener("click", swipePrev);
+  if (gestureRight) gestureRight.removeEventListener("click", swipeNext);
+  const tapLeft = document.getElementById("tap-left");
+  const tapRight = document.getElementById("tap-right");
+  if (tapLeft) tapLeft.removeEventListener("click", tapLeftHandler);
+  if (tapRight) tapRight.removeEventListener("click", tapRightHandler);
+}
+
 const urlParams = new URLSearchParams(window.location.search);
 const bookParam = urlParams.get("book");
 const lastSavedBook = localStorage.getItem("last-book");
