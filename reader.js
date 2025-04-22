@@ -43,16 +43,27 @@ function toggleLibrary(forceState) {
 
 function loadLibrary() {
   const libraryDiv = document.getElementById("library");
-  libraryDiv.textContent = "Loading books...";
+  libraryDiv.textContent = "📚 Loading books...";
+
   fetch("/ebooks/library.json")
-    .then(res => res.json())
-    .then(books => {
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then((books) => {
       libraryDiv.innerHTML = "";
-      books.forEach(book => {
+      if (!Array.isArray(books) || books.length === 0) {
+        libraryDiv.textContent = "No books found in library.json.";
+        return;
+      }
+
+      books.forEach((book) => {
         const div = document.createElement("div");
         div.className = "book";
         div.innerHTML = `
-          <img src="${book.cover}" alt="${book.title}" />
+          <img src="${book.cover}" alt="Cover of ${book.title}" />
           <h3>${book.title}</h3>
           <p>${book.author}</p>
           <button onclick="readBook('${book.fileUrl}')">Read</button>
@@ -60,13 +71,12 @@ function loadLibrary() {
         libraryDiv.appendChild(div);
       });
     })
-    .catch(err => {
-      console.error("Library load failed:", err);
-      libraryDiv.textContent = "Failed to load books.";
+    .catch((err) => {
+      console.error("⚠️ Failed to load library.json:", err);
+      libraryDiv.textContent = "❌ Could not load your book list. Make sure /ebooks/library.json exists and is valid.";
     });
 }
 
-// Init
 const urlParams = new URLSearchParams(window.location.search);
 const bookParam = urlParams.get("book");
 const lastSavedBook = localStorage.getItem("last-book");
@@ -93,13 +103,32 @@ function changeTheme(theme) {
   applyThemeStylesFromCurrent();
 }
 
+function applyThemeStylesFromCurrent() {
+  if (!rendition) return;
+  let bg = "#fff", color = "#000";
+  if (document.body.classList.contains("night-mode")) {
+    bg = "#111"; color = "#eee";
+  } else if (document.body.classList.contains("sepia-mode")) {
+    bg = "#f4ecd8"; color = "#000";
+  } else if (document.body.classList.contains("matcha-mode")) {
+    bg = "#C3D8B6"; color = "#000";
+  } else if (document.body.classList.contains("light-mode")) {
+    bg = "#f5f5f5"; color = "#000";
+  }
+  rendition.getContents().forEach(contents => {
+    const doc = contents.document;
+    doc.documentElement.style.background = bg;
+    doc.body.style.background = bg;
+    doc.body.style.color = color;
+  });
+}
+
 function changeFontSize(delta) {
   currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
   localStorage.setItem("reader-font-size", currentFontSize);
   if (rendition) rendition.themes.fontSize(`${currentFontSize}%`);
 }
 
-// Book loading
 function readBook(url) {
   if (rendition && currentBookUrl) {
     const loc = rendition.currentLocation();
