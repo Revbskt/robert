@@ -19,7 +19,48 @@ function closeMenus() {
   openMenuType = null;
 }
 
-// Touch logic for swipe
+function changeTheme(theme) {
+  document.body.className = "";
+  if (theme === "night") document.body.classList.add("night-mode");
+  else if (theme === "sepia") document.body.classList.add("sepia-mode");
+  else if (theme === "matcha") document.body.classList.add("matcha-mode");
+  else document.body.classList.add("light-mode");
+
+  document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+  localStorage.setItem("reader-theme", theme);
+  document.getElementById("theme-select").value = theme;
+  applyThemeStylesFromCurrent();
+}
+
+function applyThemeStylesFromCurrent() {
+  if (!rendition) return;
+  let bg = "#fff", color = "#000";
+  if (document.body.classList.contains("night-mode")) {
+    bg = "#111"; color = "#eee";
+  } else if (document.body.classList.contains("sepia-mode")) {
+    bg = "#f4ecd8"; color = "#000";
+  } else if (document.body.classList.contains("matcha-mode")) {
+    bg = "#C3D8B6"; color = "#000";
+  } else {
+    bg = "#f5f5f5"; color = "#000";
+  }
+  rendition.getContents().forEach(contents => {
+    const doc = contents.document;
+    doc.documentElement.style.background = bg;
+    doc.body.style.background = bg;
+    doc.body.style.color = color;
+  });
+}
+
+function applyFontSwitch() {
+  const storedFont = localStorage.getItem("reader-font") || "-apple-system";
+  if (rendition) {
+    rendition.themes.override("body", {
+      "font-family": storedFont + ", serif !important"
+    });
+  }
+}
+
 function handleTouchStart(evt) {
   if (currentFlow !== "swipe") return;
   const firstTouch = evt.touches[0];
@@ -178,7 +219,32 @@ function toggleLibrary(force) {
   closeMenus();
 }
 
-// Auto-load if URL param or last book exists
+function loadLibrary() {
+  const libraryDiv = document.getElementById("library");
+  libraryDiv.textContent = "Loading books...";
+  fetch("/ebooks/library.json")
+    .then(response => response.json())
+    .then(books => {
+      libraryDiv.innerHTML = "";
+      books.forEach(book => {
+        const bookDiv = document.createElement("div");
+        bookDiv.className = "book";
+        bookDiv.innerHTML = `
+          <img src="${book.cover}" alt="Cover of ${book.title}" />
+          <h3>${book.title}</h3>
+          <p>${book.author}</p>
+          <button onclick="readBook('${book.fileUrl}')">Read</button>
+        `;
+        libraryDiv.appendChild(bookDiv);
+      });
+    })
+    .catch(err => {
+      console.error("Failed to load library.json:", err);
+      libraryDiv.textContent = "Failed to load book list.";
+    });
+}
+
+// Auto-load
 const urlParams = new URLSearchParams(window.location.search);
 const bookParam = urlParams.get("book");
 const lastBook = localStorage.getItem("last-book");
@@ -192,7 +258,15 @@ if (autoBook) {
   loadLibrary();
 }
 
-// Initial theme
 const savedTheme = localStorage.getItem("reader-theme") || "light";
 document.getElementById("theme-select").value = savedTheme;
 changeTheme(savedTheme);
+
+// Expose globally for inline HTML use
+window.toggleLibrary = toggleLibrary;
+window.readBook = readBook;
+window.changeTheme = changeTheme;
+window.loadLibrary = loadLibrary;
+window.applyFontSwitch = applyFontSwitch;
+window.applyThemeStylesFromCurrent = applyThemeStylesFromCurrent;
+window.closeMenus = closeMenus;
