@@ -4,19 +4,26 @@
   <meta charset="UTF-8" />
   <title>My ePub Reader and Library</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="style.css" />
+
+  <!-- External Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
+  <!-- Custom CSS and JS -->
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="reader.js"></script>
 </head>
 <body class="light-mode">
+  <!-- LIBRARY CONTAINER -->
   <div id="library-container">
     <h1>📚 My Book Library</h1>
     <div id="library-controls">
-      <button onclick="toggleLibrary(false)">Back to Reader</button>
+      <button id="back-to-reader-btn">Back to Reader</button>
     </div>
     <div id="library">Loading books...</div>
   </div>
 
+  <!-- READER CONTAINER -->
   <div id="reader-container">
     <div id="toolbar">
       <button id="menu-toggle" title="Main Menu">☰</button>
@@ -25,27 +32,27 @@
       <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
       <button id="settings-toggle" title="Read Settings">Aa</button>
       <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
-      <div id="page-location">Ch 0 Pg 0</div>
     </div>
 
+    <!-- Bookmark Panel Dropdown -->
     <div id="bookmark-panel"></div>
-    <div id="menu-backdrop"></div>
 
+    <div id="menu-backdrop"></div>
     <div id="expanded-menu">
-      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
+      <button class="close-menu">×</button>
       <div id="book-card">
         <img id="cover" alt="Book Cover" />
         <div id="book-title"></div>
         <div id="book-author"></div>
         <div id="contact-image"></div>
       </div>
-      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
+      <button class="menu-button" id="library-toggle">Library</button>
     </div>
 
     <div id="toc-panel"></div>
 
     <div id="settings-modal">
-      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+      <button class="close-settings">×</button>
       <h3>Reading Settings</h3>
       <label for="font-switcher">Font</label>
       <select id="font-switcher">
@@ -57,8 +64,8 @@
         <option value="OpenDyslexic">OpenDyslexic</option>
       </select>
       <div class="font-size-buttons">
-        <button onclick="changeFontSize(-1)">A-</button>
-        <button onclick="changeFontSize(1)">A+</button>
+        <button id="font-smaller">A-</button>
+        <button id="font-larger">A+</button>
       </div>
       <label for="reading-mode">Reading Mode</label>
       <select id="reading-mode">
@@ -85,7 +92,5 @@
     <div id="progress-bar"></div>
     <div id="continue-bar">Continue</div>
   </div>
-
-  <script src="reader.js"></script>
 </body>
 </html>
