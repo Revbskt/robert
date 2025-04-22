@@ -17,7 +17,6 @@
     </div>
     <div id="library">Loading books...</div>
   </div>
-
   <div id="reader-container">
     <div id="toolbar">
       <button id="menu-toggle" title="Main Menu">☰</button>
@@ -30,6 +29,7 @@
     </div>
 
     <div id="bookmark-panel"></div>
+
     <div id="compass-panel">
       <h4>📍 Page Navigator</h4>
       <div class="location-info" id="location-info">Page ? of ? • CFI: …</div>
@@ -39,4 +39,61 @@
     </div>
 
     <div id="menu-backdrop"></div>
-    <div id="
+    <div id="expanded-menu">
+      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
+      <div id="book-card">
+        <img id="cover" alt="Book Cover" />
+        <div id="book-title"></div>
+        <div id="book-author"></div>
+        <div id="contact-image"></div>
+      </div>
+      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
+    </div>
+
+    <div id="toc-panel"></div>
+
+    <div id="settings-modal">
+      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+      <h3>Reading Settings</h3>
+      <label for="font-switcher">Font</label>
+      <select id="font-switcher">
+        <option value="-apple-system">San Francisco (System)</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
+        <option value="Arial">Arial</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Georgia">Georgia</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+      </select>
+      <div class="font-size-buttons">
+        <button onclick="changeFontSize(-1)">A-</button>
+        <button onclick="changeFontSize(1)">A+</button>
+      </div>
+      <label for="reading-mode">Reading Mode</label>
+      <select id="reading-mode">
+        <option value="paginated">Page</option>
+        <option value="scrolled-doc">Scroll</option>
+        <option value="swipe">Swipe</option>
+      </select>
+      <label for="theme-select">Color Theme</label>
+      <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="sepia">Sepia</option>
+        <option value="night">Night</option>
+        <option value="matcha">Matcha Green</option>
+      </select>
+    </div>
+
+    <div id="viewer">
+      <div id="tap-left"></div>
+      <div id="tap-right"></div>
+      <div id="gesture-left"></div>
+      <div id="gesture-right"></div>
+    </div>
+
+    <div id="progress-bar"></div>
+    <div id="continue-bar">Continue</div>
+  </div>
+
+  <script src="reader.js"></script>
+</body>
+</html>
