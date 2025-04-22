@@ -12,6 +12,13 @@ let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
 let currentFlow = localStorage.getItem("reading-mode") || "swipe";
 let openMenuType = null;
 
+function closeMenus() {
+  document.getElementById("expanded-menu")?.classList.remove("open");
+  document.getElementById("settings-modal")?.classList.remove("open");
+  document.getElementById("menu-backdrop")?.style.display = "none";
+  openMenuType = null;
+}
+
 // Touch logic for swipe
 function handleTouchStart(evt) {
   if (currentFlow !== "swipe") return;
@@ -73,10 +80,10 @@ function cleanupReader() {
   const viewer = document.getElementById("viewer");
   viewer.removeEventListener("touchstart", handleTouchStart);
   viewer.removeEventListener("touchend", handleTouchEnd);
-  document.getElementById("gesture-left").removeEventListener("click", swipePrev);
-  document.getElementById("gesture-right").removeEventListener("click", swipeNext);
-  document.getElementById("tap-left").removeEventListener("click", tapLeftHandler);
-  document.getElementById("tap-right").removeEventListener("click", tapRightHandler);
+  document.getElementById("gesture-left")?.removeEventListener("click", swipePrev);
+  document.getElementById("gesture-right")?.removeEventListener("click", swipeNext);
+  document.getElementById("tap-left")?.removeEventListener("click", tapLeftHandler);
+  document.getElementById("tap-right")?.removeEventListener("click", tapRightHandler);
 }
 
 function readBook(url) {
