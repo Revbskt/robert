@@ -12,6 +12,63 @@ let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
 let currentFlow = localStorage.getItem("reading-mode") || "swipe";
 let openMenuType = null;
 
+function handleTouchStart(evt) {
+  if (currentFlow !== "swipe") return;
+  const firstTouch = evt.touches[0];
+  xDown = firstTouch.clientX;
+  yDown = firstTouch.clientY;
+}
+
+function handleTouchEnd(evt) {
+  if (currentFlow !== "swipe" || !xDown || !yDown) return;
+  let xUp = evt.changedTouches[0].clientX;
+  let yUp = evt.changedTouches[0].clientY;
+  let xDiff = xDown - xUp;
+  let yDiff = yDown - yUp;
+  if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
+    xDiff > 0 ? swipeNext() : swipePrev();
+  }
+  xDown = null;
+  yDown = null;
+}
+
+function swipeNext() {
+  if (swipeInProgress) return;
+  swipeInProgress = true;
+  const viewer = document.getElementById("viewer");
+  viewer.classList.add("swipe-transition");
+  viewer.style.transform = "translateX(-100%)";
+  setTimeout(() => {
+    rendition.next();
+    viewer.classList.remove("swipe-transition");
+    viewer.style.transform = "";
+    swipeInProgress = false;
+  }, 300);
+}
+
+function swipePrev() {
+  if (swipeInProgress) return;
+  swipeInProgress = true;
+  const viewer = document.getElementById("viewer");
+  viewer.classList.add("swipe-transition");
+  viewer.style.transform = "translateX(100%)";
+  setTimeout(() => {
+    rendition.prev();
+    viewer.classList.remove("swipe-transition");
+    viewer.style.transform = "";
+    swipeInProgress = false;
+  }, 300);
+}
+
+// Tap Handlers
+function tapLeftHandler() {
+  if (currentFlow === "paginated" && rendition) rendition.prev();
+}
+
+function tapRightHandler() {
+  if (currentFlow === "paginated" && rendition) rendition.next();
+}
+
 // Toggle functions
 function toggleMenu(type) {
   if (openMenuType === type) return closeMenus();
@@ -93,6 +150,7 @@ function cleanupReader() {
   if (tapRight) tapRight.removeEventListener("click", tapRightHandler);
 }
 
+// Book loading logic
 const urlParams = new URLSearchParams(window.location.search);
 const bookParam = urlParams.get("book");
 const lastSavedBook = localStorage.getItem("last-book");
