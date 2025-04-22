@@ -7,7 +7,7 @@ html, body {
   background: #f5f5f5;
 }
 
-/* ===== Theme Classes ===== */
+/* ===== Theme Classes for the Body ===== */
 body.light-mode { background: #f5f5f5; }
 body.light-mode #toolbar { background: #eee; }
 body.sepia-mode { background: #f4ecd8; }
@@ -18,31 +18,106 @@ body.night-mode { background: #111 !important; }
 body.night-mode #toolbar { background: #222 !important; }
 body.night-mode #continue-bar { background: #111 !important; color: #eee !important; }
 
-/* ===== Layout ===== */
-#reader-container { display: none; position: relative; width: 100%; height: 100%; overflow: hidden; }
-#library-container { display: none; position: relative; min-height: 100vh; padding: 1rem; box-sizing: border-box; }
-h1 { text-align: center; margin: 0 0 1rem; }
+/* ===== Layout for Library and Reader Containers ===== */
+#reader-container {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+#library-container {
+  display: none;
+  position: relative;
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+h1 {
+  text-align: center;
+  margin: 0 0 1rem;
+}
 
-/* ===== Library Grid ===== */
-#library-controls { text-align: center; margin-bottom: 1rem; }
-#library { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 1rem; }
-.book { background: #fff; border: 1px solid #ddd; padding: 0.75rem; width: 140px; text-align: center; box-shadow: 2px 2px 6px rgba(0,0,0,0.1); border-radius: 6px; }
-.book img { width: 100%; border-radius: 4px; }
-.book h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
-.book p { font-size: 0.8rem; margin: 0 0 0.5rem; color: #555; }
-.book button { margin: 4px 0; padding: 6px 12px; border: none; border-radius: 4px; background-color: #007bff; color: white; font-size: 0.8rem; cursor: pointer; transition: background 0.2s; }
-.book button:hover { background-color: #0056b3; }
+/* ===== Library Grid Styling ===== */
+#library-controls {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+#library {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 1rem;
+}
+.book {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 0.75rem;
+  width: 140px;
+  text-align: center;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+  border-radius: 6px;
+}
+.book img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.book h3 {
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0.25rem;
+}
+.book p {
+  font-size: 0.8rem;
+  margin: 0 0 0.5rem;
+  color: #555;
+}
+.book button {
+  margin: 4px 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.book button:hover {
+  background-color: #0056b3;
+}
 
-/* ===== Toolbar ===== */
+/* ===== Reader Toolbar (UI) ===== */
 #toolbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 40px; z-index: 1002;
-  display: flex; justify-content: space-evenly; align-items: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  z-index: 1002;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
   padding: 0 10px;
 }
-#toolbar button { width: 40px; height: 40px; background: transparent; border: none; font-size: 24px; cursor: pointer; opacity: 0.8; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
-#toolbar button:hover { opacity: 1; }
+#toolbar button {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  pointer-events: auto;
+}
+#toolbar button:hover {
+  opacity: 1;
+}
 
 /* ===== Kindle‑style Chapter/Page Display ===== */
 #page-location {
@@ -58,5 +133,280 @@ h1 { text-align: center; margin: 0 0 1rem; }
   z-index: 1003;
 }
 
-/* ===== Panels & Viewer ===== */
-/* …the rest of your existing CSS remains unchanged… */
+/* ===== Bookmark Panel (dropdown like the TOC) ===== */
+#bookmark-panel {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.85);
+  border-bottom: 1px solid #444;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  transform: translateY(-100%);
+}
+#bookmark-panel.open {
+  transform: translateY(0);
+}
+#bookmark-panel div {
+  display: block;
+  padding: 6px 10px;
+  text-decoration: none;
+  color: #fff;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+#bookmark-panel div:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* ===== Slide-out Menu Backdrop & Panel ===== */
+#menu-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+}
+#expanded-menu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: -100%;
+  width: 80%;
+  max-width: 300px;
+  background: rgba(128,128,128,0.90);
+  color: #fff;
+  z-index: 1010;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+  transition: left 0.3s ease;
+}
+#expanded-menu.open {
+  left: 0;
+}
+#expanded-menu .close-menu {
+  align-self: flex-end;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+#expanded-menu .close-menu:hover {
+  transform: scale(1.1);
+}
+#expanded-menu .menu-button {
+  margin: 4px auto;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#expanded-menu .menu-button:hover {
+  background-color: #0056b3;
+}
+
+/* ===== Book Card in Menu ===== */
+#book-card {
+  margin: 0 auto 20px;
+  max-width: 240px;
+  text-align: center;
+}
+#book-card img {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+#book-title {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+#book-author {
+  font-size: 16px;
+  color: #fff;
+}
+#contact-image {
+  margin-top: 10px;
+}
+#contact-image img {
+  display: block;
+  margin: 0 auto;
+  max-width: 80%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* ===== Table of Contents Panel ===== */
+#toc-panel {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.85);
+  border-bottom: 1px solid #444;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  transform: translateY(-100%);
+}
+#toc-panel.open {
+  transform: translateY(0);
+}
+#toc-panel a {
+  display: block;
+  padding: 6px 10px;
+  text-decoration: none;
+  color: #fff;
+}
+#toc-panel a:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* ===== ePub Viewer Area & Zones ===== */
+#viewer {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  touch-action: pan-x;
+  overflow: hidden;
+}
+#tap-left, #tap-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 33.3333%;
+  z-index: 998;
+}
+#tap-left {
+  left: 0;
+}
+#tap-right {
+  right: 0;
+}
+#gesture-left, #gesture-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  z-index: 999;
+  pointer-events: none;
+}
+#gesture-left {
+  left: 0;
+}
+#gesture-right {
+  right: 0;
+}
+#viewer.swipe-transition {
+  transition: transform 0.3s ease;
+}
+
+/* ===== Progress Bar + Continue Bar ===== */
+#progress-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: #007bff;
+  width: 0%;
+  z-index: 1000;
+}
+#continue-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #d3d3d3;
+  color: #000;
+  text-align: center;
+  padding: 5px 0;
+  font-size: 18px;
+  line-height: 1.2;
+  cursor: pointer;
+  z-index: 1001;
+  transition: background 0.3s;
+  display: none;
+}
+#continue-bar:hover {
+  background: #c0c0c0;
+}
+
+/* ===== Settings Modal ("Aa") ===== */
+#settings-modal {
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) scale(0.95);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  width: 90%;
+  max-width: 360px;
+  padding: 20px;
+  z-index: 2000;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+}
+#settings-modal.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+#settings-modal h3 {
+  margin: 0 0 1rem;
+  font-size: 18px;
+  text-align: center;
+}
+#settings-modal label {
+  margin-bottom: 0.3rem;
+}
+#settings-modal select,
+#settings-modal button {
+  font-size: 16px;
+  padding: 8px;
+  margin-bottom: 16px;
+  background: #222;
+  border: 1px solid #444;
+  color: #fff;
+  border-radius: 4px;
+}
+#settings-modal .font-size-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+#settings-modal .close-settings {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+#settings-modal .close-settings:hover {
+  transform: scale(1.1);
+}
