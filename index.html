@@ -52,7 +52,7 @@
     </div>
 
     <div id="settings-modal">
-      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+      <button class="close-settings" id="settings-close">×</button>
       <h3>Reading Settings</h3>
       <label for="font-switcher">Font</label>
       <select id="font-switcher">
@@ -62,6 +62,9 @@
         <option value="Courier New">Courier New</option>
         <option value="Georgia">Georgia</option>
         <option value="OpenDyslexic">OpenDyslexic</option>
+        <option value="Merriweather">Merriweather</option>
+        <option value="Charis SIL">Charis SIL</option>
+        <option value="Libre Baskerville">Libre Baskerville</option>
       </select>
       <div class="font-size-buttons">
         <button onclick="changeFontSize(-1)">A-</button>
