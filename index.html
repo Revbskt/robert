@@ -4,12 +4,20 @@
   <meta charset="UTF-8" />
   <title>My ePub Reader and Library</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- External CSS -->
   <link rel="stylesheet" href="style.css" />
+
+  <!-- JSZip and epub.js for the reader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
+  <!-- Main reader logic -->
   <script src="reader.js" defer></script>
 </head>
+
 <body class="light-mode">
+  <!-- LIBRARY CONTAINER -->
   <div id="library-container">
     <h1>📚 My Book Library</h1>
     <div id="library-controls">
@@ -18,6 +26,7 @@
     <div id="library">Loading books...</div>
   </div>
 
+  <!-- READER CONTAINER -->
   <div id="reader-container">
     <div id="toolbar">
       <button id="menu-toggle" title="Main Menu">☰</button>
@@ -28,10 +37,13 @@
       <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
     </div>
 
+    <!-- Bookmark Panel Dropdown -->
     <div id="bookmark-panel"></div>
+
+    <!-- Slide‑out Menu -->
     <div id="menu-backdrop"></div>
     <div id="expanded-menu">
-      <button class="close-menu" onclick="closeMenus()">×</button>
+      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
       <div id="book-card">
         <img id="cover" alt="Book Cover" />
         <div id="book-title"></div>
@@ -41,39 +53,46 @@
       <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
     </div>
 
+    <!-- TOC Panel -->
     <div id="toc-panel"></div>
 
+    <!-- Settings Modal -->
     <div id="settings-modal">
-      <button class="close-settings" onclick="closeMenus()">×</button>
+      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
       <h3>Reading Settings</h3>
+
       <label for="font-switcher">Font</label>
-      <select id="font-switcher" onchange="applyFontSwitch()">
-        <option value="-apple-system">San Francisco (System)</option>
-        <option value="Helvetica Neue">Helvetica Neue</option>
+      <select id="font-switcher">
+        <option value="-apple-system">San Francisco (System)</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
         <option value="Arial">Arial</option>
-        <option value="Courier New">Courier New</option>
+        <option value="Courier New">Courier New</option>
         <option value="Georgia">Georgia</option>
         <option value="OpenDyslexic">OpenDyslexic</option>
       </select>
+
       <div class="font-size-buttons">
         <button onclick="changeFontSize(-1)">A-</button>
         <button onclick="changeFontSize(1)">A+</button>
       </div>
+
       <label for="reading-mode">Reading Mode</label>
-      <select id="reading-mode" onchange="location.reload()">
+      <select id="reading-mode">
         <option value="paginated">Page</option>
         <option value="scrolled-doc">Scroll</option>
         <option value="swipe">Swipe</option>
       </select>
+
       <label for="theme-select">Color Theme</label>
       <select id="theme-select">
         <option value="light">Light</option>
         <option value="sepia">Sepia</option>
         <option value="night">Night</option>
-        <option value="matcha">Matcha Green</option>
+        <option value="matcha">Matcha Green</option>
       </select>
     </div>
 
+    <!-- ePub Viewer -->
     <div id="viewer">
       <div id="tap-left"></div>
       <div id="tap-right"></div>
@@ -81,6 +100,7 @@
       <div id="gesture-right"></div>
     </div>
 
+    <!-- Progress / Continue Bars -->
     <div id="progress-bar"></div>
     <div id="continue-bar">Continue</div>
   </div>
