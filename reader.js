@@ -1,6 +1,5 @@
 // reader.js
 
-// Global state
 let lastNonNightTheme = "light";
 let currentBookUrl = "";
 let bookmarks = [];
@@ -26,7 +25,8 @@ function changeTheme(theme) {
   else if (theme === "matcha") document.body.classList.add("matcha-mode");
   else document.body.classList.add("light-mode");
 
-  document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+  document.getElementById("theme-toggle").textContent =
+    document.body.classList.contains("night-mode") ? "☀️" : "🌙";
   localStorage.setItem("reader-theme", theme);
   document.getElementById("theme-select").value = theme;
   applyThemeStylesFromCurrent();
@@ -34,17 +34,22 @@ function changeTheme(theme) {
 
 function applyThemeStylesFromCurrent() {
   if (!rendition) return;
-  let bg = "#fff", color = "#000";
+  let bg = "#fff",
+    color = "#000";
   if (document.body.classList.contains("night-mode")) {
-    bg = "#111"; color = "#eee";
+    bg = "#111";
+    color = "#eee";
   } else if (document.body.classList.contains("sepia-mode")) {
-    bg = "#f4ecd8"; color = "#000";
+    bg = "#f4ecd8";
+    color = "#000";
   } else if (document.body.classList.contains("matcha-mode")) {
-    bg = "#C3D8B6"; color = "#000";
+    bg = "#C3D8B6";
+    color = "#000";
   } else {
-    bg = "#f5f5f5"; color = "#000";
+    bg = "#f5f5f5";
+    color = "#000";
   }
-  rendition.getContents().forEach(contents => {
+  rendition.getContents().forEach((contents) => {
     const doc = contents.document;
     doc.documentElement.style.background = bg;
     doc.body.style.background = bg;
@@ -56,7 +61,7 @@ function applyFontSwitch() {
   const storedFont = localStorage.getItem("reader-font") || "-apple-system";
   if (rendition) {
     rendition.themes.override("body", {
-      "font-family": storedFont + ", serif !important"
+      "font-family": storedFont + ", serif !important",
     });
   }
 }
@@ -112,7 +117,6 @@ function swipePrev() {
 function tapLeftHandler() {
   if (currentFlow === "paginated" && rendition) rendition.prev();
 }
-
 function tapRightHandler() {
   if (currentFlow === "paginated" && rendition) rendition.next();
 }
@@ -130,7 +134,8 @@ function cleanupReader() {
 function readBook(url) {
   if (rendition && currentBookUrl) {
     const loc = rendition.currentLocation();
-    if (loc?.start?.cfi) localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
+    if (loc?.start?.cfi)
+      localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
   }
   cleanupReader();
   localStorage.setItem("last-book", url);
@@ -155,13 +160,14 @@ function initBook(chosenUrl) {
     flow: currentFlow === "scrolled-doc" ? "scrolled" : "paginated",
     snap: currentFlow !== "scrolled-doc",
     spread: "always",
-    direction: "ltr"
+    direction: "ltr",
   });
 
   rendition.display(localStorage.getItem("last-location-" + currentBookUrl));
 
-  rendition.on("relocated", location => {
-    if (location?.start?.cfi) localStorage.setItem("last-location-" + currentBookUrl, location.start.cfi);
+  rendition.on("relocated", (location) => {
+    if (location?.start?.cfi)
+      localStorage.setItem("last-location-" + currentBookUrl, location.start.cfi);
   });
 
   rendition.on("rendered", () => {
@@ -174,7 +180,7 @@ function initBook(chosenUrl) {
 }
 
 function registerHooks() {
-  rendition.hooks.content.register(contents => {
+  rendition.hooks.content.register((contents) => {
     const doc = contents.document;
     if (currentFlow === "scrolled-doc") {
       doc.body.style.margin = "0";
@@ -213,7 +219,7 @@ function updateSwipeListeners() {
 function toggleLibrary(force) {
   const lib = document.getElementById("library-container");
   const reader = document.getElementById("reader-container");
-  const showLib = typeof force === 'boolean' ? force : lib.style.display !== "block";
+  const showLib = typeof force === "boolean" ? force : lib.style.display !== "block";
   lib.style.display = showLib ? "block" : "none";
   reader.style.display = showLib ? "none" : "block";
   closeMenus();
@@ -223,10 +229,10 @@ function loadLibrary() {
   const libraryDiv = document.getElementById("library");
   libraryDiv.textContent = "Loading books...";
   fetch("/ebooks/library.json")
-    .then(response => response.json())
-    .then(books => {
+    .then((response) => response.json())
+    .then((books) => {
       libraryDiv.innerHTML = "";
-      books.forEach(book => {
+      books.forEach((book) => {
         const bookDiv = document.createElement("div");
         bookDiv.className = "book";
         bookDiv.innerHTML = `
@@ -238,13 +244,12 @@ function loadLibrary() {
         libraryDiv.appendChild(bookDiv);
       });
     })
-    .catch(err => {
+    .catch((err) => {
       console.error("Failed to load library.json:", err);
       libraryDiv.textContent = "Failed to load book list.";
     });
 }
 
-// Auto-load
 const urlParams = new URLSearchParams(window.location.search);
 const bookParam = urlParams.get("book");
 const lastBook = localStorage.getItem("last-book");
@@ -262,7 +267,7 @@ const savedTheme = localStorage.getItem("reader-theme") || "light";
 document.getElementById("theme-select").value = savedTheme;
 changeTheme(savedTheme);
 
-// Expose globally for inline HTML use
+// Expose globals
 window.toggleLibrary = toggleLibrary;
 window.readBook = readBook;
 window.changeTheme = changeTheme;
