@@ -1,230 +1,512 @@
-let book, rendition, index = null;
-let bookmarks = [];
+// reader.js
+
+// === START GLOBAL VARIABLES ===
+let lastNonNightTheme = "light";
 let currentBookUrl = "";
-let currentFlow = localStorage.getItem("reading-mode") || "paginated";
+let bookmarks = [];
+let xDown = null;
+let yDown = null;
+const SWIPE_THRESHOLD = 20;
+let swipeInProgress = false;
+let book, rendition;
 let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
+let currentFlow = localStorage.getItem("reading-mode") || "swipe";
+// === END GLOBAL VARIABLES ===
 
-// Show/hide library
-function toggleLibrary(force) {
-  const lib = document.getElementById("library-container");
-  const read = document.getElementById("reader-container");
-  const showLib = typeof force === "boolean" ? force : lib.style.display === "none";
-  lib.style.display = showLib ? "block" : "none";
-  read.style.display = showLib ? "none" : "block";
+// === START TAP HANDLERS & CLEANUP ===
+function tapLeftHandler() {
+  if (currentFlow === "paginated" && rendition) rendition.prev();
 }
-
-// Load library
-function loadLibrary() {
-  const library = document.getElementById("library");
-  fetch("ebooks/library.json")
-    .then(res => res.json())
-    .then(books => {
-      library.innerHTML = "";
-      books.forEach(book => {
-        const div = document.createElement("div");
-        div.className = "book";
-        div.innerHTML = `
-          <img src="${book.cover}" />
-          <h3>${book.title}</h3>
-          <p>${book.author}</p>
-          <button onclick="readBook('${book.fileUrl}')">Read</button>
-        `;
-        library.appendChild(div);
-      });
-    })
-    .catch(() => {
-      library.textContent = "Could not load book list.";
-    });
+function tapRightHandler() {
+  if (currentFlow === "paginated" && rendition) rendition.next();
 }
-loadLibrary();
-
-// Start reader
-function readBook(url) {
-  localStorage.setItem("last-book", url);
-  const params = new URLSearchParams(window.location.search);
-  params.set("book", url);
-  window.location.search = params.toString();
-}
-
-function initBook(url) {
-  currentBookUrl = url;
-  book = ePub(url);
-  rendition = book.renderTo("viewer", {
-    flow: currentFlow === "scrolled-doc" ? "scrolled" : "paginated",
-    width: "100%",
-    height: "100%",
-    spread: "always"
-  });
-
-  rendition.display(localStorage.getItem("last-location-" + url) || undefined);
-  applyFontSwitch();
-
-  rendition.on("relocated", loc => {
-    if (loc?.start?.cfi) {
-      localStorage.setItem("last-location-" + url, loc.start.cfi);
-      updateCompass(loc);
-    }
-  });
-
-  // Bookmark init
-  loadBookmarks();
-  document.getElementById("bookmark-toggle").addEventListener("click", toggleBookmark);
-
-  // Slider
-  document.getElementById("page-slider").addEventListener("input", e => {
-    const percent = parseFloat(e.target.value);
-    if (book.locations) {
-      const cfi = book.locations.cfiFromPercentage(percent / 100);
-      rendition.display(cfi);
-    }
-  });
-
-  // Search
-  document.getElementById("search-input").addEventListener("input", e => {
-    const val = e.target.value.trim().toLowerCase();
-    const box = document.getElementById("search-results");
-    box.innerHTML = "";
-    if (index && val.length > 2) {
-      const results = index.search(val);
-      results.forEach(res => {
-        const item = index.store[res.ref];
-        const div = document.createElement("div");
-        div.textContent = item.text.slice(0, 100) + "...";
-        div.addEventListener("click", () => rendition.display(item.cfi));
-        box.appendChild(div);
-      });
-    }
-  });
-
-  // Build locations & search index
-  book.ready.then(() => {
-    return book.locations.generate(1600).then(() => {
-      buildSearchIndex();
-    });
-  });
-}
-
-// Toggle theme
-function changeTheme(theme) {
-  document.body.className = `${theme}-mode`;
-  localStorage.setItem("reader-theme", theme);
-  document.getElementById("theme-toggle").textContent = theme === "night" ? "☀️" : "🌙";
-  document.getElementById("theme-select").value = theme;
-}
-
-// Font switch
-function applyFontSwitch() {
-  const font = localStorage.getItem("reader-font") || "-apple-system";
-  document.getElementById("font-switcher").value = font;
-  if (font === "OpenDyslexic") {
-    const style = `
-      @font-face {
-        font-family: "OpenDyslexic";
-        src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
-      }
-      body { font-family: "OpenDyslexic", sans-serif !important; }
-    `;
-    rendition.getContents().forEach(c => {
-      let el = c.document.getElementById("OpenDyslexicStyle");
-      if (!el) {
-        el = c.document.createElement("style");
-        el.id = "OpenDyslexicStyle";
-        el.innerHTML = style;
-        c.document.head.appendChild(el);
-      }
-    });
-  } else {
-    rendition.themes.override("body", { "font-family": font });
+function cleanupReader() {
+  const viewer = document.getElementById("viewer");
+  if (viewer) {
+    viewer.removeEventListener("touchstart", handleTouchStart, false);
+    viewer.removeEventListener("touchend", handleTouchEnd, false);
   }
+  ["gesture-left","gesture-right"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.removeEventListener("click", id==="gesture-left"? swipePrev: swipeNext);
+  });
+  ["tap-left","tap-right"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.removeEventListener("click", id==="tap-left"? tapLeftHandler: tapRightHandler);
+  });
 }
+// === END TAP HANDLERS & CLEANUP ===
 
-// Bookmarks
-function getBookmarkKey() {
-  return "bookmarks_" + currentBookUrl;
-}
+// === START BOOKMARK HELPERS ===
+function getBookmarkKey() { return "bookmarks_" + currentBookUrl; }
 function loadBookmarks() {
-  bookmarks = JSON.parse(localStorage.getItem(getBookmarkKey()) || "[]");
+  const stored = localStorage.getItem(getBookmarkKey());
+  bookmarks = stored ? JSON.parse(stored) : [];
   updateBookmarkUI();
 }
 function saveBookmarks() {
   localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarks));
+  updateBookmarkUI();
+}
+function updateBookmarkStar() {
+  const btn = document.getElementById("bookmark-toggle");
+  const cfi = rendition && rendition.currentLocation()?.start?.cfi;
+  if (!cfi) { btn.textContent = "☆"; return; }
+  const exists = bookmarks.some(bm => bm.cfi === cfi);
+  btn.textContent = exists ? "★" : "☆";
+  btn.style.color = exists ? "blue" : "inherit";
 }
 function updateBookmarkUI() {
-  const panel = document.getElementById("bookmark-panel");
-  panel.innerHTML = "";
-  bookmarks.forEach(bm => {
-    const div = document.createElement("div");
-    div.textContent = `Page ${bm.page || "?"} - ${bm.snippet}`;
-    div.onclick = () => rendition.display(bm.cfi);
-    panel.appendChild(div);
-  });
+  const container = document.getElementById("bookmark-panel");
+  container.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+  if (bookmarks.length === 0) {
+    const emptyDiv = document.createElement("div");
+    emptyDiv.textContent = "No bookmarks yet.";
+    fragment.appendChild(emptyDiv);
+  } else {
+    bookmarks.forEach(bm => {
+      const item = document.createElement("div");
+      item.textContent = `Page ${bm.page || "?"} - ${bm.snippet}`;
+      item.addEventListener("click", () => {
+        rendition.display(bm.cfi);
+        toggleBookmarkDropdown();
+      });
+      fragment.appendChild(item);
+    });
+  }
+  container.appendChild(fragment);
 }
 function toggleBookmark() {
   const loc = rendition.currentLocation();
-  const cfi = loc?.start?.cfi;
-  if (!cfi) return;
-  const idx = bookmarks.findIndex(b => b.cfi === cfi);
-  if (idx >= 0) {
-    bookmarks.splice(idx, 1);
-  } else {
-    const snippet = rendition.getContents().map(c => c.document.body.textContent.trim().slice(0, 80)).join(" ");
-    bookmarks.push({ cfi, snippet });
+  if (!loc?.start?.cfi) return;
+  const cfi = loc.start.cfi;
+  const idx = bookmarks.findIndex(bm => bm.cfi === cfi);
+  if (idx !== -1) bookmarks.splice(idx, 1);
+  else {
+    let snippet = "";
+    rendition.getContents().forEach(contents => {
+      const doc = contents.document;
+      if (!snippet && doc?.body?.textContent) {
+        snippet = doc.body.textContent.trim().substring(0, 100) + "...";
+      }
+    });
+    bookmarks.push({ cfi, snippet, page: loc.start.index || "?" });
   }
   saveBookmarks();
-  updateBookmarkUI();
+  updateBookmarkStar();
 }
 function toggleBookmarkDropdown() {
   document.getElementById("bookmark-panel").classList.toggle("open");
 }
+// === END BOOKMARK HELPERS ===
 
-// Compass
-function updateCompass(loc) {
-  if (!book?.locations || !loc?.start?.cfi) return;
-  const percent = book.locations.percentageFromCfi(loc.start.cfi) * 100;
-  document.getElementById("page-slider").value = percent.toFixed(2);
-  document.getElementById("location-info").textContent = `Page ${Math.round(percent)} • CFI: ${loc.start.cfi}`;
+// === START LIBRARY & URL HANDLING ===
+const urlParams = new URLSearchParams(window.location.search);
+const bookParam = urlParams.get("book");
+const lastSavedBook = localStorage.getItem("last-book");
+let theBookUrl = bookParam ? decodeURIComponent(bookParam) : (lastSavedBook || null);
+const libraryContainer = document.getElementById("library-container");
+const readerContainer = document.getElementById("reader-container");
+if (theBookUrl) {
+  readerContainer.style.display = "block";
+  libraryContainer.style.display = "none";
+} else {
+  readerContainer.style.display = "none";
+  libraryContainer.style.display = "block";
 }
-
-// Build Search Index
-function buildSearchIndex() {
-  index = lunr(function () {
-    this.ref("cfi");
-    this.field("text");
-    index.store = {};
-    book.spine.each(item => {
-      item.load(book.load.bind(book)).then(res => {
-        const text = res.document.body.textContent;
-        this.add({ cfi: item.cfiBase, text });
-        index.store[item.cfiBase] = { cfi: item.cfiBase, text };
+let libraryVisible = !theBookUrl;
+function toggleLibrary(forceState) {
+  libraryVisible = typeof forceState === 'boolean' ? forceState : !libraryVisible;
+  libraryContainer.style.display = libraryVisible ? "block" : "none";
+  readerContainer.style.display = libraryVisible ? "none" : "block";
+  closeMenus();
+}
+function loadLibrary() {
+  const div = document.getElementById("library");
+  div.textContent = "Loading books...";
+  fetch("/ebooks/library.json")
+    .then(r => r.json())
+    .then(books => {
+      div.innerHTML = "";
+      books.forEach(book => {
+        const b = document.createElement("div");
+        b.className = "book";
+        b.innerHTML = `
+          <img src="${book.cover}" alt="Cover of ${book.title}" />
+          <h3>${book.title}</h3>
+          <p>${book.author}</p>
+          <button onclick="readBook('${book.fileUrl}')">Read</button>
+        `;
+        div.appendChild(b);
       });
+    })
+    .catch(err => {
+      console.error("Failed to load library.json:", err);
+      div.textContent = "Failed to load book list.";
     });
+}
+loadLibrary();
+function readBook(epubUrl) {
+  if (rendition && currentBookUrl) {
+    const loc = rendition.currentLocation();
+    if (loc?.start?.cfi) {
+      localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
+    }
+  }
+  cleanupReader();
+  localStorage.setItem("last-book", epubUrl);
+  const newSearch = new URLSearchParams(window.location.search);
+  newSearch.set("book", epubUrl);
+  window.history.replaceState({}, "", `?${newSearch.toString()}`);
+  initBook(epubUrl);
+  toggleLibrary(false);
+}
+// === END LIBRARY & URL HANDLING ===
+
+// === START READER INITIALIZATION & RENDITION ===
+function initBook(chosenUrl) {
+  if (!chosenUrl) return;
+  currentBookUrl = chosenUrl;
+  bookmarks = [];
+  rendition?.destroy();
+  book?.destroy();
+  book = ePub(chosenUrl);
+  registerReaderEvents();
+  book.ready.then(() => {
+    initRendition(currentFlow);
+    setTimeout(() => book.locations.generate(1600), 100);
+    book.loaded.metadata.then(meta => {
+      document.getElementById("book-title").textContent = meta.title || "Untitled";
+      document.getElementById("book-author").textContent = meta.creator || "";
+    });
+    book.loaded.cover
+      .then(url => book.archive.createUrl(url, { base64: true }))
+      .then(dataUrl => { document.getElementById("cover").src = dataUrl; })
+      .catch(() => console.warn("No cover image found."));
+    book.loaded.navigation.then(nav => {
+      const toc = document.getElementById("toc-panel");
+      toc.innerHTML = "";
+      nav.toc.forEach(chap => {
+        if (/contents|table of contents/i.test(chap.label)) return;
+        const a = document.createElement("a");
+        a.textContent = chap.label;
+        a.href = "#";
+        a.addEventListener("click", e => {
+          e.preventDefault();
+          rendition.display(chap.href);
+          toc.classList.remove("open");
+        });
+        toc.appendChild(a);
+      });
+      const about = nav.toc.find(chap => /about|author/i.test(chap.label));
+      if (about) {
+        const spine = book.spine.getByHref(about.href);
+        spine.load(book.archive).then(doc => {
+          const img = doc.querySelector("img[src$='.jpg'],img[src$='.jpeg'],img[src$='.png']");
+          if (img) {
+            const src = img.getAttribute("src");
+            book.archive.createUrl(src, { base64: true }).then(url => {
+              const ci = document.getElementById("contact-image");
+              ci.innerHTML = "";
+              const iElem = document.createElement("img");
+              iElem.src = url;
+              ci.appendChild(iElem);
+            }).catch(err => console.warn("Error creating URL for contact image:", err));
+          }
+        }).catch(err => console.warn("Error loading About/Author item:", err));
+      }
+    });
+    applyFontSwitch();
+    loadBookmarks();
   });
 }
 
-// Init from param
-const bookParam = new URLSearchParams(window.location.search).get("book");
-if (bookParam) {
-  toggleLibrary(false);
-  initBook(bookParam);
-} else {
-  toggleLibrary(true);
+function initRendition(flowMode, cfi) {
+  rendition = book.renderTo("viewer", {
+    width: "100%",
+    height: "100%",
+    flow: flowMode === "scrolled-doc" ? "scrolled" : "paginated",
+    snap: flowMode !== "scrolled-doc",
+    spread: "always",
+    direction: "ltr"
+  });
+  registerHooks();
+  const storedCfi = localStorage.getItem("last-location-" + currentBookUrl);
+  rendition.display(cfi || storedCfi || undefined);
+  rendition.on("relocated", loc => {
+    if (loc?.start?.cfi) {
+      localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
+      updateBookmarkStar();
+    }
+  });
+  rendition.on("rendered", () => {
+    applyThemeStylesFromCurrent();
+    applyFontSwitch();
+    updateBookmarkStar();
+  });
+  updateSwipeListeners();
+  if (flowMode === "scrolled-doc") {
+    document.getElementById("toc-panel").classList.remove("open");
+  }
+}
+// === END READER INITIALIZATION & RENDITION ===
+
+// === START HOOKS & SWIPE HANDLING ===
+function registerHooks() {
+  rendition.hooks.content.register(contents => {
+    const doc = contents.document;
+    if (currentFlow === "scrolled-doc") {
+      doc.body.style.margin = doc.body.style.padding = "0";
+      doc.documentElement.style.margin = doc.documentElement.style.padding = "0";
+      doc.body.style.paddingBottom = "30px";
+      document.getElementById("tap-left").style.pointerEvents = "none";
+      document.getElementById("tap-right").style.pointerEvents = "none";
+      const sentinel = doc.createElement("div");
+      sentinel.style.width = "100%";
+      sentinel.style.height = "1px";
+      doc.body.appendChild(sentinel);
+      new IntersectionObserver(entries => {
+        const cb = document.getElementById("continue-bar");
+        entries.forEach(e => cb.style.display = e.isIntersecting ? "block" : "none");
+      }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" }).observe(sentinel);
+    } else {
+      document.getElementById("tap-left").style.pointerEvents = "auto";
+      document.getElementById("tap-right").style.pointerEvents = "auto";
+      doc.body.style.paddingTop = "20px";
+      doc.body.style.paddingBottom = "30px";
+    }
+    rendition.themes.fontSize(currentFontSize + "%");
+    document.getElementById("viewer").style.overflow = "hidden";
+    applyThemeStylesFromCurrent();
+  });
 }
 
-// Event Listeners
-document.getElementById("menu-toggle").onclick = () => toggleMenu('menu');
-document.getElementById("toc-toggle").onclick = () => document.getElementById("toc-panel").classList.toggle("open");
-document.getElementById("bookmark-dropdown").onclick = toggleBookmarkDropdown;
-document.getElementById("compass-toggle").onclick = () => document.getElementById("compass-panel").classList.toggle("open");
-document.getElementById("theme-toggle").onclick = () => {
-  const current = localStorage.getItem("reader-theme") || "light";
-  changeTheme(current === "night" ? "light" : "night");
-};
-document.getElementById("font-switcher").onchange = e => {
+function updateSwipeListeners() {
+  const v = document.getElementById("viewer");
+  if (currentFlow === "swipe") {
+    document.getElementById("tap-left").style.pointerEvents = "none";
+    document.getElementById("tap-right").style.pointerEvents = "none";
+    v.addEventListener("touchstart", handleTouchStart, false);
+    v.addEventListener("touchend", handleTouchEnd, false);
+    ["gesture-left","gesture-right"].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.pointerEvents = "auto";
+      el.addEventListener("click", id==="gesture-left"? swipePrev: swipeNext);
+    });
+  } else {
+    v.removeEventListener("touchstart", handleTouchStart, false);
+    v.removeEventListener("touchend", handleTouchEnd, false);
+    ["gesture-left","gesture-right"].forEach(id => {
+      const el = document.getElementById(id);
+      el.removeEventListener("click", id==="gesture-left"? swipePrev: swipeNext);
+      el.style.pointerEvents = "none";
+    });
+    document.getElementById("tap-left").style.pointerEvents = "auto";
+    document.getElementById("tap-right").style.pointerEvents = "auto";
+  }
+}
+
+function handleTouchStart(evt) {
+  if (currentFlow !== "swipe") return;
+  const t = evt.touches[0];
+  xDown = t.clientX; yDown = t.clientY;
+}
+function handleTouchEnd(evt) {
+  if (currentFlow !== "swipe" || xDown === null || yDown === null) return;
+  const xUp = evt.changedTouches[0].clientX;
+  const yUp = evt.changedTouches[0].clientY;
+  const xDiff = xDown - xUp;
+  const yDiff = yDown - yUp;
+  if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
+    xDiff > 0 ? swipeNext() : swipePrev();
+  }
+  xDown = yDown = null;
+}
+
+function swipeNext() {
+  if (swipeInProgress) return;
+  swipeInProgress = true;
+  const v = document.getElementById("viewer");
+  v.classList.add("swipe-transition");
+  v.style.transform = "translateX(-100%)";
+  setTimeout(() => {
+    rendition.next();
+    v.classList.remove("swipe-transition");
+    v.style.transform = "";
+    swipeInProgress = false;
+  }, 300);
+}
+function swipePrev() {
+  if (swipeInProgress) return;
+  swipeInProgress = true;
+  const v = document.getElementById("viewer");
+  v.classList.add("swipe-transition");
+  v.style.transform = "translateX(100%)";
+  setTimeout(() => {
+    rendition.prev();
+    v.classList.remove("swipe-transition");
+    v.style.transform = "";
+    swipeInProgress = false;
+  }, 300);
+}
+// === END HOOKS & SWIPE HANDLING ===
+
+// === START FONT SWITCHER ===
+function applyFontSwitch() {
+  const storedFont = localStorage.getItem("reader-font") || "-apple-system";
+  document.getElementById("font-switcher").value = storedFont;
+  if (!rendition) return;
+  if (storedFont === "OpenDyslexic") {
+    const styleEl = document.createElement("style");
+    styleEl.id = "OpenDyslexicStyle";
+    styleEl.innerHTML = `
+      @font-face {
+        font-family: "OpenDyslexic";
+        src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
+        font-weight: normal; font-style: normal;
+      }
+      @font-face {
+        font-family: "OpenDyslexic";
+        src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
+        font-weight: bold; font-style: normal;
+      }
+      body { font-family: "OpenDyslexic", sans-serif !important; }
+    `;
+    rendition.getContents().forEach(contents => {
+      const doc = contents.document;
+      if (!doc.getElementById("OpenDyslexicStyle")) {
+        doc.head.appendChild(styleEl.cloneNode(true));
+      }
+    });
+  } else {
+    rendition.themes.override("body", {
+      "font-family": `${storedFont}, serif !important`
+    });
+    rendition.getContents().forEach(contents => {
+      const doc = contents.document;
+      let override = doc.getElementById("fontOverrideStyle");
+      if (!override) {
+        override = doc.createElement("style");
+        override.id = "fontOverrideStyle";
+        doc.head.appendChild(override);
+      }
+      override.textContent = `body { font-family: ${storedFont}, serif !important; }`;
+    });
+  }
+}
+document.getElementById("font-switcher").addEventListener("change", e => {
   localStorage.setItem("reader-font", e.target.value);
   applyFontSwitch();
-};
-document.getElementById("reading-mode").onchange = e => {
-  localStorage.setItem("reading-mode", e.target.value);
-  window.location.reload();
-};
-document.getElementById("theme-select").onchange = e => changeTheme(e.target.value);
+});
+// === END FONT SWITCHER ===
+
+// === START MENU & THEME CONTROLS ===
+let openMenuType = null;
+function toggleMenu(type) {
+  if (openMenuType === type) return closeMenus();
+  closeMenus();
+  if (type === 'menu') {
+    document.getElementById("expanded-menu").classList.add("open");
+    document.getElementById("menu-backdrop").style.display = "block";
+  }
+  if (type === 'settings') {
+    document.getElementById("settings-modal").classList.add("open");
+  }
+  openMenuType = type;
+}
+function closeMenus() {
+  document.getElementById("expanded-menu").classList.remove("open");
+  document.getElementById("settings-modal").classList.remove("open");
+  document.getElementById("menu-backdrop").style.display = "none";
+  openMenuType = null;
+}
+
+function applyThemeStylesFromCurrent() {
+  if (!rendition) return;
+  let bg = "#fff", color = "#000";
+  if (document.body.classList.contains("night-mode")) {
+    bg = "#111"; color = "#eee";
+  } else if (document.body.classList.contains("sepia-mode")) {
+    bg = "#f4ecd8";
+  } else if (document.body.classList.contains("matcha-mode")) {
+    bg = "#C3D8B6";
+  } else {
+    bg = "#f5f5f5";
+  }
+  rendition.getContents().forEach(c => {
+    const doc = c.document;
+    doc.documentElement.style.background = bg;
+    doc.body.style.background = bg;
+    doc.body.style.color = color;
+  });
+}
+
+document.getElementById("menu-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('menu'); });
+document.getElementById("toc-toggle").addEventListener("click", () => {
+  document.getElementById("toc-panel").classList.toggle("open");
+});
+document.getElementById("settings-toggle").addEventListener("click", () => {
+  closeMenus(); toggleMenu('settings');
+});
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  closeMenus();
+  if (document.body.classList.contains("night-mode")) {
+    changeTheme(lastNonNightTheme);
+  } else {
+    lastNonNightTheme = document.getElementById("theme-select").value;
+    changeTheme("night");
+  }
+});
+document.getElementById("bookmark-toggle").addEventListener("click", toggleBookmark);
+document.getElementById("bookmark-dropdown").addEventListener("click", toggleBookmarkDropdown);
+document.getElementById("reading-mode").addEventListener("change", e => {
+  const newMode = e.target.value;
+  localStorage.setItem("reading-mode", newMode);
+  currentFlow = newMode;
+  if (!rendition || !book) return;
+  const cfi = rendition.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
+  rendition.destroy();
+  setTimeout(() => initRendition(newMode, cfi), 50);
+});
+document.getElementById("theme-select").addEventListener("change", e => changeTheme(e.target.value));
+
+function changeFontSize(delta) {
+  currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
+  localStorage.setItem("reader-font-size", currentFontSize);
+  rendition?.themes.fontSize(currentFontSize + "%");
+}
+
+function changeTheme(theme) {
+  document.body.className = "";
+  if (theme === "night") document.body.classList.add("night-mode");
+  else if (theme === "sepia") document.body.classList.add("sepia-mode");
+  else if (theme === "matcha") document.body.classList.add("matcha-mode");
+  else document.body.classList.add("light-mode");
+  document.getElementById("theme-toggle").textContent =
+    document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+  localStorage.setItem("reader-theme", theme);
+  document.getElementById("theme-select").value = theme;
+  applyThemeStylesFromCurrent();
+}
+
+document.getElementById("continue-bar").addEventListener("click", () => {
+  if (!rendition || currentFlow !== "scrolled-doc") {
+    rendition?.next();
+    return;
+  }
+  const loc = rendition.currentLocation();
+  if (loc?.start?.index != null) {
+    const nextSpine = book.spine.get(loc.start.index + 1);
+    if (nextSpine) rendition.display(nextSpine.href);
+    else console.warn("No next chapter found.");
+  } else {
+    console.warn("Invalid current location:", loc);
+  }
+});
+
+if (theBookUrl) initBook(theBookUrl);
+const savedTheme = localStorage.getItem("reader-theme") || "light";
+document.getElementById("theme-select").value = savedTheme;
+changeTheme(savedTheme);
+// === END MENU & THEME CONTROLS ===
