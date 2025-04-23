@@ -2,59 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars Highlight Test</title>
-  <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0" />
+  <title>Liars EPUB Highlight Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mark.js/dist/mark.min.js"></script>
-
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
+      overflow: hidden;
       font-family: sans-serif;
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
-      overflow: hidden;
     }
-
     #toolbar {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       height: 45px;
-      background: #333;
+      background: #222;
       color: white;
       display: flex;
       align-items: center;
       padding: 0 1rem;
       z-index: 100;
     }
-
     #toolbar button {
       margin-right: 1rem;
       padding: 6px 12px;
       font-size: 1rem;
-      background: #555;
+      background: #444;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
     }
-
     #viewer {
       position: absolute;
-      top: 45px;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 45px; bottom: 0; left: 0; right: 0;
       background: #fff;
-      z-index: 1;
     }
-
     #tap-left, #tap-right {
       position: absolute;
       top: 45px;
@@ -62,10 +51,8 @@
       width: 35%;
       z-index: 10;
     }
-
     #tap-left { left: 0; }
     #tap-right { right: 0; }
-
     mark {
       background: yellow;
       color: black;
@@ -75,7 +62,7 @@
 <body>
 
   <div id="toolbar">
-    <button id="note-btn">📝</button>
+    <button id="highlightToggle">📝 Highlight</button>
   </div>
 
   <div id="viewer"></div>
@@ -83,25 +70,33 @@
   <div id="tap-right"></div>
 
   <script>
-    window.highlightMode = false;
+    let highlightMode = false;
+    const toggleBtn = document.getElementById("highlightToggle");
+    const tapLeft = document.getElementById("tap-left");
+    const tapRight = document.getElementById("tap-right");
 
-    document.getElementById("note-btn").onclick = () => {
+    toggleBtn.addEventListener("click", () => {
       highlightMode = !highlightMode;
-      const btn = document.getElementById("note-btn");
-      btn.style.background = highlightMode ? 'orange' : '#555';
-      document.getElementById("tap-left").style.pointerEvents = highlightMode ? "none" : "auto";
-      document.getElementById("tap-right").style.pointerEvents = highlightMode ? "none" : "auto";
-    };
+      toggleBtn.style.background = highlightMode ? "orange" : "#444";
+      tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
+      tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
+    });
 
     const book = ePub("/ebooks/liars.epub");
     const rendition = book.renderTo("viewer", {
       width: "100%",
       height: "100%",
       flow: "paginated",
+      manager: "default",
       method: "iframe",
       allowScriptedContent: true
     });
 
+    // Tap navigation
+    tapLeft.onclick = () => rendition.prev();
+    tapRight.onclick = () => rendition.next();
+
+    // Hook into iframe for selection/highlighting
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
       const win = contents.window;
@@ -110,25 +105,21 @@
       doc.documentElement.style.webkitUserSelect = "text";
       doc.body.style.userSelect = "text";
       doc.documentElement.style.userSelect = "text";
+      doc.body.style.webkitTouchCallout = "none";
 
       function runHighlight() {
         if (!highlightMode) return;
-
         setTimeout(() => {
           const sel = win.getSelection();
           const text = sel.toString().trim();
-
           if (text.length > 0) {
             try {
               const marker = new Mark(doc.body);
-              marker.unmark({
-                done: () => marker.mark(text)
-              });
+              marker.unmark({ done: () => marker.mark(text) });
             } catch (err) {
               console.error("Highlight error:", err);
             }
           }
-
           sel.removeAllRanges();
         }, 100);
       }
