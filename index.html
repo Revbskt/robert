@@ -69,11 +69,12 @@
     #tap-left { left: 0; }
     #tap-right { right: 0; }
 
-    /* Improved Highlight Styling */
+    /* FINAL Highlight Fix */
     .epubjs-hl {
-      background: none !important;
-      box-shadow: inset 0 -0.5em rgba(255, 165, 0, 0.3) !important;
+      background: rgba(255, 165, 0, 0.25) !important;
+      mix-blend-mode: multiply;
       pointer-events: none !important;
+      z-index: 0 !important;
     }
 
     ::selection {
@@ -139,7 +140,12 @@
       }
     }
 
-    rendition.on("rendered", () => {
+    rendition.on("rendered", (_, iframe) => {
+      const doc = iframe.document || iframe.contentDocument;
+      if (doc && doc.body) {
+        doc.body.style.position = "relative";
+        doc.body.style.zIndex = "1";
+      }
       loadHighlights();
     });
 
@@ -162,7 +168,7 @@
 
         contents.window.getSelection().removeAllRanges();
         saveHighlights();
-      }, 100); // Delay to let iOS settle
+      }, 100); // Delay for smoother touch behavior
     });
 
     tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
