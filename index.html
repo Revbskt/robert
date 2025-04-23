@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BTS Reader – iOS Highlight Optimized</title>
+  <title>BTS Reader – iOS Highlight Refined</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -125,13 +125,27 @@
       loadHighlights();
     });
 
+    // Improved selection + injected CSS fix
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
+
       doc.body.style.userSelect = "text";
       doc.documentElement.style.userSelect = "text";
       doc.body.style.webkitUserSelect = "text";
       doc.documentElement.style.webkitUserSelect = "text";
       doc.body.style.webkitTouchCallout = "none";
+
+      // Fix highlight thickness and overlaying issue
+      const style = doc.createElement("style");
+      style.innerHTML = `
+        .epubjs-hl {
+          background: rgba(255, 255, 0, 0.4) !important;
+          box-shadow: none !important;
+          mix-blend-mode: multiply;
+          pointer-events: none;
+        }
+      `;
+      doc.head.appendChild(style);
     });
 
     rendition.on("selected", async (cfiRange, contents) => {
