@@ -2,123 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BTS Reader – Note Bubble Fixed</title>
+  <title>SKT Reader – Phase 1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <style>
     html, body {
-      margin: 0; padding: 0;
+      margin: 0;
+      padding: 0;
       height: 100%;
       font-family: sans-serif;
       background: #f5f5f5;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: manipulation;
       overflow: hidden;
     }
 
     #toolbar {
       position: fixed;
-      top: 0; left: 0; right: 0;
+      top: 0;
+      left: 0;
+      right: 0;
       height: 45px;
       background: #222;
       color: white;
       display: flex;
       align-items: center;
       padding: 0 1rem;
-      z-index: 100;
+      z-index: 10;
     }
 
     #toolbar button {
-      margin-right: 1rem;
-      padding: 6px 12px;
-      font-size: 1rem;
       background: #444;
       color: white;
       border: none;
       border-radius: 4px;
-      cursor: pointer;
-    }
-
-    #note-list {
-      position: fixed;
-      top: 45px;
-      left: 0;
-      right: 0;
-      max-height: 60vh;
-      background: rgba(0,0,0,0.85);
-      color: white;
-      overflow-y: auto;
-      z-index: 1000;
-      display: none;
-      padding: 10px;
-    }
-
-    .note-item {
-      border-bottom: 1px solid #444;
-      padding: 6px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .note-snippet {
-      flex-grow: 1;
       margin-right: 10px;
-      font-size: 14px;
-    }
-
-    .note-delete {
+      padding: 6px 12px;
       cursor: pointer;
-      color: red;
-      font-size: 16px;
-    }
-
-    #note-bubble {
-      position: absolute;
-      display: none;
-      background: #f9f9f9;
-      border: 1px solid #ccc;
-      border-radius: 12px;
-      padding: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 2000;
-      max-width: 240px;
-    }
-
-    #note-bubble.above::after, #note-bubble.below::after {
-      content: "";
-      position: absolute;
-      left: 20px;
-      border-style: solid;
-    }
-
-    #note-bubble.above::after {
-      bottom: -10px;
-      border-width: 10px 10px 0;
-      border-color: #f9f9f9 transparent transparent transparent;
-    }
-
-    #note-bubble.below::after {
-      top: -10px;
-      border-width: 0 10px 10px;
-      border-color: transparent transparent #f9f9f9 transparent;
-    }
-
-    #note-bubble textarea {
-      width: 100%;
-      height: 40px;
       font-size: 14px;
-      resize: none;
-      margin-bottom: 6px;
     }
 
-    #note-bubble button {
-      margin-right: 6px;
+    #toolbar span {
+      margin-left: auto;
+      font-size: 14px;
     }
 
-    #reader-container {
+    #reader {
       position: absolute;
       top: 45px;
       bottom: 0;
@@ -126,208 +53,70 @@
       right: 0;
       background: white;
     }
-
-    #viewer {
-      width: 100%;
-      height: 100%;
-    }
-
-    #tap-left, #tap-right {
-      position: absolute;
-      top: 45px;
-      bottom: 0;
-      width: 35%;
-      z-index: 10;
-    }
-
-    #tap-left { left: 0; }
-    #tap-right { right: 0; }
   </style>
 </head>
 <body>
 
   <div id="toolbar">
-    <button id="highlightToggle">📝 Highlight</button>
-    <button id="notesToggle">📒 Notes</button>
+    <button onclick="skt.prev()">⬅️ Prev</button>
+    <button onclick="skt.next()">Next ➡️</button>
+    <span id="info"></span>
   </div>
 
-  <div id="note-list"></div>
-
-  <div id="note-bubble">
-    <textarea id="noteInput" placeholder="Note..."></textarea><br>
-    <button onclick="saveNote()">Save</button>
-    <button onclick="cancelNote()">Cancel</button>
-  </div>
-
-  <div id="reader-container">
-    <div id="viewer"></div>
-    <div id="tap-left"></div>
-    <div id="tap-right"></div>
-  </div>
+  <div id="reader"></div>
 
   <script>
-    let highlightMode = false;
-    let highlights = [];
-    let pendingCFI = null;
-    const key = "highlights-bts";
+    const skt = (() => {
+      let book, rendition;
+      let currentLocation = null;
 
-    const noteList = document.getElementById("note-list");
-    const noteBubble = document.getElementById("note-bubble");
-    const noteInput = document.getElementById("noteInput");
+      const $ = id => document.getElementById(id);
 
-    document.getElementById("highlightToggle").onclick = () => {
-      highlightMode = !highlightMode;
-      document.getElementById("highlightToggle").style.background = highlightMode ? "orange" : "#444";
-      document.getElementById("tap-left").style.pointerEvents = highlightMode ? "none" : "auto";
-      document.getElementById("tap-right").style.pointerEvents = highlightMode ? "none" : "auto";
-    };
-
-    document.getElementById("notesToggle").onclick = () => {
-      noteList.style.display = noteList.style.display === "block" ? "none" : "block";
-      renderNoteList();
-    };
-
-    const book = ePub("/ebooks/bts.epub");
-    const rendition = book.renderTo("viewer", {
-      width: "100%",
-      height: "100%",
-      flow: "scrolled-doc",
-      allowScriptedContent: true,
-      manager: "default"
-    });
-
-    function saveHighlights() {
-      localStorage.setItem(key, JSON.stringify(highlights));
-    }
-
-    function loadHighlights() {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        highlights = JSON.parse(saved);
-        highlights.forEach(h =>
-          rendition.annotations.highlight(h.cfi, {}, null, "hl")
-        );
-      }
-    }
-
-    function renderNoteList() {
-      noteList.innerHTML = "";
-      highlights
-        .filter(h => h.note && h.note.trim() !== "")
-        .forEach((h, i) => {
-          const item = document.createElement("div");
-          item.className = "note-item";
-
-          const text = document.createElement("div");
-          text.className = "note-snippet";
-          text.textContent = h.note;
-
-          const trash = document.createElement("div");
-          trash.className = "note-delete";
-          trash.textContent = "🗑";
-          trash.onclick = () => {
-            rendition.annotations.remove(h.cfi, "highlight");
-            highlights.splice(i, 1);
-            saveHighlights();
-            renderNoteList();
-          };
-
-          item.appendChild(text);
-          item.appendChild(trash);
-          noteList.appendChild(item);
+      function init(containerId, infoId) {
+        book = ePub("/ebooks/bts.epub");
+        rendition = book.renderTo(containerId, {
+          width: "100%",
+          height: "100%",
+          flow: "paginated",
         });
-    }
 
-    function showNoteBubble(x, y, cfi) {
-      pendingCFI = cfi;
-      noteInput.value = "";
-      noteBubble.classList.remove("above", "below");
+        book.ready.then(() => book.locations.generate(1000));
 
-      const buffer = 160;
-      const screenHeight = window.innerHeight;
-      const bubbleHeight = 90;
-      const direction = (y > screenHeight - buffer) ? "above" : "below";
+        rendition.on("relocated", (loc) => {
+          currentLocation = loc;
+          updateInfo(infoId);
+        });
 
-      noteBubble.classList.add(direction);
-      noteBubble.style.display = "block";
-
-      const top = direction === "above" ? y - bubbleHeight : y + 12;
-      const left = Math.max(10, Math.min(x - 100, window.innerWidth - 260));
-
-      noteBubble.style.top = top + "px";
-      noteBubble.style.left = left + "px";
-    }
-
-    function saveNote() {
-      const note = noteInput.value.trim();
-      if (pendingCFI) {
-        const found = highlights.find(h => h.cfi === pendingCFI);
-        if (found) {
-          found.note = note;
-          saveHighlights();
-        }
-      }
-      noteBubble.style.display = "none";
-      pendingCFI = null;
-    }
-
-    function cancelNote() {
-      noteBubble.style.display = "none";
-      pendingCFI = null;
-    }
-
-    rendition.on("rendered", loadHighlights);
-
-    rendition.hooks.content.register(contents => {
-      const doc = contents.document;
-      doc.body.style.userSelect = "text";
-      doc.documentElement.style.userSelect = "text";
-      doc.body.style.webkitUserSelect = "text";
-      doc.documentElement.style.webkitUserSelect = "text";
-      doc.body.style.webkitTouchCallout = "none";
-
-      const style = doc.createElement("style");
-      style.innerHTML = `
-        .epubjs-hl {
-          background: rgba(255, 255, 0, 0.4) !important;
-          box-shadow: none !important;
-          mix-blend-mode: multiply;
-          pointer-events: none;
-        }
-      `;
-      doc.head.appendChild(style);
-    });
-
-    rendition.on("selected", async (cfiRange, contents) => {
-      if (!highlightMode) return;
-
-      const existing = highlights.find(h => h.cfi === cfiRange);
-      if (existing) {
-        rendition.annotations.remove(cfiRange, "highlight");
-        highlights = highlights.filter(h => h.cfi !== cfiRange);
-        saveHighlights();
-        renderNoteList();
-        return;
+        rendition.display();
       }
 
-      const range = await book.getRange(cfiRange);
-      const rect = range.getBoundingClientRect();
-      const viewerOffset = document.getElementById("viewer").getBoundingClientRect();
+      function next() {
+        if (rendition) rendition.next();
+      }
 
-      const top = rect.top + window.scrollY - viewerOffset.top;
-      const left = rect.left + window.scrollX - viewerOffset.left + rect.width / 2;
+      function prev() {
+        if (rendition) rendition.prev();
+      }
 
-      rendition.annotations.highlight(cfiRange, {}, null, "hl");
-      highlights.push({ cfi: cfiRange, note: "" });
-      showNoteBubble(left, top, cfiRange);
+      function updateInfo(infoId) {
+        if (!book || !currentLocation) return;
+        const cfi = currentLocation.start.cfi;
+        const percent = book.locations && book.locations.length
+          ? Math.floor(book.locations.percentageFromCfi(cfi) * 100)
+          : '?';
+        const text = `📍 ${percent}% – ${cfi}`;
+        $(infoId).textContent = text;
+      }
 
-      contents.window.getSelection().removeAllRanges();
-    });
+      return {
+        load: init,
+        next,
+        prev,
+      };
+    })();
 
-    document.getElementById("tap-left").onclick = () => { if (!highlightMode) rendition.prev(); };
-    document.getElementById("tap-right").onclick = () => { if (!highlightMode) rendition.next(); };
-
-    rendition.display();
+    skt.load("reader", "info");
   </script>
+
 </body>
 </html>
