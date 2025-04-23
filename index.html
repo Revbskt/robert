@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BTS Reader – Floating Notes</title>
+  <title>BTS Reader – Styled Floating Notes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <style>
     html, body {
-      margin: 0; padding: 0;
+      margin: 0;
+      padding: 0;
       height: 100%;
       font-family: sans-serif;
       background: #f5f5f5;
@@ -78,13 +79,23 @@
     #note-bubble {
       position: absolute;
       display: none;
-      background: #fff;
+      background: #f9f9f9;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 12px;
       padding: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       z-index: 2000;
-      max-width: 250px;
+      max-width: 240px;
+    }
+
+    #note-bubble::after {
+      content: "";
+      position: absolute;
+      bottom: -10px;
+      left: 20px;
+      border-width: 10px 10px 0;
+      border-style: solid;
+      border-color: #f9f9f9 transparent transparent transparent;
     }
 
     #note-bubble textarea {
@@ -193,28 +204,30 @@
 
     function renderNoteList() {
       noteList.innerHTML = "";
-      highlights.forEach((h, i) => {
-        const item = document.createElement("div");
-        item.className = "note-item";
+      highlights
+        .filter(h => h.note && h.note.trim() !== "")
+        .forEach((h, i) => {
+          const item = document.createElement("div");
+          item.className = "note-item";
 
-        const text = document.createElement("div");
-        text.className = "note-snippet";
-        text.textContent = h.note || "[No note]";
+          const text = document.createElement("div");
+          text.className = "note-snippet";
+          text.textContent = h.note;
 
-        const trash = document.createElement("div");
-        trash.className = "note-delete";
-        trash.textContent = "🗑";
-        trash.onclick = () => {
-          rendition.annotations.remove(h.cfi, "highlight");
-          highlights.splice(i, 1);
-          saveHighlights();
-          renderNoteList();
-        };
+          const trash = document.createElement("div");
+          trash.className = "note-delete";
+          trash.textContent = "🗑";
+          trash.onclick = () => {
+            rendition.annotations.remove(h.cfi, "highlight");
+            highlights.splice(i, 1);
+            saveHighlights();
+            renderNoteList();
+          };
 
-        item.appendChild(text);
-        item.appendChild(trash);
-        noteList.appendChild(item);
-      });
+          item.appendChild(text);
+          item.appendChild(trash);
+          noteList.appendChild(item);
+        });
     }
 
     function showNoteBubble(x, y, cfi) {
@@ -223,9 +236,9 @@
       noteBubble.style.display = "block";
 
       const bubbleHeight = 120;
-      const top = (y - bubbleHeight - 10 > 50) ? y - bubbleHeight - 10 : y + 20;
+      const top = (y - bubbleHeight > 50) ? y - bubbleHeight : y + 30;
       noteBubble.style.top = top + "px";
-      noteBubble.style.left = (x - 100) + "px";
+      noteBubble.style.left = Math.max(10, x - 100) + "px";
     }
 
     function saveNote() {
