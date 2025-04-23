@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars Reader – Full EPUB + iOS Highlights</title>
+  <title>Liars EPUB with iOS Highlight + Tap Zones</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -27,10 +27,10 @@
       height: 45px;
       background: #222;
       color: white;
-      z-index: 100;
       display: flex;
       align-items: center;
       padding: 0 1rem;
+      z-index: 100;
     }
 
     #toolbar button {
@@ -50,7 +50,6 @@
       bottom: 0;
       left: 0;
       right: 0;
-      overflow: hidden;
       background: white;
     }
 
@@ -58,46 +57,60 @@
       width: 100%;
       height: 100%;
     }
+
+    #tap-left, #tap-right {
+      position: absolute;
+      top: 45px;
+      bottom: 0;
+      width: 35%;
+      z-index: 10;
+    }
+
+    #tap-left { left: 0; }
+    #tap-right { right: 0; }
   </style>
 </head>
 <body>
 
   <div id="toolbar">
     <button id="highlightToggle">📝 Highlight</button>
-    <button onclick="rendition.prev()">◀ Prev</button>
-    <button onclick="rendition.next()">Next ▶</button>
   </div>
 
   <div id="reader-container">
     <div id="viewer"></div>
+    <div id="tap-left"></div>
+    <div id="tap-right"></div>
   </div>
 
   <script>
     let highlightMode = false;
     let highlights = [];
-    const viewer = document.getElementById("viewer");
-    const toggleBtn = document.getElementById("highlightToggle");
     const key = "highlights-liars";
 
-    // UI toggle
+    const tapLeft = document.getElementById("tap-left");
+    const tapRight = document.getElementById("tap-right");
+    const toggleBtn = document.getElementById("highlightToggle");
+
     toggleBtn.onclick = () => {
       highlightMode = !highlightMode;
       toggleBtn.style.background = highlightMode ? "orange" : "#444";
+      tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
+      tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
     };
 
     const book = ePub("/ebooks/liars.epub");
     const rendition = book.renderTo("viewer", {
       width: "100%",
       height: "100%",
-      flow: "scrolled-doc", // smoother selection on iOS
+      flow: "scrolled-doc",
       manager: "default",
       allowScriptedContent: true
     });
 
-    // Load saved highlights
     function saveHighlights() {
       localStorage.setItem(key, JSON.stringify(highlights));
     }
+
     function loadHighlights() {
       const saved = localStorage.getItem(key);
       if (saved) {
@@ -131,6 +144,9 @@
       contents.window.getSelection().removeAllRanges();
       saveHighlights();
     });
+
+    tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
+    tapRight.onclick = () => { if (!highlightMode) rendition.next(); };
 
     rendition.display();
   </script>
