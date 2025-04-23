@@ -2,13 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>EPUB Notepad Highlight</title>
+  <title>EPUB Highlight with Mark.js</title>
   <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0" />
-
-  <!-- EPUB.js & JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/mark.js/dist/mark.min.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -32,7 +30,6 @@
       display: flex;
       align-items: center;
       padding: 0 1rem;
-      box-sizing: border-box;
     }
 
     #toolbar button {
@@ -108,20 +105,22 @@
 
     #tap-left { left: 0; }
     #tap-right { right: 0; }
+
+    mark {
+      background-color: yellow;
+      color: black;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Toolbar -->
   <div id="toolbar">
     <button id="note-btn">📝</button>
     <button id="back-btn">← Back</button>
   </div>
 
-  <!-- Book Library -->
   <div id="library">Loading…</div>
 
-  <!-- Reader -->
   <div id="reader">
     <div id="viewer"></div>
     <div id="tap-left"></div>
@@ -129,105 +128,117 @@
   </div>
 
   <script>
-  (function(){
-    const libraryEl = document.getElementById('library');
-    const readerEl = document.getElementById('reader');
-    const viewerEl = document.getElementById('viewer');
-    const backBtn = document.getElementById('back-btn');
-    const noteBtn = document.getElementById('note-btn');
-    const tapLeft = document.getElementById('tap-left');
-    const tapRight = document.getElementById('tap-right');
+    // ⬅ highlightMode must be global
+    window.highlightMode = false;
 
-    let book, rendition;
-    let noteMode = false;
-    let highlights = [];
+    function setupHighlightHooks(book, rendition) {
+      rendition.hooks.content.register(contents => {
+        contents.useBlobUrl = true;
+        const doc = contents.document;
+        const win = contents.window;
 
-    // Load book list
-    fetch('/ebooks/library.json')
-      .then(r => r.json())
-      .then(books => {
-        libraryEl.innerHTML = '';
-        books.forEach(b => {
-          const el = document.createElement('div');
-          el.className = 'book';
-          el.innerHTML = `
-            <img src="${b.cover}" alt="">
-            <div class="book-title">${b.title}</div>
-            <div class="book-author">${b.author}</div>
-          `;
-          el.onclick = () => openBook(b.fileUrl, b.title);
-          libraryEl.appendChild(el);
-        });
-      });
+        doc.body.style.webkitUserSelect = "text";
+        doc.documentElement.style.webkitUserSelect = "text";
+        doc.body.style.userSelect = "text";
+        doc.documentElement.style.userSelect = "text";
 
-    // Toggle note mode
-    noteBtn.onclick = () => {
-      noteMode = !noteMode;
-      noteBtn.style.background = noteMode ? 'orange' : '#555';
-      tapLeft.style.pointerEvents = noteMode ? 'none' : 'auto';
-      tapRight.style.pointerEvents = noteMode ? 'none' : 'auto';
-    };
+        function runHighlight() {
+          if (!window.highlightMode) return;
 
-    // Open reader
-    function openBook(url, title) {
-      libraryEl.style.display = 'none';
-      readerEl.style.display = 'block';
+          setTimeout(() => {
+            const sel = win.getSelection();
+            const text = sel.toString().trim();
 
-      if (rendition) try { rendition.destroy(); } catch(e){}
+            if (text.length > 0) {
+              try {
+                const marker = new Mark(doc.body);
+                marker.unmark({
+                  done: () => marker.mark(text)
+                });
+              } catch (err) {
+                console.error("Mark.js error:", err);
+              }
+            }
 
-      book = ePub(url);
-      rendition = book.renderTo('viewer', {
-        width: '100%',
-        height: '100%',
-        flow: 'paginated'
-      });
-
-      rendition.themes.register('hl', {
-        'background-color': 'yellow'
-      });
-
-      // Load saved highlights
-      const saved = localStorage.getItem(`hl-${title}`);
-      highlights = saved ? JSON.parse(saved) : [];
-
-      // Reapply
-      rendition.on('rendered', () => {
-        highlights.forEach(h => {
-          rendition.annotations.highlight(h.cfi, {}, null, 'hl');
-        });
-      });
-
-      // Add/remove on selection
-      rendition.on('selected', async (cfiRange, contents) => {
-        const exists = highlights.find(h => h.cfi === cfiRange);
-        if (exists) {
-          rendition.annotations.remove(cfiRange, 'highlight');
-          highlights = highlights.filter(h => h.cfi !== cfiRange);
-        } else if (noteMode) {
-          const range = await book.getRange(cfiRange);
-          const text = range.toString().trim();
-          if (text.length > 1) {
-            rendition.annotations.highlight(cfiRange, {}, null, 'hl');
-            highlights.push({ cfi: cfiRange, text });
-          }
+            sel.removeAllRanges();
+          }, 100);
         }
-        contents.window.getSelection().removeAllRanges();
-        localStorage.setItem(`hl-${title}`, JSON.stringify(highlights));
+
+        doc.addEventListener("touchend", runHighlight, false);
+        doc.addEventListener("pointerup", runHighlight, false);
+        doc.addEventListener("selectionchange", () => {
+          if ("ontouchstart" in window && window.highlightMode) {
+            setTimeout(runHighlight, 100);
+          }
+        });
       });
-
-      tapLeft.onclick = () => rendition.prev();
-      tapRight.onclick = () => rendition.next();
-
-      rendition.display();
     }
 
-    // Back to library
-    backBtn.onclick = () => {
-      readerEl.style.display = 'none';
-      libraryEl.style.display = 'flex';
-      if (rendition) try { rendition.destroy(); } catch(e){}
-    };
-  })();
+    (function(){
+      const libraryEl = document.getElementById('library');
+      const readerEl  = document.getElementById('reader');
+      const viewerEl  = document.getElementById('viewer');
+      const backBtn   = document.getElementById('back-btn');
+      const noteBtn   = document.getElementById('note-btn');
+      const tapLeft   = document.getElementById('tap-left');
+      const tapRight  = document.getElementById('tap-right');
+
+      let book, rendition;
+
+      fetch('/ebooks/library.json')
+        .then(r => r.json())
+        .then(books => {
+          libraryEl.innerHTML = '';
+          books.forEach(b => {
+            const el = document.createElement('div');
+            el.className = 'book';
+            el.innerHTML = `
+              <img src="${b.cover}" alt="">
+              <div class="book-title">${b.title}</div>
+              <div class="book-author">${b.author}</div>
+            `;
+            el.onclick = () => openBook(b.fileUrl);
+            libraryEl.appendChild(el);
+          });
+        });
+
+      noteBtn.onclick = () => {
+        window.highlightMode = !window.highlightMode;
+        noteBtn.style.background = window.highlightMode ? 'orange' : '#555';
+        tapLeft.style.pointerEvents = window.highlightMode ? 'none' : 'auto';
+        tapRight.style.pointerEvents = window.highlightMode ? 'none' : 'auto';
+      };
+
+      function openBook(url) {
+        libraryEl.style.display = 'none';
+        readerEl.style.display  = 'block';
+
+        if (rendition) try { rendition.destroy(); } catch(e){}
+
+        book = ePub(url);
+        rendition = book.renderTo('viewer', {
+          width: '100%',
+          height: '100%',
+          flow: 'paginated',
+          method: 'iframe',
+          allowScriptedContent: true,
+          manager: 'default'
+        });
+
+        setupHighlightHooks(book, rendition);
+
+        tapLeft.onclick = () => rendition.prev();
+        tapRight.onclick = () => rendition.next();
+
+        rendition.display();
+      }
+
+      backBtn.onclick = () => {
+        readerEl.style.display  = 'none';
+        libraryEl.style.display = 'flex';
+        if (rendition) try { rendition.destroy(); } catch(e){}
+      };
+    })();
   </script>
 </body>
 </html>
