@@ -1,122 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- === START METATAGS === -->
   <meta charset="UTF-8" />
-  <title>SKT Reader – Pride and Prejudice</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>My ePub Reader and Library</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
+  <!-- === END METATAGS === -->
+
+  <!-- === START EXTERNAL SCRIPTS === -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: sans-serif;
-      background: #f5f5f5;
-      overflow: hidden;
-    }
+  <!-- === END EXTERNAL SCRIPTS === -->
 
-    #toolbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 45px;
-      background: #222;
-      color: white;
-      display: flex;
-      align-items: center;
-      padding: 0 1rem;
-      z-index: 10;
-    }
-
-    #toolbar button {
-      background: #444;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      margin-right: 10px;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    #toolbar span {
-      margin-left: auto;
-      font-size: 14px;
-    }
-
-    #reader {
-      position: absolute;
-      top: 45px;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: white;
-    }
-  </style>
+  <!-- === START STYLESHEET LINK === -->
+  <link rel="stylesheet" href="style.css">
+  <!-- === END STYLESHEET LINK === -->
 </head>
-<body>
-
-  <div id="toolbar">
-    <button onclick="skt.prev()">⬅️ Prev</button>
-    <button onclick="skt.next()">Next ➡️</button>
-    <span id="info"></span>
+<body class="light-mode">
+  <!-- === START LIBRARY CONTAINER === -->
+  <div id="library-container">
+    <h1>📚 My Book Library</h1>
+    <div id="library-controls">
+      <button onclick="toggleLibrary(false)">Back to Reader</button>
+    </div>
+    <div id="library">Loading books...</div>
   </div>
+  <!-- === END LIBRARY CONTAINER === -->
 
-  <div id="reader"></div>
+  <!-- === START READER CONTAINER === -->
+  <div id="reader-container">
+    <!-- === START TOOLBAR === -->
+    <div id="toolbar">
+      <button id="menu-toggle" title="Main Menu">☰</button>
+      <button id="toc-toggle" title="Table of Contents">📖</button>
+      <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
+      <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
+      <button id="nav-toggle" title="Page Navigation">🧭</button>
+      <button id="settings-toggle" title="Read Settings">Aa</button>
+      <!-- removed night-mode toggle -->
+    </div>
+    <!-- === END TOOLBAR === -->
 
-  <script>
-    const skt = (() => {
-      let book, rendition;
-      let currentLocation = null;
+    <!-- === START BOOKMARK PANEL === -->
+    <div id="bookmark-panel"></div>
+    <!-- === END BOOKMARK PANEL === -->
 
-      const $ = id => document.getElementById(id);
+    <!-- === START PAGE NAV PANEL === -->
+    <div id="nav-panel">
+      <div class="nav-item">
+        Page <span id="nav-page-num">? of ?</span>
+      </div>
+      <!-- Loc row removed -->
+      <div class="nav-item nav-controls">
+        <button id="rewind-btn" title="Rewind">⏪</button>
+        <button id="forward-btn" title="Forward">⏩</button>
+      </div>
+    </div>
+    <!-- === END PAGE NAV PANEL === -->
 
-      function init(containerId, infoId) {
-        book = ePub("/ebooks/pride.epub");
-        rendition = book.renderTo(containerId, {
-          width: "100%",
-          height: "100%",
-          flow: "paginated",
-        });
+    <!-- === START MENU BACKDROP & PANEL === -->
+    <div id="menu-backdrop"></div>
+    <div id="expanded-menu">
+      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
+      <div id="book-card">
+        <img id="cover" alt="Book Cover" />
+        <div id="book-title"></div>
+        <div id="book-author"></div>
+        <div id="contact-image"></div>
+      </div>
+      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
+    </div>
+    <!-- === END MENU BACKDROP & PANEL === -->
 
-        book.ready.then(() => book.locations.generate(1000));
+    <!-- === START TOC PANEL === -->
+    <div id="toc-panel"></div>
+    <!-- === END TOC PANEL === -->
 
-        rendition.on("relocated", (loc) => {
-          currentLocation = loc;
-          updateInfo(infoId);
-        });
+    <!-- === START SETTINGS MODAL === -->
+    <div id="settings-modal">
+      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+      <h3>Reading Settings</h3>
+      <label for="font-switcher">Font</label>
+      <select id="font-switcher">
+        <option value="-apple-system">San Francisco (System)</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
+        <option value="Arial">Arial</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Georgia">Georgia</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+      </select>
+      <div class="font-size-buttons">
+        <button onclick="changeFontSize(-1)">A-</button>
+        <button onclick="changeFontSize(1)">A+</button>
+      </div>
+      <label for="reading-mode">Reading Mode</label>
+      <select id="reading-mode">
+        <option value="paginated">Page</option>
+        <option value="scrolled-doc">Scroll</option>
+        <option value="swipe">Swipe</option>
+      </select>
+      <label for="theme-select">Color Theme</label>
+      <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="sepia">Sepia</option>
+        <option value="matcha">Matcha Green</option>
+      </select>
+    </div>
+    <!-- === END SETTINGS MODAL === -->
 
-        rendition.display();
-      }
+    <!-- === START VIEWER & ZONES === -->
+    <div id="viewer">
+      <div id="tap-left"></div>
+      <div id="tap-right"></div>
+      <div id="gesture-left"></div>
+      <div id="gesture-right"></div>
+    </div>
+    <!-- === END VIEWER & ZONES === -->
 
-      function next() {
-        if (rendition) rendition.next();
-      }
+    <!-- === START PROGRESS & CONTINUE BARS === -->
+    <div id="progress-bar"></div>
+    <div id="continue-bar">Continue</div>
+    <!-- === END PROGRESS & CONTINUE BARS === -->
+  </div>
+  <!-- === END READER CONTAINER === -->
 
-      function prev() {
-        if (rendition) rendition.prev();
-      }
-
-      function updateInfo(infoId) {
-        if (!book || !currentLocation) return;
-        const cfi = currentLocation.start.cfi;
-        const percent = book.locations && book.locations.length
-          ? Math.floor(book.locations.percentageFromCfi(cfi) * 100)
-          : '?';
-        const text = `📍 ${percent}% – ${cfi}`;
-        $(infoId).textContent = text;
-      }
-
-      return {
-        load: init,
-        next,
-        prev,
-      };
-    })();
-
-    skt.load("reader", "info");
-  </script>
-
+  <!-- === START READER SCRIPT === -->
+  <script src="reader.js"></script>
+  <!-- === END READER SCRIPT === -->
 </body>
 </html>
