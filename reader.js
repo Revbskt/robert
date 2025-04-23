@@ -6,7 +6,7 @@ let currentBookUrl = "";
 let bookmarks = [];
 let xDown = null;
 let yDown = null;
-const SWIPE_THRESHOLD = 20;  // Configurable swipe detection threshold (in pixels)
+const SWIPE_THRESHOLD = 20;  // swipe threshold in pixels
 let swipeInProgress = false;
 let book, rendition;
 let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
@@ -45,9 +45,7 @@ function registerReaderEvents() {
 // === END READER EVENTS ===
 
 // === START BOOKMARK HELPERS ===
-function getBookmarkKey() {
-  return "bookmarks_" + currentBookUrl;
-}
+function getBookmarkKey() { return "bookmarks_" + currentBookUrl; }
 function loadBookmarks() {
   const stored = localStorage.getItem(getBookmarkKey());
   bookmarks = stored ? JSON.parse(stored) : [];
@@ -60,10 +58,7 @@ function saveBookmarks() {
 function updateBookmarkStar() {
   const btn = document.getElementById("bookmark-toggle");
   const cfi = rendition && rendition.currentLocation()?.start?.cfi;
-  if (!cfi) {
-    btn.textContent = "☆";
-    return;
-  }
+  if (!cfi) { btn.textContent = "☆"; return; }
   const exists = bookmarks.some(bm => bm.cfi === cfi);
   btn.textContent = exists ? "★" : "☆";
   btn.style.color = exists ? "blue" : "inherit";
@@ -71,37 +66,36 @@ function updateBookmarkStar() {
 function updateBookmarkUI() {
   const container = document.getElementById("bookmark-panel");
   container.innerHTML = "";
-  const fragment = document.createDocumentFragment();
+  const frag = document.createDocumentFragment();
   if (bookmarks.length === 0) {
-    const emptyDiv = document.createElement("div");
-    emptyDiv.textContent = "No bookmarks yet.";
-    fragment.appendChild(emptyDiv);
+    const div = document.createElement("div");
+    div.textContent = "No bookmarks yet.";
+    frag.appendChild(div);
   } else {
     bookmarks.forEach(bm => {
-      const item = document.createElement("div");
-      item.textContent = `Page ${bm.page || "?"} - ${bm.snippet}`;
-      item.addEventListener("click", () => {
+      const div = document.createElement("div");
+      div.textContent = `Page ${bm.page || "?"} - ${bm.snippet}`;
+      div.addEventListener("click", () => {
         rendition.display(bm.cfi);
         toggleBookmarkDropdown();
       });
-      fragment.appendChild(item);
+      frag.appendChild(div);
     });
   }
-  container.appendChild(fragment);
+  container.appendChild(frag);
 }
 function toggleBookmark() {
   const loc = rendition.currentLocation();
   if (!loc?.start?.cfi) return;
   const cfi = loc.start.cfi;
   const idx = bookmarks.findIndex(bm => bm.cfi === cfi);
-  if (idx !== -1) {
-    bookmarks.splice(idx, 1);
-  } else {
+  if (idx !== -1) bookmarks.splice(idx, 1);
+  else {
     let snippet = "";
     rendition.getContents().forEach(contents => {
       const doc = contents.document;
       if (!snippet && doc?.body?.textContent) {
-        snippet = doc.body.textContent.trim().substring(0, 100) + "...";
+        snippet = doc.body.textContent.trim().substring(0,100) + "...";
       }
     });
     bookmarks.push({ cfi, snippet, page: loc.start.index || "?" });
@@ -113,6 +107,20 @@ function toggleBookmarkDropdown() {
   document.getElementById("bookmark-panel").classList.toggle("open");
 }
 // === END BOOKMARK HELPERS ===
+
+// === START PAGE NAV INFO ===
+function updateNavInfo() {
+  const loc = rendition.currentLocation();
+  let pageNum = "?", total = "?";
+  if (loc && book.locations && typeof book.locations.length === "function") {
+    const idx = loc.start.location ?? loc.start.index ?? 0;
+    pageNum = idx + 1;
+    total = book.locations.length();
+  }
+  document.getElementById("nav-page-num").textContent = `${pageNum} of ${total}`;
+  document.getElementById("nav-location-cfi").textContent = loc?.start?.cfi || "";
+}
+// === END PAGE NAV INFO ===
 
 // === START LIBRARY & URL HANDLING ===
 const urlParams = new URLSearchParams(window.location.search);
@@ -129,8 +137,8 @@ if (theBookUrl) {
   libraryContainer.style.display = "block";
 }
 let libraryVisible = !theBookUrl;
-function toggleLibrary(forceState) {
-  libraryVisible = typeof forceState === 'boolean' ? forceState : !libraryVisible;
+function toggleLibrary(force) {
+  libraryVisible = typeof force === "boolean" ? force : !libraryVisible;
   libraryContainer.style.display = libraryVisible ? "block" : "none";
   readerContainer.style.display = libraryVisible ? "none" : "block";
   closeMenus();
@@ -145,14 +153,14 @@ function loadLibrary() {
     })
     .then(books => {
       div.innerHTML = "";
-      books.forEach(book => {
+      books.forEach(bk => {
         const b = document.createElement("div");
         b.className = "book";
         b.innerHTML = `
-          <img src="${book.cover}" alt="Cover of ${book.title}" />
-          <h3>${book.title}</h3>
-          <p>${book.author}</p>
-          <button onclick="readBook('${book.fileUrl}')">Read</button>
+          <img src="${bk.cover}" alt="Cover of ${bk.title}" />
+          <h3>${bk.title}</h3>
+          <p>${bk.author}</p>
+          <button onclick="readBook('${bk.fileUrl}')">Read</button>
         `;
         div.appendChild(b);
       });
@@ -172,9 +180,9 @@ function readBook(epubUrl) {
   }
   cleanupReader();
   localStorage.setItem("last-book", epubUrl);
-  const newSearch = new URLSearchParams(window.location.search);
-  newSearch.set("book", epubUrl);
-  window.history.replaceState({}, "", `?${newSearch.toString()}`);
+  const ns = new URLSearchParams(window.location.search);
+  ns.set("book", epubUrl);
+  window.history.replaceState({}, "", `?${ns.toString()}`);
   initBook(epubUrl);
   toggleLibrary(false);
 }
@@ -219,8 +227,8 @@ function initBook(chosenUrl) {
       });
       const about = nav.toc.find(chap => /about|author/i.test(chap.label));
       if (about) {
-        const spineItem = book.spine.getByHref(about.href);
-        spineItem.load(book.archive).then(doc => {
+        const spine = book.spine.getByHref(about.href);
+        spine.load(book.archive).then(doc => {
           const img = doc.querySelector("img[src$='.jpg'],img[src$='.jpeg'],img[src$='.png']");
           if (img) {
             const src = img.getAttribute("src");
@@ -256,12 +264,14 @@ function initRendition(flowMode, cfi) {
     if (loc?.start?.cfi) {
       localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
       updateBookmarkStar();
+      updateNavInfo();
     }
   });
   rendition.on("rendered", () => {
     applyThemeStylesFromCurrent();
     applyFontSwitch();
     updateBookmarkStar();
+    updateNavInfo();
   });
   updateSwipeListeners();
   if (flowMode === "scrolled-doc") {
@@ -286,9 +296,7 @@ function registerHooks() {
       doc.body.appendChild(sentinel);
       new IntersectionObserver(entries => {
         const cb = document.getElementById("continue-bar");
-        entries.forEach(e => {
-          cb.style.display = e.isIntersecting ? "block" : "none";
-        });
+        entries.forEach(e => { cb.style.display = e.isIntersecting ? "block" : "none"; });
       }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" })
         .observe(sentinel);
     } else {
@@ -302,7 +310,6 @@ function registerHooks() {
     applyThemeStylesFromCurrent();
   });
 }
-
 function updateSwipeListeners() {
   const v = document.getElementById("viewer");
   if (currentFlow === "swipe") {
@@ -327,37 +334,34 @@ function updateSwipeListeners() {
     document.getElementById("tap-right").style.pointerEvents = "auto";
   }
 }
-
 function handleTouchStart(evt) {
   if (currentFlow !== "swipe") return;
   const t = evt.touches[0];
-  xDown = t.clientX;
-  yDown = t.clientY;
+  xDown = t.clientX; yDown = t.clientY;
 }
 function handleTouchEnd(evt) {
-  if (currentFlow !== "swipe" || xDown === null || yDown === null) return;
+  if (currentFlow !== "swipe" || xDown===null || yDown===null) return;
   const xUp = evt.changedTouches[0].clientX;
   const yUp = evt.changedTouches[0].clientY;
   const xDiff = xDown - xUp;
   const yDiff = yDown - yUp;
-  if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
-    xDiff > 0 ? swipeNext() : swipePrev();
+  if (Math.abs(xDiff)>Math.abs(yDiff) && Math.abs(xDiff)>SWIPE_THRESHOLD) {
+    xDiff>0? swipeNext(): swipePrev();
   }
-  xDown = yDown = null;
+  xDown=yDown=null;
 }
-
 function swipeNext() {
   if (swipeInProgress) return;
   swipeInProgress = true;
   const v = document.getElementById("viewer");
   v.classList.add("swipe-transition");
   v.style.transform = "translateX(-100%)";
-  setTimeout(() => {
+  setTimeout(()=>{
     rendition.next();
     v.classList.remove("swipe-transition");
     v.style.transform = "";
     swipeInProgress = false;
-  }, 300);
+  },300);
 }
 function swipePrev() {
   if (swipeInProgress) return;
@@ -365,12 +369,12 @@ function swipePrev() {
   const v = document.getElementById("viewer");
   v.classList.add("swipe-transition");
   v.style.transform = "translateX(100%)";
-  setTimeout(() => {
+  setTimeout(()=>{
     rendition.prev();
     v.classList.remove("swipe-transition");
     v.style.transform = "";
     swipeInProgress = false;
-  }, 300);
+  },300);
 }
 // === END HOOKS & SWIPE HANDLING ===
 
@@ -383,37 +387,25 @@ function applyFontSwitch() {
     const styleEl = document.createElement("style");
     styleEl.id = "OpenDyslexicStyle";
     styleEl.innerHTML = `
-      @font-face {
-        font-family: "OpenDyslexic";
-        src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
-        font-weight: normal; font-style: normal;
-      }
-      @font-face {
-        font-family: "OpenDyslexic";
-        src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
-        font-weight: bold; font-style: normal;
-      }
+      @font-face { font-family: "OpenDyslexic"; src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype"); font-weight: normal; }
+      @font-face { font-family: "OpenDyslexic"; src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype"); font-weight: bold; }
       body { font-family: "OpenDyslexic", sans-serif !important; }
     `;
     rendition.getContents().forEach(contents => {
       const doc = contents.document;
-      if (!doc.getElementById("OpenDyslexicStyle")) {
-        doc.head.appendChild(styleEl.cloneNode(true));
-      }
+      if (!doc.getElementById("OpenDyslexicStyle")) doc.head.appendChild(styleEl.cloneNode(true));
     });
   } else {
-    rendition.themes.override("body", {
-      "font-family": `${storedFont}, serif !important`
-    });
+    rendition.themes.override("body", { "font-family": `${storedFont}, serif !important` });
     rendition.getContents().forEach(contents => {
       const doc = contents.document;
-      let override = doc.getElementById("fontOverrideStyle");
-      if (!override) {
-        override = doc.createElement("style");
-        override.id = "fontOverrideStyle";
-        doc.head.appendChild(override);
+      let o = doc.getElementById("fontOverrideStyle");
+      if (!o) {
+        o = doc.createElement("style");
+        o.id = "fontOverrideStyle";
+        doc.head.appendChild(o);
       }
-      override.textContent = `body { font-family: ${storedFont}, serif !important; }`;
+      o.textContent = `body { font-family: ${storedFont}, serif !important; }`;
     });
   }
 }
@@ -422,6 +414,14 @@ document.getElementById("font-switcher").addEventListener("change", e => {
   applyFontSwitch();
 });
 // === END FONT SWITCHER ===
+
+// === START NAVIGATION CONTROLS ===
+document.getElementById("nav-toggle").addEventListener("click", () => {
+  document.getElementById("nav-panel").classList.toggle("open");
+});
+document.getElementById("rewind-btn").addEventListener("click", () => rendition.prev());
+document.getElementById("forward-btn").addEventListener("click", () => rendition.next());
+// === END NAVIGATION CONTROLS ===
 
 // === START MENU & THEME CONTROLS ===
 let openMenuType = null;
@@ -443,100 +443,67 @@ function closeMenus() {
   document.getElementById("menu-backdrop").style.display = "none";
   openMenuType = null;
 }
-
 function applyThemeStylesFromCurrent() {
   if (!rendition) return;
   let bg = "#fff", color = "#000";
-  if (document.body.classList.contains("night-mode")) {
-    bg = "#111"; color = "#eee";
-  } else if (document.body.classList.contains("sepia-mode")) {
-    bg = "#f4ecd8"; color = "#000";
-  } else if (document.body.classList.contains("matcha-mode")) {
-    bg = "#C3D8B6"; color = "#000";
-  } else {
-    bg = "#f5f5f5"; color = "#000";
-  }
-  rendition.getContents().forEach(contents => {
-    const doc = contents.document;
+  if (document.body.classList.contains("night-mode")) { bg="#111"; color="#eee"; }
+  else if (document.body.classList.contains("sepia-mode")) { bg="#f4ecd8"; }
+  else if (document.body.classList.contains("matcha-mode")) { bg="#C3D8B6"; }
+  else { bg="#f5f5f5"; }
+  rendition.getContents().forEach(c => {
+    const doc = c.document;
     doc.documentElement.style.background = bg;
     doc.body.style.background = bg;
     doc.body.style.color = color;
   });
 }
-
-document.getElementById("menu-toggle").addEventListener("click", () => {
-  closeMenus();
-  toggleMenu('menu');
-});
-document.getElementById("toc-toggle").addEventListener("click", () => {
-  document.getElementById("toc-panel").classList.toggle("open");
-});
-document.getElementById("settings-toggle").addEventListener("click", () => {
-  closeMenus();
-  toggleMenu('settings');
-});
+document.getElementById("menu-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('menu'); });
+document.getElementById("toc-toggle").addEventListener("click", () => { document.getElementById("toc-panel").classList.toggle("open"); });
+document.getElementById("settings-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('settings'); });
 document.getElementById("theme-toggle").addEventListener("click", () => {
   closeMenus();
-  if (document.body.classList.contains("night-mode")) {
-    changeTheme(lastNonNightTheme);
-  } else {
-    lastNonNightTheme = document.getElementById("theme-select").value;
-    changeTheme("night");
-  }
+  if (document.body.classList.contains("night-mode")) changeTheme(lastNonNightTheme);
+  else { lastNonNightTheme = document.getElementById("theme-select").value; changeTheme("night"); }
 });
 document.getElementById("bookmark-toggle").addEventListener("click", toggleBookmark);
 document.getElementById("bookmark-dropdown").addEventListener("click", toggleBookmarkDropdown);
 document.getElementById("reading-mode").addEventListener("change", e => {
-  const newMode = e.target.value;
-  localStorage.setItem("reading-mode", newMode);
-  currentFlow = newMode;
+  const m = e.target.value;
+  localStorage.setItem("reading-mode", m);
+  currentFlow = m;
   if (!rendition || !book) return;
-  const cfi = rendition.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
+  const cfi = rendition.location?.start?.cfi || localStorage.getItem("last-location-"+currentBookUrl);
   rendition.destroy();
-  setTimeout(() => initRendition(newMode, cfi), 50);
+  setTimeout(() => initRendition(m, cfi), 50);
 });
 document.getElementById("theme-select").addEventListener("change", e => changeTheme(e.target.value));
-
 function changeFontSize(delta) {
-  currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
+  currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta*10));
   localStorage.setItem("reader-font-size", currentFontSize);
   rendition?.themes.fontSize(currentFontSize + "%");
 }
-
 function changeTheme(theme) {
   document.body.className = "";
-  if (theme === "night") {
-    document.body.classList.add("night-mode");
-  } else if (theme === "sepia") {
-    document.body.classList.add("sepia-mode");
-  } else if (theme === "matcha") {
-    document.body.classList.add("matcha-mode");
-  } else {
-    document.body.classList.add("light-mode");
-  }
+  if (theme==="night") document.body.classList.add("night-mode");
+  else if (theme==="sepia") document.body.classList.add("sepia-mode");
+  else if (theme==="matcha") document.body.classList.add("matcha-mode");
+  else document.body.classList.add("light-mode");
   document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
   localStorage.setItem("reader-theme", theme);
   document.getElementById("theme-select").value = theme;
   applyThemeStylesFromCurrent();
 }
-
 document.getElementById("continue-bar").addEventListener("click", () => {
-  if (!rendition || currentFlow !== "scrolled-doc") {
-    rendition?.next();
-    return;
-  }
+  if (!rendition || currentFlow!=="scrolled-doc") { rendition?.next(); return; }
   const loc = rendition.currentLocation();
   if (loc?.start?.index != null) {
-    const nextSpine = book.spine.get(loc.start.index + 1);
-    if (nextSpine) rendition.display(nextSpine.href);
+    const next = book.spine.get(loc.start.index+1);
+    if (next) rendition.display(next.href);
     else console.warn("No next chapter found.");
-  } else {
-    console.warn("Invalid current location:", loc);
-  }
+  } else console.warn("Invalid current location:", loc);
 });
-
 if (theBookUrl) initBook(theBookUrl);
-
 const savedTheme = localStorage.getItem("reader-theme") || "light";
 document.getElementById("theme-select").value = savedTheme;
 changeTheme(savedTheme);
+// === END MENU & THEME CONTROLS ===
