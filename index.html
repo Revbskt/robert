@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars EPUB Highlighter</title>
+  <title>Liars Highlighter (iOS Smooth Scroll)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -16,18 +16,21 @@
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
+      background: #f5f5f5;
     }
+
     #toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
       height: 45px;
       background: #222;
       color: white;
-      z-index: 100;
       display: flex;
       align-items: center;
       padding: 0 1rem;
+      z-index: 100;
     }
+
     #toolbar button {
       margin-right: 1rem;
       padding: 6px 12px;
@@ -38,21 +41,16 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
     #viewer {
       position: absolute;
-      top: 45px; bottom: 0;
-      left: 0; right: 0;
-      background: #fff;
+      top: 45px;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
       z-index: 1;
     }
-    #tap-left, #tap-right {
-      position: absolute;
-      top: 45px; bottom: 0;
-      width: 35%;
-      z-index: 10;
-    }
-    #tap-left { left: 0; }
-    #tap-right { right: 0; }
   </style>
 </head>
 <body>
@@ -62,62 +60,50 @@
   </div>
 
   <div id="viewer"></div>
-  <div id="tap-left"></div>
-  <div id="tap-right"></div>
 
   <script>
-    const viewer = document.getElementById("viewer");
-    const tapLeft = document.getElementById("tap-left");
-    const tapRight = document.getElementById("tap-right");
-    const highlightToggle = document.getElementById("highlightToggle");
-
     let highlightMode = false;
-    let book, rendition, currentBookId = "liars.epub";
     let highlights = [];
-
-    function saveHighlights() {
-      localStorage.setItem("highlights-" + currentBookId, JSON.stringify(highlights));
-    }
-
-    function loadHighlights() {
-      const saved = localStorage.getItem("highlights-" + currentBookId);
-      highlights = saved ? JSON.parse(saved) : [];
-    }
-
-    function applyHighlights() {
-      highlights.forEach(h => {
-        rendition.annotations.highlight(h.cfi, {}, null, "hl");
-      });
-    }
+    const highlightToggle = document.getElementById("highlightToggle");
 
     highlightToggle.onclick = () => {
       highlightMode = !highlightMode;
       highlightToggle.style.background = highlightMode ? "orange" : "#444";
-      tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
-      tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
     };
 
-    book = ePub("/ebooks/liars.epub");
-    rendition = book.renderTo("viewer", {
+    const book = ePub("/ebooks/liars.epub");
+    const rendition = book.renderTo("viewer", {
       width: "100%",
       height: "100%",
-      flow: "paginated",
+      flow: "scrolled-doc", // ✅ iOS smooth mode
       manager: "default",
-      method: "iframe",
       allowScriptedContent: true
     });
 
-    loadHighlights();
+    // Load + restore saved highlights
+    const key = "highlights-liars";
+    function saveHighlights() {
+      localStorage.setItem(key, JSON.stringify(highlights));
+    }
+    function loadHighlights() {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        highlights = JSON.parse(saved);
+        highlights.forEach(h =>
+          rendition.annotations.highlight(h.cfi, {}, null, "hl")
+        );
+      }
+    }
 
     rendition.on("rendered", () => {
-      applyHighlights();
+      loadHighlights();
     });
 
     rendition.on("selected", async (cfiRange, contents) => {
       if (!highlightMode) return;
 
-      const existing = highlights.find(h => h.cfi === cfiRange);
-      if (existing) {
+      const exists = highlights.find(h => h.cfi === cfiRange);
+      if (exists) {
         rendition.annotations.remove(cfiRange, "highlight");
         highlights = highlights.filter(h => h.cfi !== cfiRange);
       } else {
@@ -132,9 +118,6 @@
       contents.window.getSelection().removeAllRanges();
       saveHighlights();
     });
-
-    tapLeft.onclick = () => rendition.prev();
-    tapRight.onclick = () => rendition.next();
 
     rendition.display();
   </script>
