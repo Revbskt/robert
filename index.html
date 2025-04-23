@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars EPUB Highlight Test</title>
+  <title>Liars EPUB – Highlight Optimized for iOS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -12,23 +12,25 @@
       margin: 0;
       padding: 0;
       height: 100%;
-      overflow: hidden;
       font-family: sans-serif;
+      overflow: hidden;
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
     }
+
     #toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
       height: 45px;
       background: #222;
       color: white;
+      z-index: 100;
       display: flex;
       align-items: center;
       padding: 0 1rem;
-      z-index: 100;
     }
+
     #toolbar button {
       margin-right: 1rem;
       padding: 6px 12px;
@@ -39,11 +41,17 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
     #viewer {
       position: absolute;
-      top: 45px; bottom: 0; left: 0; right: 0;
+      top: 45px;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
       background: #fff;
     }
+
     #tap-left, #tap-right {
       position: absolute;
       top: 45px;
@@ -51,8 +59,10 @@
       width: 35%;
       z-index: 10;
     }
+
     #tap-left { left: 0; }
     #tap-right { right: 0; }
+
     mark {
       background: yellow;
       color: black;
@@ -71,6 +81,7 @@
 
   <script>
     let highlightMode = false;
+
     const toggleBtn = document.getElementById("highlightToggle");
     const tapLeft = document.getElementById("tap-left");
     const tapRight = document.getElementById("tap-right");
@@ -87,16 +98,14 @@
       width: "100%",
       height: "100%",
       flow: "paginated",
-      manager: "default",
       method: "iframe",
       allowScriptedContent: true
     });
 
-    // Tap navigation
     tapLeft.onclick = () => rendition.prev();
     tapRight.onclick = () => rendition.next();
 
-    // Hook into iframe for selection/highlighting
+    // Hook into content for highlight support
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
       const win = contents.window;
@@ -109,26 +118,31 @@
 
       function runHighlight() {
         if (!highlightMode) return;
+
         setTimeout(() => {
           const sel = win.getSelection();
           const text = sel.toString().trim();
+
           if (text.length > 0) {
             try {
               const marker = new Mark(doc.body);
-              marker.unmark({ done: () => marker.mark(text) });
+              marker.unmark({
+                done: () => marker.mark(text)
+              });
             } catch (err) {
               console.error("Highlight error:", err);
             }
           }
+
           sel.removeAllRanges();
-        }, 100);
+        }, 50); // shorter delay improves tracking
       }
 
-      doc.addEventListener("touchend", runHighlight, false);
-      doc.addEventListener("pointerup", runHighlight, false);
+      doc.addEventListener("pointerup", runHighlight);
+      doc.addEventListener("touchend", runHighlight);
       doc.addEventListener("selectionchange", () => {
-        if ("ontouchstart" in window && highlightMode) {
-          setTimeout(runHighlight, 100);
+        if (highlightMode && "ontouchstart" in window) {
+          setTimeout(runHighlight, 50);
         }
       });
     });
