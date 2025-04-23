@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Highlight Test EPUB</title>
+  <title>Liars Highlight Test</title>
   <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -13,23 +13,27 @@
       margin: 0;
       padding: 0;
       height: 100%;
-      overflow: hidden;
       font-family: sans-serif;
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
+      overflow: hidden;
     }
+
     #toolbar {
       position: fixed;
-      top: 0; left: 0; right: 0;
+      top: 0;
+      left: 0;
+      right: 0;
       height: 45px;
       background: #333;
       color: white;
-      z-index: 100;
       display: flex;
       align-items: center;
       padding: 0 1rem;
+      z-index: 100;
     }
+
     #toolbar button {
       margin-right: 1rem;
       padding: 6px 12px;
@@ -40,13 +44,17 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
     #viewer {
       position: absolute;
       top: 45px;
       left: 0;
       right: 0;
       bottom: 0;
+      background: #fff;
+      z-index: 1;
     }
+
     #tap-left, #tap-right {
       position: absolute;
       top: 45px;
@@ -54,8 +62,10 @@
       width: 35%;
       z-index: 10;
     }
+
     #tap-left { left: 0; }
     #tap-right { right: 0; }
+
     mark {
       background: yellow;
       color: black;
@@ -83,7 +93,7 @@
       document.getElementById("tap-right").style.pointerEvents = highlightMode ? "none" : "auto";
     };
 
-    const book = ePub("https://s3.amazonaws.com/moby-dick/OPS/package.opf");
+    const book = ePub("/ebooks/liars.epub");
     const rendition = book.renderTo("viewer", {
       width: "100%",
       height: "100%",
@@ -92,7 +102,6 @@
       allowScriptedContent: true
     });
 
-    // Mark.js highlight logic
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
       const win = contents.window;
@@ -104,9 +113,11 @@
 
       function runHighlight() {
         if (!highlightMode) return;
+
         setTimeout(() => {
           const sel = win.getSelection();
           const text = sel.toString().trim();
+
           if (text.length > 0) {
             try {
               const marker = new Mark(doc.body);
@@ -117,6 +128,7 @@
               console.error("Highlight error:", err);
             }
           }
+
           sel.removeAllRanges();
         }, 100);
       }
