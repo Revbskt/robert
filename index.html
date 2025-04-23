@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>EPUB Highlight Reader</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPUB Notepad Highlight</title>
+  <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0" />
 
-  <!-- EPUB.js + JSZip -->
+  <!-- EPUB.js & JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
@@ -15,23 +15,48 @@
       padding: 0;
       height: 100%;
       font-family: sans-serif;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 45px;
+      background: #333;
+      color: white;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      box-sizing: border-box;
+    }
+
+    #toolbar button {
+      margin-right: 1rem;
+      padding: 6px 12px;
+      font-size: 1rem;
+      background: #555;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
 
     #library, #reader {
-      width: 100%;
-      height: 100%;
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 45px; bottom: 0; left: 0; right: 0;
+      overflow: auto;
+      background: #f5f5f5;
     }
 
     #library {
       display: flex;
       flex-wrap: wrap;
       padding: 1rem;
-      box-sizing: border-box;
-      background: #f5f5f5;
-      overflow-y: auto;
     }
 
     .book {
@@ -59,7 +84,6 @@
     .book-author {
       font-size: 0.8rem;
       color: #666;
-      margin-bottom: 0.5rem;
     }
 
     #reader {
@@ -68,46 +92,17 @@
       background: #fff;
     }
 
-    #toolbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 45px;
-      background: #333;
-      color: white;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      padding: 0 1rem;
-      box-sizing: border-box;
-    }
-
-    #toolbar button {
-      margin-right: 1rem;
-      padding: 6px 12px;
-      font-size: 1rem;
-      background: #555;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
     #viewer {
       position: absolute;
-      top: 45px;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 1;
     }
 
     #tap-left, #tap-right {
       position: absolute;
-      top: 45px;
-      bottom: 0;
+      top: 0; bottom: 0;
       width: 35%;
-      z-index: 5;
+      z-index: 10;
       background: transparent;
     }
 
@@ -117,15 +112,17 @@
 </head>
 <body>
 
-  <!-- LIBRARY VIEW -->
-  <div id="library">Loading library…</div>
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <button id="note-btn">📝</button>
+    <button id="back-btn">← Back</button>
+  </div>
 
-  <!-- READER VIEW -->
+  <!-- Book Library -->
+  <div id="library">Loading…</div>
+
+  <!-- Reader -->
   <div id="reader">
-    <div id="toolbar">
-      <button id="highlight-toggle">Highlight</button>
-      <button id="back-button">← Back</button>
-    </div>
     <div id="viewer"></div>
     <div id="tap-left"></div>
     <div id="tap-right"></div>
@@ -136,15 +133,16 @@
     const libraryEl = document.getElementById('library');
     const readerEl = document.getElementById('reader');
     const viewerEl = document.getElementById('viewer');
-    const tapLeft  = document.getElementById('tap-left');
+    const backBtn = document.getElementById('back-btn');
+    const noteBtn = document.getElementById('note-btn');
+    const tapLeft = document.getElementById('tap-left');
     const tapRight = document.getElementById('tap-right');
-    const backBtn  = document.getElementById('back-button');
-    const highlightBtn = document.getElementById('highlight-toggle');
 
     let book, rendition;
-    let highlightMode = false;
+    let noteMode = false;
+    let highlights = [];
 
-    // Load library.json
+    // Load book list
     fetch('/ebooks/library.json')
       .then(r => r.json())
       .then(books => {
@@ -153,65 +151,81 @@
           const el = document.createElement('div');
           el.className = 'book';
           el.innerHTML = `
-            <img src="${b.cover}" alt="cover" />
+            <img src="${b.cover}" alt="">
             <div class="book-title">${b.title}</div>
             <div class="book-author">${b.author}</div>
           `;
-          el.onclick = () => openBook(b.fileUrl);
+          el.onclick = () => openBook(b.fileUrl, b.title);
           libraryEl.appendChild(el);
         });
-      })
-      .catch(err => {
-        libraryEl.textContent = 'Failed to load library.';
-        console.error(err);
       });
 
-    // Open a book
-    function openBook(url) {
+    // Toggle note mode
+    noteBtn.onclick = () => {
+      noteMode = !noteMode;
+      noteBtn.style.background = noteMode ? 'orange' : '#555';
+      tapLeft.style.pointerEvents = noteMode ? 'none' : 'auto';
+      tapRight.style.pointerEvents = noteMode ? 'none' : 'auto';
+    };
+
+    // Open reader
+    function openBook(url, title) {
       libraryEl.style.display = 'none';
       readerEl.style.display = 'block';
 
-      try { rendition && rendition.destroy(); } catch(e){}
+      if (rendition) try { rendition.destroy(); } catch(e){}
 
       book = ePub(url);
-      rendition = book.renderTo(viewerEl, {
+      rendition = book.renderTo('viewer', {
         width: '100%',
         height: '100%',
         flow: 'paginated'
       });
 
-      // Highlight theme
-      rendition.themes.register('highlight', {
-        'fill': 'yellow',
-        'fill-opacity': '0.4'
+      rendition.themes.register('hl', {
+        'background-color': 'yellow'
       });
 
-      // Selection event → highlight
-      rendition.on('selected', (cfiRange, contents) => {
-        if (highlightMode) {
-          rendition.annotations.highlight(cfiRange, {}, null, 'highlight');
+      // Load saved highlights
+      const saved = localStorage.getItem(`hl-${title}`);
+      highlights = saved ? JSON.parse(saved) : [];
+
+      // Reapply
+      rendition.on('rendered', () => {
+        highlights.forEach(h => {
+          rendition.annotations.highlight(h.cfi, {}, null, 'hl');
+        });
+      });
+
+      // Add/remove on selection
+      rendition.on('selected', async (cfiRange, contents) => {
+        const exists = highlights.find(h => h.cfi === cfiRange);
+        if (exists) {
+          rendition.annotations.remove(cfiRange, 'highlight');
+          highlights = highlights.filter(h => h.cfi !== cfiRange);
+        } else if (noteMode) {
+          const range = await book.getRange(cfiRange);
+          const text = range.toString().trim();
+          if (text.length > 1) {
+            rendition.annotations.highlight(cfiRange, {}, null, 'hl');
+            highlights.push({ cfi: cfiRange, text });
+          }
         }
         contents.window.getSelection().removeAllRanges();
+        localStorage.setItem(`hl-${title}`, JSON.stringify(highlights));
       });
 
-      // Tap zones
       tapLeft.onclick = () => rendition.prev();
       tapRight.onclick = () => rendition.next();
 
       rendition.display();
     }
 
-    // Toggle highlight mode
-    highlightBtn.onclick = () => {
-      highlightMode = !highlightMode;
-      highlightBtn.style.background = highlightMode ? 'orange' : '#555';
-    };
-
     // Back to library
     backBtn.onclick = () => {
-      try { rendition.destroy(); } catch(e){}
       readerEl.style.display = 'none';
       libraryEl.style.display = 'flex';
+      if (rendition) try { rendition.destroy(); } catch(e){}
     };
   })();
   </script>
