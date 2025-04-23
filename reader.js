@@ -118,7 +118,6 @@ function updateNavInfo() {
     total = book.locations.length();
   }
   document.getElementById("nav-page-num").textContent = `${pageNum} of ${total}`;
-  document.getElementById("nav-location-cfi").textContent = loc?.start?.cfi || "";
 }
 // === END PAGE NAV INFO ===
 
@@ -310,6 +309,7 @@ function registerHooks() {
     applyThemeStylesFromCurrent();
   });
 }
+
 function updateSwipeListeners() {
   const v = document.getElementById("viewer");
   if (currentFlow === "swipe") {
@@ -334,6 +334,7 @@ function updateSwipeListeners() {
     document.getElementById("tap-right").style.pointerEvents = "auto";
   }
 }
+
 function handleTouchStart(evt) {
   if (currentFlow !== "swipe") return;
   const t = evt.touches[0];
@@ -350,6 +351,7 @@ function handleTouchEnd(evt) {
   }
   xDown=yDown=null;
 }
+
 function swipeNext() {
   if (swipeInProgress) return;
   swipeInProgress = true;
@@ -363,6 +365,7 @@ function swipeNext() {
     swipeInProgress = false;
   },300);
 }
+
 function swipePrev() {
   if (swipeInProgress) return;
   swipeInProgress = true;
@@ -446,10 +449,11 @@ function closeMenus() {
 function applyThemeStylesFromCurrent() {
   if (!rendition) return;
   let bg = "#fff", color = "#000";
-  if (document.body.classList.contains("night-mode")) { bg="#111"; color="#eee"; }
-  else if (document.body.classList.contains("sepia-mode")) { bg="#f4ecd8"; }
-  else if (document.body.classList.contains("matcha-mode")) { bg="#C3D8B6"; }
-  else { bg="#f5f5f5"; }
+  if (document.body.classList.contains("sepia-mode")) {
+    bg = "#f4ecd8"; color = "#000";
+  } else if (document.body.classList.contains("matcha-mode")) {
+    bg = "#C3D8B6"; color = "#000";
+  }
   rendition.getContents().forEach(c => {
     const doc = c.document;
     doc.documentElement.style.background = bg;
@@ -460,11 +464,6 @@ function applyThemeStylesFromCurrent() {
 document.getElementById("menu-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('menu'); });
 document.getElementById("toc-toggle").addEventListener("click", () => { document.getElementById("toc-panel").classList.toggle("open"); });
 document.getElementById("settings-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('settings'); });
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  closeMenus();
-  if (document.body.classList.contains("night-mode")) changeTheme(lastNonNightTheme);
-  else { lastNonNightTheme = document.getElementById("theme-select").value; changeTheme("night"); }
-});
 document.getElementById("bookmark-toggle").addEventListener("click", toggleBookmark);
 document.getElementById("bookmark-dropdown").addEventListener("click", toggleBookmarkDropdown);
 document.getElementById("reading-mode").addEventListener("change", e => {
@@ -484,11 +483,9 @@ function changeFontSize(delta) {
 }
 function changeTheme(theme) {
   document.body.className = "";
-  if (theme==="night") document.body.classList.add("night-mode");
-  else if (theme==="sepia") document.body.classList.add("sepia-mode");
+  if (theme==="sepia") document.body.classList.add("sepia-mode");
   else if (theme==="matcha") document.body.classList.add("matcha-mode");
   else document.body.classList.add("light-mode");
-  document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
   localStorage.setItem("reader-theme", theme);
   document.getElementById("theme-select").value = theme;
   applyThemeStylesFromCurrent();
