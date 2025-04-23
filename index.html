@@ -10,57 +10,121 @@
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    html, body { margin:0; padding:0; height:100%; font-family:sans-serif; }
-    #library, #reader { width:100%; height:100%; position:absolute; top:0; left:0; }
-    #library {
-      display:flex; flex-wrap:wrap;
-      padding:1rem; box-sizing:border-box;
-      background:#f5f5f5; overflow-y:auto;
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
     }
-    .book {
-      width:120px; margin:0.5rem; text-align:center;
-      cursor:pointer; border:1px solid #ccc;
-      border-radius:4px; background:#fff; padding:0.5rem;
-    }
-    .book img { width:100%; height:auto; border-radius:2px; }
-    .book-title { font-size:0.9rem; margin:0.25rem 0; }
-    .book-author { font-size:0.8rem; color:#666; margin-bottom:0.5rem; }
 
-    #reader { display:none; position:relative; background:#fff; }
-    /* toolbar */
+    #library, #reader {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #library {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 1rem;
+      box-sizing: border-box;
+      background: #f5f5f5;
+      overflow-y: auto;
+    }
+
+    .book {
+      width: 120px;
+      margin: 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      padding: 0.5rem;
+    }
+
+    .book img {
+      width: 100%;
+      height: auto;
+      border-radius: 2px;
+    }
+
+    .book-title {
+      font-size: 0.9rem;
+      margin: 0.25rem 0;
+    }
+
+    .book-author {
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+
+    #reader {
+      display: none;
+      position: relative;
+      background: #fff;
+    }
+
     #toolbar {
-      position:absolute; top:0; left:0; right:0;
-      height:40px; background:#eee;
-      display:flex; align-items:center;
-      padding:0 1rem; box-sizing:border-box;
-      z-index:10;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 45px;
+      background: #333;
+      color: white;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      box-sizing: border-box;
     }
+
     #toolbar button {
-      margin-right:1rem; padding:0.5rem 1rem;
-      font-size:1rem; cursor:pointer;
+      margin-right: 1rem;
+      padding: 6px 12px;
+      font-size: 1rem;
+      background: #555;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
-    /* viewer & tap zones */
+
     #viewer {
-      position:absolute; top:40px; left:0; right:0; bottom:0;
+      position: absolute;
+      top: 45px;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
+
     #tap-left, #tap-right {
-      position:absolute; top:40px; bottom:0;
-      width:35%; z-index:5; background:transparent;
+      position: absolute;
+      top: 45px;
+      bottom: 0;
+      width: 35%;
+      z-index: 5;
+      background: transparent;
     }
-    #tap-left { left:0; }
-    #tap-right { right:0; }
+
+    #tap-left { left: 0; }
+    #tap-right { right: 0; }
   </style>
 </head>
 <body>
 
   <!-- LIBRARY VIEW -->
-  <div id="library"></div>
+  <div id="library">Loading library…</div>
 
   <!-- READER VIEW -->
   <div id="reader">
     <div id="toolbar">
-      <button id="highlight-btn">Highlight Mode</button>
-      <button id="back-btn">← Back to Library</button>
+      <button id="highlight-toggle">Highlight</button>
+      <button id="back-button">← Back</button>
     </div>
     <div id="viewer"></div>
     <div id="tap-left"></div>
@@ -69,88 +133,86 @@
 
   <script>
   (function(){
-    const libEl     = document.getElementById('library');
-    const readerEl  = document.getElementById('reader');
-    const viewerEl  = document.getElementById('viewer');
-    const hlBtn     = document.getElementById('highlight-btn');
-    const backBtn   = document.getElementById('back-btn');
+    const libraryEl = document.getElementById('library');
+    const readerEl = document.getElementById('reader');
+    const viewerEl = document.getElementById('viewer');
+    const tapLeft  = document.getElementById('tap-left');
+    const tapRight = document.getElementById('tap-right');
+    const backBtn  = document.getElementById('back-button');
+    const highlightBtn = document.getElementById('highlight-toggle');
+
     let book, rendition;
-    let highlightEnabled = false;
+    let highlightMode = false;
 
     // Load library.json
     fetch('/ebooks/library.json')
-      .then(res => {
-        if (!res.ok) throw new Error('HTTP '+res.status);
-        return res.json();
-      })
-      .then(list => {
-        libEl.innerHTML = '';
-        list.forEach(b => {
-          const div = document.createElement('div');
-          div.className = 'book';
-          div.innerHTML = `
-            <img src="${b.cover}" alt="Cover of ${b.title}"/>
+      .then(r => r.json())
+      .then(books => {
+        libraryEl.innerHTML = '';
+        books.forEach(b => {
+          const el = document.createElement('div');
+          el.className = 'book';
+          el.innerHTML = `
+            <img src="${b.cover}" alt="cover" />
             <div class="book-title">${b.title}</div>
             <div class="book-author">${b.author}</div>
           `;
-          div.addEventListener('click', () => openBook(b.fileUrl));
-          libEl.appendChild(div);
+          el.onclick = () => openBook(b.fileUrl);
+          libraryEl.appendChild(el);
         });
       })
       .catch(err => {
+        libraryEl.textContent = 'Failed to load library.';
         console.error(err);
-        libEl.textContent = 'Failed to load library.';
       });
 
-    // Open book in reader
+    // Open a book
     function openBook(url) {
-      libEl.style.display    = 'none';
+      libraryEl.style.display = 'none';
       readerEl.style.display = 'block';
 
-      // destroy old rendition
       try { rendition && rendition.destroy(); } catch(e){}
 
       book = ePub(url);
       rendition = book.renderTo(viewerEl, {
-        width:'100%', height:'100%', flow:'paginated'
+        width: '100%',
+        height: '100%',
+        flow: 'paginated'
       });
 
-      // register highlight theme
+      // Highlight theme
       rendition.themes.register('highlight', {
-        'fill':'yellow', 'fill-opacity':'0.4'
+        'fill': 'yellow',
+        'fill-opacity': '0.4'
       });
 
-      // selection → highlight if enabled
+      // Selection event → highlight
       rendition.on('selected', (cfiRange, contents) => {
-        if (highlightEnabled) {
+        if (highlightMode) {
           rendition.annotations.highlight(cfiRange, {}, null, 'highlight');
         }
         contents.window.getSelection().removeAllRanges();
       });
 
-      // tap‐zones prev/next
-      document.getElementById('tap-left').onclick  = () => rendition.prev();
-      document.getElementById('tap-right').onclick = () => rendition.next();
+      // Tap zones
+      tapLeft.onclick = () => rendition.prev();
+      tapRight.onclick = () => rendition.next();
 
-      rendition.display().catch(err => console.error('Display error:', err));
+      rendition.display();
     }
 
-    // Highlight button toggles mode
-    hlBtn.addEventListener('click', () => {
-      highlightEnabled = !highlightEnabled;
-      hlBtn.style.background = highlightEnabled ? 'orange' : '';
-      hlBtn.textContent = highlightEnabled ? 'Highlight ON' : 'Highlight OFF';
-    });
+    // Toggle highlight mode
+    highlightBtn.onclick = () => {
+      highlightMode = !highlightMode;
+      highlightBtn.style.background = highlightMode ? 'orange' : '#555';
+    };
 
     // Back to library
-    backBtn.addEventListener('click', () => {
-      readerEl.style.display = 'none';
-      libEl.style.display    = 'flex';
+    backBtn.onclick = () => {
       try { rendition.destroy(); } catch(e){}
-    });
-
-    // initial view
-    libEl.style.display = 'flex';
+      readerEl.style.display = 'none';
+      libraryEl.style.display = 'flex';
+    };
   })();
   </script>
 </body>
