@@ -68,6 +68,23 @@
 
     #tap-left { left: 0; }
     #tap-right { right: 0; }
+
+    /* Fix highlight visibility */
+    .epubjs-hl {
+      background: rgba(255, 255, 0, 0.4) !important;
+      mix-blend-mode: multiply;
+    }
+
+    ::selection {
+      background: rgba(255, 255, 0, 0.4);
+    }
+
+    iframe {
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      -webkit-touch-callout: default !important;
+      touch-action: auto !important;
+    }
   </style>
 </head>
 <body>
@@ -128,21 +145,23 @@
     rendition.on("selected", async (cfiRange, contents) => {
       if (!highlightMode) return;
 
-      const existing = highlights.find(h => h.cfi === cfiRange);
-      if (existing) {
-        rendition.annotations.remove(cfiRange, "highlight");
-        highlights = highlights.filter(h => h.cfi !== cfiRange);
-      } else {
-        const range = await book.getRange(cfiRange);
-        const text = range.toString().trim();
-        if (text.length > 0) {
-          rendition.annotations.highlight(cfiRange, {}, null, "hl");
-          highlights.push({ cfi: cfiRange, text });
+      setTimeout(async () => {
+        const existing = highlights.find(h => h.cfi === cfiRange);
+        if (existing) {
+          rendition.annotations.remove(cfiRange, "highlight");
+          highlights = highlights.filter(h => h.cfi !== cfiRange);
+        } else {
+          const range = await book.getRange(cfiRange);
+          const text = range.toString().trim();
+          if (text.length > 0) {
+            rendition.annotations.highlight(cfiRange, {}, null, "hl");
+            highlights.push({ cfi: cfiRange, text });
+          }
         }
-      }
 
-      contents.window.getSelection().removeAllRanges();
-      saveHighlights();
+        contents.window.getSelection().removeAllRanges();
+        saveHighlights();
+      }, 100); // Delay to let iOS settle
     });
 
     tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
