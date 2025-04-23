@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BTS Reader – iOS Highlight Refined</title>
+  <title>BTS Reader – Notes + iOS Highlights</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -44,6 +44,67 @@
       cursor: pointer;
     }
 
+    #note-list {
+      position: fixed;
+      top: 45px;
+      right: 0;
+      left: 0;
+      max-height: 60vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 10px;
+      display: none;
+      z-index: 200;
+    }
+
+    .note-item {
+      border-bottom: 1px solid #444;
+      padding: 6px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .note-snippet {
+      flex-grow: 1;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+
+    .note-delete {
+      cursor: pointer;
+      color: red;
+      font-size: 16px;
+    }
+
+    #note-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      z-index: 999;
+      display: none;
+      width: 90%;
+      max-width: 300px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    #note-modal textarea {
+      width: 100%;
+      height: 80px;
+      resize: none;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    #note-modal button {
+      margin-right: 10px;
+    }
+
     #reader-container {
       position: absolute;
       top: 45px;
@@ -74,6 +135,15 @@
 
   <div id="toolbar">
     <button id="highlightToggle">📝 Highlight</button>
+    <button id="notesToggle">📒 Notes</button>
+  </div>
+
+  <div id="note-list"></div>
+
+  <div id="note-modal">
+    <textarea id="noteInput" placeholder="Optional note..."></textarea><br>
+    <button onclick="saveNote()">Save</button>
+    <button onclick="closeNoteModal()">Cancel</button>
   </div>
 
   <div id="reader-container">
@@ -85,17 +155,25 @@
   <script>
     let highlightMode = false;
     let highlights = [];
+    let pendingCFI = null;
     const key = "highlights-bts";
 
     const tapLeft = document.getElementById("tap-left");
     const tapRight = document.getElementById("tap-right");
     const toggleBtn = document.getElementById("highlightToggle");
+    const notesToggle = document.getElementById("notesToggle");
+    const noteList = document.getElementById("note-list");
 
     toggleBtn.onclick = () => {
       highlightMode = !highlightMode;
       toggleBtn.style.background = highlightMode ? "orange" : "#444";
       tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
       tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
+    };
+
+    notesToggle.onclick = () => {
+      noteList.style.display = noteList.style.display === "block" ? "none" : "block";
+      renderNoteList();
     };
 
     const book = ePub("/ebooks/bts.epub");
@@ -121,21 +199,67 @@
       }
     }
 
+    function renderNoteList() {
+      noteList.innerHTML = "";
+      highlights.forEach((h, index) => {
+        const div = document.createElement("div");
+        div.className = "note-item";
+
+        const snippet = document.createElement("div");
+        snippet.className = "note-snippet";
+        snippet.textContent = (h.text || "").slice(0, 100);
+
+        const delBtn = document.createElement("div");
+        delBtn.className = "note-delete";
+        delBtn.textContent = "🗑";
+        delBtn.onclick = () => {
+          rendition.annotations.remove(h.cfi, "highlight");
+          highlights.splice(index, 1);
+          saveHighlights();
+          renderNoteList();
+        };
+
+        div.appendChild(snippet);
+        div.appendChild(delBtn);
+        noteList.appendChild(div);
+      });
+    }
+
+    function showNoteModal(cfi, text) {
+      pendingCFI = cfi;
+      document.getElementById("noteInput").value = "";
+      document.getElementById("note-modal").style.display = "block";
+    }
+
+    function closeNoteModal() {
+      document.getElementById("note-modal").style.display = "none";
+      pendingCFI = null;
+    }
+
+    function saveNote() {
+      const noteText = document.getElementById("noteInput").value.trim();
+      if (pendingCFI) {
+        const range = highlights.find(h => h.cfi === pendingCFI);
+        if (range) {
+          range.note = noteText;
+        }
+        saveHighlights();
+        closeNoteModal();
+      }
+    }
+
     rendition.on("rendered", () => {
       loadHighlights();
     });
 
-    // Improved selection + injected CSS fix
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
-
       doc.body.style.userSelect = "text";
       doc.documentElement.style.userSelect = "text";
       doc.body.style.webkitUserSelect = "text";
       doc.documentElement.style.webkitUserSelect = "text";
       doc.body.style.webkitTouchCallout = "none";
 
-      // Fix highlight thickness and overlaying issue
       const style = doc.createElement("style");
       style.innerHTML = `
         .epubjs-hl {
@@ -155,17 +279,19 @@
       if (existing) {
         rendition.annotations.remove(cfiRange, "highlight");
         highlights = highlights.filter(h => h.cfi !== cfiRange);
+        saveHighlights();
+        renderNoteList();
       } else {
         const range = await book.getRange(cfiRange);
         const text = range.toString().trim();
         if (text.length > 0) {
           rendition.annotations.highlight(cfiRange, {}, null, "hl");
-          highlights.push({ cfi: cfiRange, text });
+          highlights.push({ cfi: cfiRange, text, note: "" });
+          showNoteModal(cfiRange, text);
         }
       }
 
       contents.window.getSelection().removeAllRanges();
-      saveHighlights();
     });
 
     tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
