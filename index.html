@@ -2,24 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>EPUB Highlight with Mark.js</title>
+  <title>Highlight Test EPUB</title>
   <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mark.js/dist/mark.min.js"></script>
+
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
+      overflow: hidden;
       font-family: sans-serif;
-      -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
-      overflow: hidden;
     }
-
     #toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -31,7 +30,6 @@
       align-items: center;
       padding: 0 1rem;
     }
-
     #toolbar button {
       margin-right: 1rem;
       padding: 6px 12px;
@@ -42,72 +40,24 @@
       border-radius: 4px;
       cursor: pointer;
     }
-
-    #library, #reader {
-      position: absolute;
-      top: 45px; bottom: 0; left: 0; right: 0;
-      overflow: auto;
-      background: #f5f5f5;
-    }
-
-    #library {
-      display: flex;
-      flex-wrap: wrap;
-      padding: 1rem;
-    }
-
-    .book {
-      width: 120px;
-      margin: 0.5rem;
-      text-align: center;
-      cursor: pointer;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: #fff;
-      padding: 0.5rem;
-    }
-
-    .book img {
-      width: 100%;
-      height: auto;
-      border-radius: 2px;
-    }
-
-    .book-title {
-      font-size: 0.9rem;
-      margin: 0.25rem 0;
-    }
-
-    .book-author {
-      font-size: 0.8rem;
-      color: #666;
-    }
-
-    #reader {
-      display: none;
-      position: relative;
-      background: #fff;
-    }
-
     #viewer {
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 1;
+      top: 45px;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
-
     #tap-left, #tap-right {
       position: absolute;
-      top: 0; bottom: 0;
+      top: 45px;
+      bottom: 0;
       width: 35%;
       z-index: 10;
-      background: transparent;
     }
-
     #tap-left { left: 0; }
     #tap-right { right: 0; }
-
     mark {
-      background-color: yellow;
+      background: yellow;
       color: black;
     }
   </style>
@@ -116,129 +66,71 @@
 
   <div id="toolbar">
     <button id="note-btn">📝</button>
-    <button id="back-btn">← Back</button>
   </div>
 
-  <div id="library">Loading…</div>
-
-  <div id="reader">
-    <div id="viewer"></div>
-    <div id="tap-left"></div>
-    <div id="tap-right"></div>
-  </div>
+  <div id="viewer"></div>
+  <div id="tap-left"></div>
+  <div id="tap-right"></div>
 
   <script>
-    // ⬅ highlightMode must be global
     window.highlightMode = false;
 
-    function setupHighlightHooks(book, rendition) {
-      rendition.hooks.content.register(contents => {
-        contents.useBlobUrl = true;
-        const doc = contents.document;
-        const win = contents.window;
+    document.getElementById("note-btn").onclick = () => {
+      highlightMode = !highlightMode;
+      const btn = document.getElementById("note-btn");
+      btn.style.background = highlightMode ? 'orange' : '#555';
+      document.getElementById("tap-left").style.pointerEvents = highlightMode ? "none" : "auto";
+      document.getElementById("tap-right").style.pointerEvents = highlightMode ? "none" : "auto";
+    };
 
-        doc.body.style.webkitUserSelect = "text";
-        doc.documentElement.style.webkitUserSelect = "text";
-        doc.body.style.userSelect = "text";
-        doc.documentElement.style.userSelect = "text";
+    const book = ePub("https://s3.amazonaws.com/moby-dick/OPS/package.opf");
+    const rendition = book.renderTo("viewer", {
+      width: "100%",
+      height: "100%",
+      flow: "paginated",
+      method: "iframe",
+      allowScriptedContent: true
+    });
 
-        function runHighlight() {
-          if (!window.highlightMode) return;
+    // Mark.js highlight logic
+    rendition.hooks.content.register(contents => {
+      const doc = contents.document;
+      const win = contents.window;
 
-          setTimeout(() => {
-            const sel = win.getSelection();
-            const text = sel.toString().trim();
+      doc.body.style.webkitUserSelect = "text";
+      doc.documentElement.style.webkitUserSelect = "text";
+      doc.body.style.userSelect = "text";
+      doc.documentElement.style.userSelect = "text";
 
-            if (text.length > 0) {
-              try {
-                const marker = new Mark(doc.body);
-                marker.unmark({
-                  done: () => marker.mark(text)
-                });
-              } catch (err) {
-                console.error("Mark.js error:", err);
-              }
+      function runHighlight() {
+        if (!highlightMode) return;
+        setTimeout(() => {
+          const sel = win.getSelection();
+          const text = sel.toString().trim();
+          if (text.length > 0) {
+            try {
+              const marker = new Mark(doc.body);
+              marker.unmark({
+                done: () => marker.mark(text)
+              });
+            } catch (err) {
+              console.error("Highlight error:", err);
             }
-
-            sel.removeAllRanges();
-          }, 100);
-        }
-
-        doc.addEventListener("touchend", runHighlight, false);
-        doc.addEventListener("pointerup", runHighlight, false);
-        doc.addEventListener("selectionchange", () => {
-          if ("ontouchstart" in window && window.highlightMode) {
-            setTimeout(runHighlight, 100);
           }
-        });
-      });
-    }
-
-    (function(){
-      const libraryEl = document.getElementById('library');
-      const readerEl  = document.getElementById('reader');
-      const viewerEl  = document.getElementById('viewer');
-      const backBtn   = document.getElementById('back-btn');
-      const noteBtn   = document.getElementById('note-btn');
-      const tapLeft   = document.getElementById('tap-left');
-      const tapRight  = document.getElementById('tap-right');
-
-      let book, rendition;
-
-      fetch('/ebooks/library.json')
-        .then(r => r.json())
-        .then(books => {
-          libraryEl.innerHTML = '';
-          books.forEach(b => {
-            const el = document.createElement('div');
-            el.className = 'book';
-            el.innerHTML = `
-              <img src="${b.cover}" alt="">
-              <div class="book-title">${b.title}</div>
-              <div class="book-author">${b.author}</div>
-            `;
-            el.onclick = () => openBook(b.fileUrl);
-            libraryEl.appendChild(el);
-          });
-        });
-
-      noteBtn.onclick = () => {
-        window.highlightMode = !window.highlightMode;
-        noteBtn.style.background = window.highlightMode ? 'orange' : '#555';
-        tapLeft.style.pointerEvents = window.highlightMode ? 'none' : 'auto';
-        tapRight.style.pointerEvents = window.highlightMode ? 'none' : 'auto';
-      };
-
-      function openBook(url) {
-        libraryEl.style.display = 'none';
-        readerEl.style.display  = 'block';
-
-        if (rendition) try { rendition.destroy(); } catch(e){}
-
-        book = ePub(url);
-        rendition = book.renderTo('viewer', {
-          width: '100%',
-          height: '100%',
-          flow: 'paginated',
-          method: 'iframe',
-          allowScriptedContent: true,
-          manager: 'default'
-        });
-
-        setupHighlightHooks(book, rendition);
-
-        tapLeft.onclick = () => rendition.prev();
-        tapRight.onclick = () => rendition.next();
-
-        rendition.display();
+          sel.removeAllRanges();
+        }, 100);
       }
 
-      backBtn.onclick = () => {
-        readerEl.style.display  = 'none';
-        libraryEl.style.display = 'flex';
-        if (rendition) try { rendition.destroy(); } catch(e){}
-      };
-    })();
+      doc.addEventListener("touchend", runHighlight, false);
+      doc.addEventListener("pointerup", runHighlight, false);
+      doc.addEventListener("selectionchange", () => {
+        if ("ontouchstart" in window && highlightMode) {
+          setTimeout(runHighlight, 100);
+        }
+      });
+    });
+
+    rendition.display();
   </script>
 </body>
 </html>
