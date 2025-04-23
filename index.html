@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars EPUB Reader – Inline Highlights + Notes</title>
+  <title>Liars EPUB Reader – Clean Highlights + Notes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -67,25 +67,13 @@
     #tap-left { left: 0; }
     #tap-right { right: 0; }
 
+    /* ✅ Highlight fix — NO BACKGROUND STACKING */
     .hl {
-      background-color: rgba(255, 165, 0, 0.3);
+      background: none !important;
+      box-shadow: inset 0 -0.5em rgba(255, 165, 0, 0.3);
       border-radius: 2px;
       padding: 0.05em;
-      cursor: pointer;
-    }
-
-    .hl:hover::after {
-      content: attr(data-note);
-      display: block;
-      position: absolute;
-      background: #222;
-      color: #fff;
-      padding: 4px 8px;
-      font-size: 0.8em;
-      border-radius: 4px;
-      z-index: 9999;
-      max-width: 200px;
-      white-space: pre-wrap;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -103,12 +91,12 @@
 
   <script>
     let highlightMode = false;
-    const key = "liars-notes";
     let notes = [];
+    const key = "liars-notes";
 
-    const toggleBtn = document.getElementById("highlightToggle");
     const tapLeft = document.getElementById("tap-left");
     const tapRight = document.getElementById("tap-right");
+    const toggleBtn = document.getElementById("highlightToggle");
 
     toggleBtn.onclick = () => {
       highlightMode = !highlightMode;
@@ -122,6 +110,7 @@
       width: "100%",
       height: "100%",
       flow: "scrolled-doc",
+      manager: "default",
       allowScriptedContent: true
     });
 
@@ -136,11 +125,11 @@
       }
     }
 
-    function injectNotes(iframeDoc) {
+    function injectNotes(contents) {
       notes.forEach(note => {
-        const range = book.cfiRangeToRange(note.cfi);
+        const range = contents.range(note.cfi);
         if (range) {
-          const span = iframeDoc.createElement("span");
+          const span = contents.document.createElement("span");
           span.className = "hl";
           span.setAttribute("data-note", note.note);
           span.textContent = note.text;
@@ -150,14 +139,11 @@
       });
     }
 
-    rendition.on("rendered", async (_, iframe) => {
-      const doc = iframe.document || iframe.contentDocument;
-      if (doc && doc.body) {
-        doc.body.style.position = "relative";
-        doc.body.style.zIndex = "1";
-        loadNotes();
-        injectNotes(doc);
-      }
+    rendition.on("rendered", (_, contents) => {
+      contents.document.body.style.position = "relative";
+      contents.document.body.style.zIndex = "1";
+      loadNotes();
+      injectNotes(contents);
     });
 
     rendition.on("selected", async (cfiRange, contents) => {
@@ -166,20 +152,22 @@
       const userNote = prompt("Enter a note for this highlight:");
       if (!userNote) return;
 
-      const range = await book.getRange(cfiRange);
+      const range = contents.range(cfiRange);
+      if (!range) return;
+
       const text = range.toString().trim();
+      if (text.length === 0) return;
 
-      if (text.length > 0) {
-        const span = document.createElement("span");
-        span.className = "hl";
-        span.setAttribute("data-note", userNote);
-        span.textContent = text;
-        range.deleteContents();
-        range.insertNode(span);
+      const span = contents.document.createElement("span");
+      span.className = "hl";
+      span.setAttribute("data-note", userNote);
+      span.textContent = text;
 
-        notes.push({ cfi: cfiRange, text, note: userNote });
-        saveNotes();
-      }
+      range.deleteContents();
+      range.insertNode(span);
+
+      notes.push({ cfi: cfiRange, text, note: userNote });
+      saveNotes();
 
       contents.window.getSelection().removeAllRanges();
     });
