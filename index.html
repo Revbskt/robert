@@ -1,131 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- === START METATAGS === -->
   <meta charset="UTF-8" />
-  <title>My ePub Reader and Library</title>
-  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
-  <!-- === END METATAGS === -->
-
-  <!-- === START EXTERNAL SCRIPTS === -->
+  <title>BTS Reader – iOS Highlight Optimized</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-  <!-- === END EXTERNAL SCRIPTS === -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
+      background: #f5f5f5;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
 
-  <!-- === START STYLESHEET LINK === -->
-  <link rel="stylesheet" href="style.css">
-  <!-- === END STYLESHEET LINK === -->
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 45px;
+      background: #222;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      z-index: 100;
+    }
+
+    #toolbar button {
+      margin-right: 1rem;
+      padding: 6px 12px;
+      font-size: 1rem;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #reader-container {
+      position: absolute;
+      top: 45px;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+    }
+
+    #viewer {
+      width: 100%;
+      height: 100%;
+    }
+
+    #tap-left, #tap-right {
+      position: absolute;
+      top: 45px;
+      bottom: 0;
+      width: 35%;
+      z-index: 10;
+    }
+
+    #tap-left { left: 0; }
+    #tap-right { right: 0; }
+  </style>
 </head>
-<body class="light-mode">
-  <!-- === START LIBRARY CONTAINER === -->
-  <div id="library-container">
-    <h1>📚 My Book Library</h1>
-    <div id="library-controls">
-      <button onclick="toggleLibrary(false)">Back to Reader</button>
-    </div>
-    <div id="library">Loading books...</div>
-  </div>
-  <!-- === END LIBRARY CONTAINER === -->
+<body>
 
-  <!-- === START READER CONTAINER === -->
+  <div id="toolbar">
+    <button id="highlightToggle">📝 Highlight</button>
+  </div>
+
   <div id="reader-container">
-    <!-- === START TOOLBAR === -->
-    <div id="toolbar">
-      <button id="menu-toggle" title="Main Menu">☰</button>
-      <button id="toc-toggle" title="Table of Contents">📖</button>
-      <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
-      <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
-      <button id="nav-toggle" title="Page Navigation">🧭</button>
-      <button id="settings-toggle" title="Read Settings">Aa</button>
-      <!-- removed night-mode toggle -->
-    </div>
-    <!-- === END TOOLBAR === -->
-
-    <!-- === START BOOKMARK PANEL === -->
-    <div id="bookmark-panel"></div>
-    <!-- === END BOOKMARK PANEL === -->
-
-    <!-- === START PAGE NAV PANEL === -->
-    <div id="nav-panel">
-      <div class="nav-item">
-        Page <span id="nav-page-num">? of ?</span>
-      </div>
-      <!-- Loc row removed -->
-      <div class="nav-item nav-controls">
-        <button id="rewind-btn" title="Rewind">⏪</button>
-        <button id="forward-btn" title="Forward">⏩</button>
-      </div>
-    </div>
-    <!-- === END PAGE NAV PANEL === -->
-
-    <!-- === START MENU BACKDROP & PANEL === -->
-    <div id="menu-backdrop"></div>
-    <div id="expanded-menu">
-      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
-      <div id="book-card">
-        <img id="cover" alt="Book Cover" />
-        <div id="book-title"></div>
-        <div id="book-author"></div>
-        <div id="contact-image"></div>
-      </div>
-      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
-    </div>
-    <!-- === END MENU BACKDROP & PANEL === -->
-
-    <!-- === START TOC PANEL === -->
-    <div id="toc-panel"></div>
-    <!-- === END TOC PANEL === -->
-
-    <!-- === START SETTINGS MODAL === -->
-    <div id="settings-modal">
-      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
-      <h3>Reading Settings</h3>
-      <label for="font-switcher">Font</label>
-      <select id="font-switcher">
-        <option value="-apple-system">San Francisco (System)</option>
-        <option value="Helvetica Neue">Helvetica Neue</option>
-        <option value="Arial">Arial</option>
-        <option value="Courier New">Courier New</option>
-        <option value="Georgia">Georgia</option>
-        <option value="OpenDyslexic">OpenDyslexic</option>
-      </select>
-      <div class="font-size-buttons">
-        <button onclick="changeFontSize(-1)">A-</button>
-        <button onclick="changeFontSize(1)">A+</button>
-      </div>
-      <label for="reading-mode">Reading Mode</label>
-      <select id="reading-mode">
-        <option value="paginated">Page</option>
-        <option value="scrolled-doc">Scroll</option>
-        <option value="swipe">Swipe</option>
-      </select>
-      <label for="theme-select">Color Theme</label>
-      <select id="theme-select">
-        <option value="light">Light</option>
-        <option value="sepia">Sepia</option>
-        <option value="matcha">Matcha Green</option>
-      </select>
-    </div>
-    <!-- === END SETTINGS MODAL === -->
-
-    <!-- === START VIEWER & ZONES === -->
-    <div id="viewer">
-      <div id="tap-left"></div>
-      <div id="tap-right"></div>
-      <div id="gesture-left"></div>
-      <div id="gesture-right"></div>
-    </div>
-    <!-- === END VIEWER & ZONES === -->
-
-    <!-- === START PROGRESS & CONTINUE BARS === -->
-    <div id="progress-bar"></div>
-    <div id="continue-bar">Continue</div>
-    <!-- === END PROGRESS & CONTINUE BARS === -->
+    <div id="viewer"></div>
+    <div id="tap-left"></div>
+    <div id="tap-right"></div>
   </div>
-  <!-- === END READER CONTAINER === -->
 
-  <!-- === START READER SCRIPT === -->
-  <script src="reader.js"></script>
-  <!-- === END READER SCRIPT === -->
+  <script>
+    let highlightMode = false;
+    let highlights = [];
+    const key = "highlights-bts";
+
+    const tapLeft = document.getElementById("tap-left");
+    const tapRight = document.getElementById("tap-right");
+    const toggleBtn = document.getElementById("highlightToggle");
+
+    toggleBtn.onclick = () => {
+      highlightMode = !highlightMode;
+      toggleBtn.style.background = highlightMode ? "orange" : "#444";
+      tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
+      tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
+    };
+
+    const book = ePub("/ebooks/bts.epub");
+    const rendition = book.renderTo("viewer", {
+      width: "100%",
+      height: "100%",
+      flow: "scrolled-doc",
+      allowScriptedContent: true,
+      manager: "default"
+    });
+
+    function saveHighlights() {
+      localStorage.setItem(key, JSON.stringify(highlights));
+    }
+
+    function loadHighlights() {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        highlights = JSON.parse(saved);
+        highlights.forEach(h =>
+          rendition.annotations.highlight(h.cfi, {}, null, "hl")
+        );
+      }
+    }
+
+    rendition.on("rendered", () => {
+      loadHighlights();
+    });
+
+    rendition.hooks.content.register(contents => {
+      const doc = contents.document;
+      doc.body.style.userSelect = "text";
+      doc.documentElement.style.userSelect = "text";
+      doc.body.style.webkitUserSelect = "text";
+      doc.documentElement.style.webkitUserSelect = "text";
+      doc.body.style.webkitTouchCallout = "none";
+    });
+
+    rendition.on("selected", async (cfiRange, contents) => {
+      if (!highlightMode) return;
+
+      const existing = highlights.find(h => h.cfi === cfiRange);
+      if (existing) {
+        rendition.annotations.remove(cfiRange, "highlight");
+        highlights = highlights.filter(h => h.cfi !== cfiRange);
+      } else {
+        const range = await book.getRange(cfiRange);
+        const text = range.toString().trim();
+        if (text.length > 0) {
+          rendition.annotations.highlight(cfiRange, {}, null, "hl");
+          highlights.push({ cfi: cfiRange, text });
+        }
+      }
+
+      contents.window.getSelection().removeAllRanges();
+      saveHighlights();
+    });
+
+    tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
+    tapRight.onclick = () => { if (!highlightMode) rendition.next(); };
+
+    rendition.display();
+  </script>
 </body>
 </html>
