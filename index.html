@@ -69,10 +69,11 @@
     #tap-left { left: 0; }
     #tap-right { right: 0; }
 
-    /* Lighter orange highlight for better visibility */
+    /* Improved Highlight Styling */
     .epubjs-hl {
-      background: rgba(255, 165, 0, 0.3) !important; /* Light orange */
-      mix-blend-mode: multiply;
+      background: none !important;
+      box-shadow: inset 0 -0.5em rgba(255, 165, 0, 0.3) !important;
+      pointer-events: none !important;
     }
 
     ::selection {
