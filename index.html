@@ -1,15 +1,24 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- === START METATAGS === -->
   <meta charset="UTF-8" />
   <title>My ePub Reader and Library</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="style.css" />
+  <!-- === END METATAGS === -->
+
+  <!-- === START EXTERNAL SCRIPTS === -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lunr/lunr.min.js"></script>
+  <!-- === END EXTERNAL SCRIPTS === -->
+
+  <!-- === START STYLESHEET LINK === -->
+  <link rel="stylesheet" href="style.css">
+  <!-- === END STYLESHEET LINK === -->
 </head>
 <body class="light-mode">
+  <!-- === START LIBRARY CONTAINER === -->
   <div id="library-container">
     <h1>📚 My Book Library</h1>
     <div id="library-controls">
@@ -17,27 +26,26 @@
     </div>
     <div id="library">Loading books...</div>
   </div>
+  <!-- === END LIBRARY CONTAINER === -->
+
+  <!-- === START READER CONTAINER === -->
   <div id="reader-container">
+    <!-- === START TOOLBAR === -->
     <div id="toolbar">
       <button id="menu-toggle" title="Main Menu">☰</button>
       <button id="toc-toggle" title="Table of Contents">📖</button>
       <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
       <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
-      <button id="compass-toggle" title="Page Navigator">🧭</button>
       <button id="settings-toggle" title="Read Settings">Aa</button>
       <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
     </div>
+    <!-- === END TOOLBAR === -->
 
+    <!-- === START BOOKMARK PANEL === -->
     <div id="bookmark-panel"></div>
+    <!-- === END BOOKMARK PANEL === -->
 
-    <div id="compass-panel">
-      <h4>📍 Page Navigator</h4>
-      <div class="location-info" id="location-info">Page ? of ? • CFI: …</div>
-      <input type="range" id="page-slider" min="0" max="100" value="0" />
-      <input type="text" id="search-input" placeholder="Search text…" />
-      <div class="search-results" id="search-results"></div>
-    </div>
-
+    <!-- === START MENU BACKDROP & PANEL === -->
     <div id="menu-backdrop"></div>
     <div id="expanded-menu">
       <button class="close-menu" onclick="toggleMenu('menu')">×</button>
@@ -49,9 +57,13 @@
       </div>
       <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
     </div>
+    <!-- === END MENU BACKDROP & PANEL === -->
 
+    <!-- === START TOC PANEL === -->
     <div id="toc-panel"></div>
+    <!-- === END TOC PANEL === -->
 
+    <!-- === START SETTINGS MODAL === -->
     <div id="settings-modal">
       <button class="close-settings" onclick="toggleMenu('settings')">×</button>
       <h3>Reading Settings</h3>
@@ -82,18 +94,26 @@
         <option value="matcha">Matcha Green</option>
       </select>
     </div>
+    <!-- === END SETTINGS MODAL === -->
 
+    <!-- === START VIEWER & ZONES === -->
     <div id="viewer">
       <div id="tap-left"></div>
       <div id="tap-right"></div>
       <div id="gesture-left"></div>
       <div id="gesture-right"></div>
     </div>
+    <!-- === END VIEWER & ZONES === -->
 
+    <!-- === START PROGRESS & CONTINUE BARS === -->
     <div id="progress-bar"></div>
     <div id="continue-bar">Continue</div>
+    <!-- === END PROGRESS & CONTINUE BARS === -->
   </div>
+  <!-- === END READER CONTAINER === -->
 
+  <!-- === START READER SCRIPT === -->
   <script src="reader.js"></script>
+  <!-- === END READER SCRIPT === -->
 </body>
 </html>
