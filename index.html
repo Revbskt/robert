@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BTS Reader – Notes + iOS Highlights</title>
+  <title>BTS Reader – Floating Notes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       height: 100%;
       font-family: sans-serif;
       background: #f5f5f5;
@@ -21,9 +20,7 @@
 
     #toolbar {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       height: 45px;
       background: #222;
       color: white;
@@ -47,15 +44,15 @@
     #note-list {
       position: fixed;
       top: 45px;
-      right: 0;
       left: 0;
+      right: 0;
       max-height: 60vh;
-      overflow-y: auto;
       background: rgba(0,0,0,0.85);
       color: white;
-      padding: 10px;
+      overflow-y: auto;
+      z-index: 1000;
       display: none;
-      z-index: 200;
+      padding: 10px;
     }
 
     .note-item {
@@ -78,31 +75,28 @@
       font-size: 16px;
     }
 
-    #note-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border-radius: 8px;
-      padding: 16px;
-      z-index: 999;
+    #note-bubble {
+      position: absolute;
       display: none;
-      width: 90%;
-      max-width: 300px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 2000;
+      max-width: 250px;
     }
 
-    #note-modal textarea {
+    #note-bubble textarea {
       width: 100%;
-      height: 80px;
-      resize: none;
-      margin-bottom: 10px;
+      height: 60px;
       font-size: 14px;
+      resize: none;
     }
 
-    #note-modal button {
-      margin-right: 10px;
+    #note-bubble button {
+      margin-top: 6px;
+      margin-right: 6px;
     }
 
     #reader-container {
@@ -140,10 +134,10 @@
 
   <div id="note-list"></div>
 
-  <div id="note-modal">
-    <textarea id="noteInput" placeholder="Optional note..."></textarea><br>
+  <div id="note-bubble">
+    <textarea id="noteInput" placeholder="Enter a note..."></textarea><br>
     <button onclick="saveNote()">Save</button>
-    <button onclick="closeNoteModal()">Cancel</button>
+    <button onclick="cancelNote()">Cancel</button>
   </div>
 
   <div id="reader-container">
@@ -158,20 +152,18 @@
     let pendingCFI = null;
     const key = "highlights-bts";
 
-    const tapLeft = document.getElementById("tap-left");
-    const tapRight = document.getElementById("tap-right");
-    const toggleBtn = document.getElementById("highlightToggle");
-    const notesToggle = document.getElementById("notesToggle");
     const noteList = document.getElementById("note-list");
+    const noteBubble = document.getElementById("note-bubble");
+    const noteInput = document.getElementById("noteInput");
 
-    toggleBtn.onclick = () => {
+    document.getElementById("highlightToggle").onclick = () => {
       highlightMode = !highlightMode;
-      toggleBtn.style.background = highlightMode ? "orange" : "#444";
-      tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
-      tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
+      document.getElementById("highlightToggle").style.background = highlightMode ? "orange" : "#444";
+      document.getElementById("tap-left").style.pointerEvents = highlightMode ? "none" : "auto";
+      document.getElementById("tap-right").style.pointerEvents = highlightMode ? "none" : "auto";
     };
 
-    notesToggle.onclick = () => {
+    document.getElementById("notesToggle").onclick = () => {
       noteList.style.display = noteList.style.display === "block" ? "none" : "block";
       renderNoteList();
     };
@@ -201,56 +193,58 @@
 
     function renderNoteList() {
       noteList.innerHTML = "";
-      highlights.forEach((h, index) => {
-        const div = document.createElement("div");
-        div.className = "note-item";
+      highlights.forEach((h, i) => {
+        const item = document.createElement("div");
+        item.className = "note-item";
 
-        const snippet = document.createElement("div");
-        snippet.className = "note-snippet";
-        snippet.textContent = (h.text || "").slice(0, 100);
+        const text = document.createElement("div");
+        text.className = "note-snippet";
+        text.textContent = h.note || "[No note]";
 
-        const delBtn = document.createElement("div");
-        delBtn.className = "note-delete";
-        delBtn.textContent = "🗑";
-        delBtn.onclick = () => {
+        const trash = document.createElement("div");
+        trash.className = "note-delete";
+        trash.textContent = "🗑";
+        trash.onclick = () => {
           rendition.annotations.remove(h.cfi, "highlight");
-          highlights.splice(index, 1);
+          highlights.splice(i, 1);
           saveHighlights();
           renderNoteList();
         };
 
-        div.appendChild(snippet);
-        div.appendChild(delBtn);
-        noteList.appendChild(div);
+        item.appendChild(text);
+        item.appendChild(trash);
+        noteList.appendChild(item);
       });
     }
 
-    function showNoteModal(cfi, text) {
+    function showNoteBubble(x, y, cfi) {
       pendingCFI = cfi;
-      document.getElementById("noteInput").value = "";
-      document.getElementById("note-modal").style.display = "block";
-    }
+      noteInput.value = "";
+      noteBubble.style.display = "block";
 
-    function closeNoteModal() {
-      document.getElementById("note-modal").style.display = "none";
-      pendingCFI = null;
+      const bubbleHeight = 120;
+      const top = (y - bubbleHeight - 10 > 50) ? y - bubbleHeight - 10 : y + 20;
+      noteBubble.style.top = top + "px";
+      noteBubble.style.left = (x - 100) + "px";
     }
 
     function saveNote() {
-      const noteText = document.getElementById("noteInput").value.trim();
+      const note = noteInput.value.trim();
       if (pendingCFI) {
-        const range = highlights.find(h => h.cfi === pendingCFI);
-        if (range) {
-          range.note = noteText;
-        }
+        const index = highlights.findIndex(h => h.cfi === pendingCFI);
+        if (index >= 0) highlights[index].note = note;
         saveHighlights();
-        closeNoteModal();
       }
+      noteBubble.style.display = "none";
+      pendingCFI = null;
     }
 
-    rendition.on("rendered", () => {
-      loadHighlights();
-    });
+    function cancelNote() {
+      noteBubble.style.display = "none";
+      pendingCFI = null;
+    }
+
+    rendition.on("rendered", loadHighlights);
 
     rendition.hooks.content.register(contents => {
       const doc = contents.document;
@@ -281,21 +275,25 @@
         highlights = highlights.filter(h => h.cfi !== cfiRange);
         saveHighlights();
         renderNoteList();
-      } else {
-        const range = await book.getRange(cfiRange);
-        const text = range.toString().trim();
-        if (text.length > 0) {
-          rendition.annotations.highlight(cfiRange, {}, null, "hl");
-          highlights.push({ cfi: cfiRange, text, note: "" });
-          showNoteModal(cfiRange, text);
-        }
+        return;
       }
+
+      const range = await book.getRange(cfiRange);
+      const rect = range.getBoundingClientRect();
+      const viewerOffset = document.getElementById("viewer").getBoundingClientRect();
+
+      const top = rect.top + window.scrollY - viewerOffset.top;
+      const left = rect.left + window.scrollX - viewerOffset.left + rect.width / 2;
+
+      rendition.annotations.highlight(cfiRange, {}, null, "hl");
+      highlights.push({ cfi: cfiRange, note: "" });
+      showNoteBubble(left, top, cfiRange);
 
       contents.window.getSelection().removeAllRanges();
     });
 
-    tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
-    tapRight.onclick = () => { if (!highlightMode) rendition.next(); };
+    document.getElementById("tap-left").onclick = () => { if (!highlightMode) rendition.prev(); };
+    document.getElementById("tap-right").onclick = () => { if (!highlightMode) rendition.next(); };
 
     rendition.display();
   </script>
