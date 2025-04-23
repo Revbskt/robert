@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars EPUB Reader – Clean Highlights + Notes</title>
+  <title>Liars EPUB Reader – Floating Notes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -67,13 +67,40 @@
     #tap-left { left: 0; }
     #tap-right { right: 0; }
 
-    /* ✅ Highlight fix — NO BACKGROUND STACKING */
     .hl {
       background: none !important;
       box-shadow: inset 0 -0.5em rgba(255, 165, 0, 0.3);
       border-radius: 2px;
       padding: 0.05em;
       pointer-events: none;
+    }
+
+    /* Floating Note Box */
+    #noteBox {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      width: 90%;
+      max-width: 300px;
+    }
+
+    #noteBox textarea {
+      width: 100%;
+      height: 60px;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    #noteBox button {
+      padding: 6px 10px;
+      margin-right: 8px;
     }
   </style>
 </head>
@@ -89,14 +116,32 @@
     <div id="tap-right"></div>
   </div>
 
+  <!-- Floating Note Box -->
+  <div id="noteBox">
+    <textarea id="noteInput" placeholder="Enter your note..."></textarea>
+    <div>
+      <button id="saveNote">Save</button>
+      <button id="cancelNote">Cancel</button>
+    </div>
+  </div>
+
   <script>
     let highlightMode = false;
     let notes = [];
     const key = "liars-notes";
 
+    let currentCfi = null;
+    let currentText = "";
+    let currentContents = null;
+
+    const noteBox = document.getElementById("noteBox");
+    const noteInput = document.getElementById("noteInput");
+    const saveBtn = document.getElementById("saveNote");
+    const cancelBtn = document.getElementById("cancelNote");
+
+    const toggleBtn = document.getElementById("highlightToggle");
     const tapLeft = document.getElementById("tap-left");
     const tapRight = document.getElementById("tap-right");
-    const toggleBtn = document.getElementById("highlightToggle");
 
     toggleBtn.onclick = () => {
       highlightMode = !highlightMode;
@@ -149,28 +194,50 @@
     rendition.on("selected", async (cfiRange, contents) => {
       if (!highlightMode) return;
 
-      const userNote = prompt("Enter a note for this highlight:");
-      if (!userNote) return;
+      setTimeout(async () => {
+        const range = contents.range(cfiRange);
+        if (!range) return;
 
-      const range = contents.range(cfiRange);
-      if (!range) return;
+        const text = range.toString().trim();
+        if (text.length === 0) return;
 
-      const text = range.toString().trim();
-      if (text.length === 0) return;
-
-      const span = contents.document.createElement("span");
-      span.className = "hl";
-      span.setAttribute("data-note", userNote);
-      span.textContent = text;
-
-      range.deleteContents();
-      range.insertNode(span);
-
-      notes.push({ cfi: cfiRange, text, note: userNote });
-      saveNotes();
-
-      contents.window.getSelection().removeAllRanges();
+        currentCfi = cfiRange;
+        currentText = text;
+        currentContents = contents;
+        noteInput.value = "";
+        noteBox.style.display = "block";
+      }, 50);
     });
+
+    saveBtn.onclick = () => {
+      const note = noteInput.value.trim();
+      if (!note || !currentCfi || !currentContents) return;
+
+      const range = currentContents.range(currentCfi);
+      if (range) {
+        const span = currentContents.document.createElement("span");
+        span.className = "hl";
+        span.setAttribute("data-note", note);
+        span.textContent = currentText;
+        range.deleteContents();
+        range.insertNode(span);
+
+        notes.push({ cfi: currentCfi, text: currentText, note });
+        saveNotes();
+      }
+
+      noteBox.style.display = "none";
+      currentCfi = null;
+      currentText = "";
+      currentContents = null;
+    };
+
+    cancelBtn.onclick = () => {
+      noteBox.style.display = "none";
+      currentCfi = null;
+      currentText = "";
+      currentContents = null;
+    };
 
     tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
     tapRight.onclick = () => { if (!highlightMode) rendition.next(); };
