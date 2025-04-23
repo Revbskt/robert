@@ -6,7 +6,7 @@ let currentBookUrl = "";
 let bookmarks = [];
 let xDown = null;
 let yDown = null;
-const SWIPE_THRESHOLD = 20;
+const SWIPE_THRESHOLD = 20;  // Configurable swipe detection threshold (in pixels)
 let swipeInProgress = false;
 let book, rendition;
 let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
@@ -28,17 +28,26 @@ function cleanupReader() {
   }
   ["gesture-left","gesture-right"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.removeEventListener("click", id==="gesture-left"? swipePrev: swipeNext);
+    if (el) el.removeEventListener("click", id==="gesture-left" ? swipePrev : swipeNext);
   });
   ["tap-left","tap-right"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.removeEventListener("click", id==="tap-left"? tapLeftHandler: tapRightHandler);
+    if (el) el.removeEventListener("click", id==="tap-left" ? tapLeftHandler : tapRightHandler);
   });
 }
 // === END TAP HANDLERS & CLEANUP ===
 
+// === START READER EVENTS ===
+function registerReaderEvents() {
+  document.getElementById("tap-left").addEventListener("click", tapLeftHandler);
+  document.getElementById("tap-right").addEventListener("click", tapRightHandler);
+}
+// === END READER EVENTS ===
+
 // === START BOOKMARK HELPERS ===
-function getBookmarkKey() { return "bookmarks_" + currentBookUrl; }
+function getBookmarkKey() {
+  return "bookmarks_" + currentBookUrl;
+}
 function loadBookmarks() {
   const stored = localStorage.getItem(getBookmarkKey());
   bookmarks = stored ? JSON.parse(stored) : [];
@@ -51,7 +60,10 @@ function saveBookmarks() {
 function updateBookmarkStar() {
   const btn = document.getElementById("bookmark-toggle");
   const cfi = rendition && rendition.currentLocation()?.start?.cfi;
-  if (!cfi) { btn.textContent = "☆"; return; }
+  if (!cfi) {
+    btn.textContent = "☆";
+    return;
+  }
   const exists = bookmarks.some(bm => bm.cfi === cfi);
   btn.textContent = exists ? "★" : "☆";
   btn.style.color = exists ? "blue" : "inherit";
@@ -82,8 +94,9 @@ function toggleBookmark() {
   if (!loc?.start?.cfi) return;
   const cfi = loc.start.cfi;
   const idx = bookmarks.findIndex(bm => bm.cfi === cfi);
-  if (idx !== -1) bookmarks.splice(idx, 1);
-  else {
+  if (idx !== -1) {
+    bookmarks.splice(idx, 1);
+  } else {
     let snippet = "";
     rendition.getContents().forEach(contents => {
       const doc = contents.document;
@@ -126,7 +139,10 @@ function loadLibrary() {
   const div = document.getElementById("library");
   div.textContent = "Loading books...";
   fetch("/ebooks/library.json")
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then(books => {
       div.innerHTML = "";
       books.forEach(book => {
@@ -182,7 +198,9 @@ function initBook(chosenUrl) {
     });
     book.loaded.cover
       .then(url => book.archive.createUrl(url, { base64: true }))
-      .then(dataUrl => { document.getElementById("cover").src = dataUrl; })
+      .then(dataUrl => {
+        document.getElementById("cover").src = dataUrl;
+      })
       .catch(() => console.warn("No cover image found."));
     book.loaded.navigation.then(nav => {
       const toc = document.getElementById("toc-panel");
@@ -201,8 +219,8 @@ function initBook(chosenUrl) {
       });
       const about = nav.toc.find(chap => /about|author/i.test(chap.label));
       if (about) {
-        const spine = book.spine.getByHref(about.href);
-        spine.load(book.archive).then(doc => {
+        const spineItem = book.spine.getByHref(about.href);
+        spineItem.load(book.archive).then(doc => {
           const img = doc.querySelector("img[src$='.jpg'],img[src$='.jpeg'],img[src$='.png']");
           if (img) {
             const src = img.getAttribute("src");
@@ -268,8 +286,11 @@ function registerHooks() {
       doc.body.appendChild(sentinel);
       new IntersectionObserver(entries => {
         const cb = document.getElementById("continue-bar");
-        entries.forEach(e => cb.style.display = e.isIntersecting ? "block" : "none");
-      }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" }).observe(sentinel);
+        entries.forEach(e => {
+          cb.style.display = e.isIntersecting ? "block" : "none";
+        });
+      }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" })
+        .observe(sentinel);
     } else {
       document.getElementById("tap-left").style.pointerEvents = "auto";
       document.getElementById("tap-right").style.pointerEvents = "auto";
@@ -292,14 +313,14 @@ function updateSwipeListeners() {
     ["gesture-left","gesture-right"].forEach(id => {
       const el = document.getElementById(id);
       el.style.pointerEvents = "auto";
-      el.addEventListener("click", id==="gesture-left"? swipePrev: swipeNext);
+      el.addEventListener("click", id==="gesture-left" ? swipePrev : swipeNext);
     });
   } else {
     v.removeEventListener("touchstart", handleTouchStart, false);
     v.removeEventListener("touchend", handleTouchEnd, false);
     ["gesture-left","gesture-right"].forEach(id => {
       const el = document.getElementById(id);
-      el.removeEventListener("click", id==="gesture-left"? swipePrev: swipeNext);
+      el.removeEventListener("click", id==="gesture-left" ? swipePrev : swipeNext);
       el.style.pointerEvents = "none";
     });
     document.getElementById("tap-left").style.pointerEvents = "auto";
@@ -310,7 +331,8 @@ function updateSwipeListeners() {
 function handleTouchStart(evt) {
   if (currentFlow !== "swipe") return;
   const t = evt.touches[0];
-  xDown = t.clientX; yDown = t.clientY;
+  xDown = t.clientX;
+  yDown = t.clientY;
 }
 function handleTouchEnd(evt) {
   if (currentFlow !== "swipe" || xDown === null || yDown === null) return;
@@ -428,26 +450,30 @@ function applyThemeStylesFromCurrent() {
   if (document.body.classList.contains("night-mode")) {
     bg = "#111"; color = "#eee";
   } else if (document.body.classList.contains("sepia-mode")) {
-    bg = "#f4ecd8";
+    bg = "#f4ecd8"; color = "#000";
   } else if (document.body.classList.contains("matcha-mode")) {
-    bg = "#C3D8B6";
+    bg = "#C3D8B6"; color = "#000";
   } else {
-    bg = "#f5f5f5";
+    bg = "#f5f5f5"; color = "#000";
   }
-  rendition.getContents().forEach(c => {
-    const doc = c.document;
+  rendition.getContents().forEach(contents => {
+    const doc = contents.document;
     doc.documentElement.style.background = bg;
     doc.body.style.background = bg;
     doc.body.style.color = color;
   });
 }
 
-document.getElementById("menu-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('menu'); });
+document.getElementById("menu-toggle").addEventListener("click", () => {
+  closeMenus();
+  toggleMenu('menu');
+});
 document.getElementById("toc-toggle").addEventListener("click", () => {
   document.getElementById("toc-panel").classList.toggle("open");
 });
 document.getElementById("settings-toggle").addEventListener("click", () => {
-  closeMenus(); toggleMenu('settings');
+  closeMenus();
+  toggleMenu('settings');
 });
 document.getElementById("theme-toggle").addEventListener("click", () => {
   closeMenus();
@@ -479,12 +505,16 @@ function changeFontSize(delta) {
 
 function changeTheme(theme) {
   document.body.className = "";
-  if (theme === "night") document.body.classList.add("night-mode");
-  else if (theme === "sepia") document.body.classList.add("sepia-mode");
-  else if (theme === "matcha") document.body.classList.add("matcha-mode");
-  else document.body.classList.add("light-mode");
-  document.getElementById("theme-toggle").textContent =
-    document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+  if (theme === "night") {
+    document.body.classList.add("night-mode");
+  } else if (theme === "sepia") {
+    document.body.classList.add("sepia-mode");
+  } else if (theme === "matcha") {
+    document.body.classList.add("matcha-mode");
+  } else {
+    document.body.classList.add("light-mode");
+  }
+  document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
   localStorage.setItem("reader-theme", theme);
   document.getElementById("theme-select").value = theme;
   applyThemeStylesFromCurrent();
@@ -506,7 +536,7 @@ document.getElementById("continue-bar").addEventListener("click", () => {
 });
 
 if (theBookUrl) initBook(theBookUrl);
+
 const savedTheme = localStorage.getItem("reader-theme") || "light";
 document.getElementById("theme-select").value = savedTheme;
 changeTheme(savedTheme);
-// === END MENU & THEME CONTROLS ===
