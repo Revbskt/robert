@@ -70,7 +70,7 @@ document.getElementById("highlightToggle").addEventListener("click", () => {
   alert("Highlight mode " + (highlightMode ? "ON" : "OFF"));
 });
 
-const book = ePub("/ebook/liars.epub");
+const book = ePub("/ebooks/liars.epub");
 const rendition = book.renderTo("viewer", {
   flow: "scrolled-doc",
   allowScriptedContent: true,
