@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars EPUB Reader – Cursor-Based Note Box</title>
+  <title>Liars EPUB Reader – Floating Note Box</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -48,6 +48,7 @@
       bottom: 0;
       left: 0;
       right: 0;
+      background: white;
     }
 
     #viewer {
@@ -74,25 +75,30 @@
       pointer-events: none;
     }
 
-    #popupNote {
+    #noteBox {
       display: none;
-      position: absolute;
-      background: #fff;
-      border: 1px solid #ccc;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      padding: 8px;
-      z-index: 2000;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 12px;
       border-radius: 6px;
-      max-width: 250px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      width: 90%;
+      max-width: 300px;
     }
 
-    #popupNote textarea {
+    #noteBox textarea {
       width: 100%;
       height: 60px;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      font-size: 1rem;
     }
 
-    #popupNote button {
+    #noteBox button {
+      padding: 6px 10px;
       margin-right: 8px;
     }
   </style>
@@ -109,10 +115,12 @@
     <div id="tap-right"></div>
   </div>
 
-  <div id="popupNote">
-    <textarea id="popupInput" placeholder="Write a note..."></textarea><br />
-    <button id="popupSave">Save</button>
-    <button id="popupCancel">Cancel</button>
+  <div id="noteBox">
+    <textarea id="noteInput" placeholder="Enter your note..."></textarea>
+    <div>
+      <button id="saveNote">Save</button>
+      <button id="cancelNote">Cancel</button>
+    </div>
   </div>
 
   <script>
@@ -124,23 +132,14 @@
     let currentText = "";
     let currentContents = null;
 
-    const popup = document.getElementById("popupNote");
-    const input = document.getElementById("popupInput");
-    const saveBtn = document.getElementById("popupSave");
-    const cancelBtn = document.getElementById("popupCancel");
+    const noteBox = document.getElementById("noteBox");
+    const noteInput = document.getElementById("noteInput");
+    const saveBtn = document.getElementById("saveNote");
+    const cancelBtn = document.getElementById("cancelNote");
 
     const toggleBtn = document.getElementById("highlightToggle");
     const tapLeft = document.getElementById("tap-left");
     const tapRight = document.getElementById("tap-right");
-
-    const book = ePub("/ebooks/liars.epub");
-    const rendition = book.renderTo("viewer", {
-      width: "100%",
-      height: "100%",
-      flow: "scrolled-doc",
-      manager: "default",
-      allowScriptedContent: true
-    });
 
     toggleBtn.onclick = () => {
       highlightMode = !highlightMode;
@@ -148,6 +147,14 @@
       tapLeft.style.pointerEvents = highlightMode ? "none" : "auto";
       tapRight.style.pointerEvents = highlightMode ? "none" : "auto";
     };
+
+    const book = ePub("/ebooks/liars.epub");
+    const rendition = book.renderTo("viewer", {
+      width: "100%",
+      height: "100%",
+      flow: "scrolled-doc",
+      allowScriptedContent: true
+    });
 
     function saveNotes() {
       localStorage.setItem(key, JSON.stringify(notes));
@@ -179,7 +186,7 @@
       injectNotes(contents);
     });
 
-    rendition.on("selected", (cfiRange, contents) => {
+    rendition.on("selected", async (cfiRange, contents) => {
       if (!highlightMode) return;
 
       setTimeout(() => {
@@ -189,27 +196,16 @@
         const text = range.toString().trim();
         if (!text) return;
 
-        const rect = range.getBoundingClientRect();
-        const iframeRect = contents.iframe.getBoundingClientRect();
-
         currentCfi = cfiRange;
         currentText = text;
         currentContents = contents;
-        input.value = "";
-
-        // Position popup below or above selection
-        const top = rect.top + iframeRect.top;
-        const spaceBelow = window.innerHeight - (top + rect.height);
-        const popupTop = spaceBelow > 120 ? top + rect.height + 5 : top - 110;
-
-        popup.style.top = `${popupTop}px`;
-        popup.style.left = `${rect.left + iframeRect.left}px`;
-        popup.style.display = "block";
+        noteInput.value = "";
+        noteBox.style.display = "block";
       }, 100);
     });
 
     saveBtn.onclick = () => {
-      const note = input.value.trim();
+      const note = noteInput.value.trim();
       if (!note || !currentCfi || !currentContents) return;
 
       const range = currentContents.range(currentCfi);
@@ -220,18 +216,19 @@
         span.textContent = currentText;
         range.deleteContents();
         range.insertNode(span);
+
         notes.push({ cfi: currentCfi, text: currentText, note });
         saveNotes();
       }
 
-      popup.style.display = "none";
+      noteBox.style.display = "none";
       currentCfi = null;
       currentText = "";
       currentContents = null;
     };
 
     cancelBtn.onclick = () => {
-      popup.style.display = "none";
+      noteBox.style.display = "none";
       currentCfi = null;
       currentText = "";
       currentContents = null;
