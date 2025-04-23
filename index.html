@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Hybrid EPUB Highlight</title>
+  <title>Hybrid EPUB Highlight via Fetch</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
   <style>
@@ -70,64 +70,71 @@
     alert("Highlight mode: " + (highlightMode ? "ON" : "OFF"));
   });
 
-  const book = ePub("/ebooks/bts.epub");
-  const rendition = book.renderTo("viewer", {
-    flow: "scrolled-doc",
-    allowScriptedContent: true,
-    width: "100%",
-    height: "100%"
-  });
+  // Load via fetch (not direct epub("/path"))
+  fetch("/ebooks/bts.epub")
+    .then(res => res.blob())
+    .then(blob => {
+      const book = ePub(blob);
+      const rendition = book.renderTo("viewer", {
+        flow: "scrolled-doc",
+        allowScriptedContent: true,
+        width: "100%",
+        height: "100%"
+      });
 
-  rendition.on("rendered", (_, contents) => {
-    const doc = contents.document;
-    const win = contents.window;
+      rendition.on("rendered", (_, contents) => {
+        const doc = contents.document;
+        const win = contents.window;
 
-    // ✅ Make iframe selection-friendly
-    doc.body.style.userSelect = "text";
-    doc.body.style.webkitUserSelect = "text";
-    doc.body.style.touchAction = "auto";
-    doc.body.style.position = "relative";
+        doc.body.style.userSelect = "text";
+        doc.body.style.webkitUserSelect = "text";
+        doc.body.style.touchAction = "auto";
+        doc.body.style.position = "relative";
 
-    contents.document.addEventListener("selectionchange", () => {
-      if (!highlightMode) return;
+        contents.document.addEventListener("selectionchange", () => {
+          if (!highlightMode) return;
 
-      const sel = win.getSelection();
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+          const sel = win.getSelection();
+          if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+            highlightBtn.style.display = "none";
+            return;
+          }
+
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          const iframeRect = contents.iframe.getBoundingClientRect();
+
+          if (!rect || rect.width === 0 || rect.height === 0) return;
+
+          savedRange = range.cloneRange();
+          highlightBtn.style.top = `${iframeRect.top + rect.bottom + 6}px`;
+          highlightBtn.style.left = `${iframeRect.left + rect.left}px`;
+          highlightBtn.style.display = "block";
+        });
+      });
+
+      highlightBtn.addEventListener("click", () => {
+        if (!savedRange) return;
+
+        const span = savedRange.startContainer.ownerDocument.createElement("span");
+        span.className = "hl";
+        span.textContent = savedRange.toString();
+
+        savedRange.deleteContents();
+        savedRange.insertNode(span);
         highlightBtn.style.display = "none";
-        return;
-      }
+        savedRange = null;
+      });
 
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      const iframeRect = contents.iframe.getBoundingClientRect();
-
-      if (!rect || rect.width === 0 || rect.height === 0) return;
-
-      savedRange = range.cloneRange();
-
-      highlightBtn.style.top = `${iframeRect.top + rect.bottom + 6}px`;
-      highlightBtn.style.left = `${iframeRect.left + rect.left}px`;
-      highlightBtn.style.display = "block";
+      rendition.display().catch(err => {
+        console.error("❌ Failed to display EPUB:", err);
+        alert("Failed to display EPUB. Check console.");
+      });
+    })
+    .catch(err => {
+      console.error("❌ Failed to fetch EPUB:", err);
+      alert("⚠️ Could not load EPUB via fetch. Check path or permissions.");
     });
-  });
-
-  highlightBtn.addEventListener("click", () => {
-    if (!savedRange) return;
-
-    const span = savedRange.startContainer.ownerDocument.createElement("span");
-    span.className = "hl";
-    span.textContent = savedRange.toString();
-
-    savedRange.deleteContents();
-    savedRange.insertNode(span);
-    highlightBtn.style.display = "none";
-    savedRange = null;
-  });
-
-  rendition.display().catch(err => {
-    console.error("❌ EPUB failed to render:", err);
-    alert("Failed to load EPUB — check the path or console.");
-  });
 </script>
 
 </body>
