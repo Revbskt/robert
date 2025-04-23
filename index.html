@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Liars EPUB Reader – Inline Highlight Fix</title>
+  <title>Liars EPUB Reader – Inline Highlights + Notes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
@@ -67,11 +67,25 @@
     #tap-left { left: 0; }
     #tap-right { right: 0; }
 
-    /* Inline highlight style */
     .hl {
       background-color: rgba(255, 165, 0, 0.3);
       border-radius: 2px;
       padding: 0.05em;
+      cursor: pointer;
+    }
+
+    .hl:hover::after {
+      content: attr(data-note);
+      display: block;
+      position: absolute;
+      background: #222;
+      color: #fff;
+      padding: 4px 8px;
+      font-size: 0.8em;
+      border-radius: 4px;
+      z-index: 9999;
+      max-width: 200px;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -89,12 +103,12 @@
 
   <script>
     let highlightMode = false;
-    let highlights = [];
-    const key = "highlights-liars";
+    const key = "liars-notes";
+    let notes = [];
 
+    const toggleBtn = document.getElementById("highlightToggle");
     const tapLeft = document.getElementById("tap-left");
     const tapRight = document.getElementById("tap-right");
-    const toggleBtn = document.getElementById("highlightToggle");
 
     toggleBtn.onclick = () => {
       highlightMode = !highlightMode;
@@ -108,53 +122,66 @@
       width: "100%",
       height: "100%",
       flow: "scrolled-doc",
-      manager: "default",
       allowScriptedContent: true
     });
 
-    function saveHighlights() {
-      localStorage.setItem(key, JSON.stringify(highlights));
+    function saveNotes() {
+      localStorage.setItem(key, JSON.stringify(notes));
     }
 
-    function loadHighlights() {
+    function loadNotes() {
       const saved = localStorage.getItem(key);
       if (saved) {
-        highlights = JSON.parse(saved);
-        highlights.forEach(h =>
-          rendition.annotations.highlight(h.cfi, { class: "hl" }, null, "hl")
-        );
+        notes = JSON.parse(saved);
       }
     }
 
-    rendition.on("rendered", (_, iframe) => {
+    function injectNotes(iframeDoc) {
+      notes.forEach(note => {
+        const range = book.cfiRangeToRange(note.cfi);
+        if (range) {
+          const span = iframeDoc.createElement("span");
+          span.className = "hl";
+          span.setAttribute("data-note", note.note);
+          span.textContent = note.text;
+          range.deleteContents();
+          range.insertNode(span);
+        }
+      });
+    }
+
+    rendition.on("rendered", async (_, iframe) => {
       const doc = iframe.document || iframe.contentDocument;
       if (doc && doc.body) {
         doc.body.style.position = "relative";
         doc.body.style.zIndex = "1";
+        loadNotes();
+        injectNotes(doc);
       }
-      loadHighlights();
     });
 
     rendition.on("selected", async (cfiRange, contents) => {
       if (!highlightMode) return;
 
-      setTimeout(async () => {
-        const existing = highlights.find(h => h.cfi === cfiRange);
-        if (existing) {
-          rendition.annotations.remove(cfiRange, "highlight");
-          highlights = highlights.filter(h => h.cfi !== cfiRange);
-        } else {
-          const range = await book.getRange(cfiRange);
-          const text = range.toString().trim();
-          if (text.length > 0) {
-            rendition.annotations.highlight(cfiRange, { class: "hl" }, null, "hl");
-            highlights.push({ cfi: cfiRange, text });
-          }
-        }
+      const userNote = prompt("Enter a note for this highlight:");
+      if (!userNote) return;
 
-        contents.window.getSelection().removeAllRanges();
-        saveHighlights();
-      }, 100);
+      const range = await book.getRange(cfiRange);
+      const text = range.toString().trim();
+
+      if (text.length > 0) {
+        const span = document.createElement("span");
+        span.className = "hl";
+        span.setAttribute("data-note", userNote);
+        span.textContent = text;
+        range.deleteContents();
+        range.insertNode(span);
+
+        notes.push({ cfi: cfiRange, text, note: userNote });
+        saveNotes();
+      }
+
+      contents.window.getSelection().removeAllRanges();
     });
 
     tapLeft.onclick = () => { if (!highlightMode) rendition.prev(); };
