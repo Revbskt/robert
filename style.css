@@ -153,12 +153,48 @@ h1 {
 }
 /* === END BOOKMARK PANEL === */
 
+/* === START PAGE NAV PANEL === */
+#nav-panel {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+}
+#nav-panel.open {
+  transform: translateY(0);
+}
+#nav-panel .nav-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  color: #fff;
+  border-bottom: 1px solid #eee;
+}
+#nav-panel .nav-controls {
+  display: flex;
+  justify-content: center;
+}
+#nav-panel .nav-controls button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #fff;
+  cursor: pointer;
+  margin: 0 5px;
+}
+/* === END PAGE NAV PANEL === */
+
 /* === START SLIDE-OUT MENU & BACKDROP === */
 #menu-backdrop {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0,0,0,0.3);
   z-index: 1001;
 }
 #expanded-menu {
@@ -281,7 +317,6 @@ h1 {
   touch-action: pan-x;
   overflow: hidden;
 }
-/* Tap zones for paginated mode */
 #tap-left, #tap-right {
   position: absolute;
   top: 0;
@@ -291,7 +326,6 @@ h1 {
 }
 #tap-left { left: 0; }
 #tap-right { right: 0; }
-/* Gesture zones for swipe mode */
 #gesture-left, #gesture-right {
   position: absolute;
   top: 0;
@@ -302,7 +336,6 @@ h1 {
 }
 #gesture-left { left: 0; }
 #gesture-right { right: 0; }
-/* Swipe transition */
 #viewer.swipe-transition {
   transition: transform 0.3s ease;
 }
@@ -370,7 +403,6 @@ h1 {
   font-size: 18px;
   text-align: center;
 }
-/* Font switcher controls */
 #settings-modal label {
   margin-bottom: 0.3rem;
 }
