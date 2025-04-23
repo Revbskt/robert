@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -38,12 +37,29 @@
       <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
       <button id="settings-toggle" title="Read Settings">Aa</button>
       <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
+      <!-- === ADD COMPASS NAV TOGGLE === -->
+      <button id="nav-toggle" title="Page Navigation">🧭</button>
     </div>
     <!-- === END TOOLBAR === -->
 
     <!-- === START BOOKMARK PANEL === -->
     <div id="bookmark-panel"></div>
     <!-- === END BOOKMARK PANEL === -->
+
+    <!-- === START PAGE NAV PANEL === -->
+    <div id="nav-panel">
+      <div class="nav-item">
+        Page <span id="nav-page-num">? of ?</span>
+      </div>
+      <div class="nav-item">
+        Loc: <span id="nav-location-cfi">–</span>
+      </div>
+      <div class="nav-item nav-controls">
+        <button id="rewind-btn" title="Rewind">⏪</button>
+        <button id="forward-btn" title="Forward">⏩</button>
+      </div>
+    </div>
+    <!-- === END PAGE NAV PANEL === -->
 
     <!-- === START MENU BACKDROP & PANEL === -->
     <div id="menu-backdrop"></div>
