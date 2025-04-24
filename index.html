@@ -337,20 +337,22 @@
     function toggleBookmarkDropdown() {
       document.getElementById("bookmark-panel").classList.toggle("open");
     }
-        // ===== SECTION: Library and Book Handling =====
-    const urlParams = new URLSearchParams(window.location.search);
-    const bookParam = urlParams.get("book");
-    const lastSavedBook = localStorage.getItem("last-book");
-    let theBookUrl = bookParam ? decodeURIComponent(bookParam) : (lastSavedBook || null);
+      // ===== SECTION: Library and Book Handling =====
+const urlParams = new URLSearchParams(window.location.search);
+const bookParam = urlParams.get("book");
+let theBookUrl  = bookParam ? decodeURIComponent(bookParam) : null;
 
-    const libraryContainer = document.getElementById("library-container");
-    const readerContainer = document.getElementById("reader-container");
-    if (theBookUrl) {
-      readerContainer.style.display = "block";
-      libraryContainer.style.display = "none";
-    } else {
-      readerContainer.style.display = "none";
-      libraryContainer.style.display = "block";
+const libraryContainer = document.getElementById("library-container");
+const readerContainer  = document.getElementById("reader-container");
+
+if (theBookUrl) {
+  readerContainer.style.display  = "block";
+  libraryContainer.style.display = "none";
+} else {
+  readerContainer.style.display  = "none";
+  libraryContainer.style.display = "block";
+}
+
     }
     let libraryVisible = !theBookUrl;
 
