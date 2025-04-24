@@ -2,141 +2,908 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ePub Reader</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>My ePub Reader and Library</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- JSZip and epub.js for the reader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
+  <!-- ===== SECTION: Global Styles and Themes ===== -->
   <style>
-    /* COMPACTED CSS STYLES (skip editing these) */
-    html,body{margin:0;padding:0;height:100%;font-family:sans-serif;background:#f5f5f5}
-    body.light-mode{background:#f5f5f5}body.light-mode #toolbar{background:#eee}
-    body.sepia-mode{background:#f4ecd8}body.sepia-mode #toolbar{background:#e7dbc3}
-    body.matcha-mode{background:#C3D8B6}body.matcha-mode #toolbar{background:#B0CFA3}
-    body.night-mode{background:#111!important}body.night-mode #toolbar{background:#222!important}
-    body.night-mode #continue-bar{background:#111!important;color:#eee!important}
-    #reader-container,#library-container{position:relative;width:100%;height:100%}
-    #reader-container{display:none;overflow:hidden}
-    #library-container{display:none;min-height:100vh;background:#f5f5f5;padding:1rem;box-sizing:border-box}
-    h1{text-align:center;margin:0 0 1rem}#library-controls{text-align:center;margin-bottom:1rem}
-    #library{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;margin-top:1rem}
-    .book{background:#fff;border:1px solid #ddd;padding:.75rem;width:140px;text-align:center;
-    box-shadow:2px 2px 6px rgba(0,0,0,.1);border-radius:6px}
-    .book img{width:100%;height:auto;border-radius:4px}
-    .book h3{font-size:.9rem;margin:.5rem 0 .25rem}
-    .book p{font-size:.8rem;margin:0 0 .5rem;color:#555}
-    .book button{margin:4px 0;padding:6px 12px;border:none;border-radius:4px;background:#007bff;color:#fff;
-    font-size:.8rem;cursor:pointer;transition:background .2s}
-    .book button:hover{background:#0056b3}
-    #toolbar{position:fixed;top:0;left:0;right:0;height:40px;z-index:1002;display:flex;justify-content:space-evenly;
-    align-items:center;padding:0 10px}
-    #toolbar button{width:40px;height:40px;background:0;border:none;font-size:24px;cursor:pointer;display:flex;
-    align-items:center;justify-content:center;opacity:.8;pointer-events:auto}
-    #toolbar button:hover{opacity:1}
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
+      background: #f5f5f5;
+    }
+
+    /* ===== Theme Classes for the Body ===== */
+    body.light-mode { background: #f5f5f5; }
+    body.light-mode #toolbar { background: #eee; }
+    body.sepia-mode { background: #f4ecd8; }
+    body.sepia-mode #toolbar { background: #e7dbc3; }
+    body.matcha-mode { background: #C3D8B6; }
+    body.matcha-mode #toolbar { background: #B0CFA3; }
+    body.night-mode { background: #111 !important; }
+    body.night-mode #toolbar { background: #222 !important; }
+    body.night-mode #continue-bar { background: #111 !important; color: #eee !important; }
+
+    /* ===== SECTION: Layout Containers ===== */
+    #reader-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #library-container {
+      display: none;
+      position: relative;
+      min-height: 100vh;
+      background: #f5f5f5;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+    h1 { text-align: center; margin: 0 0 1rem; }
+
+    /* ===== SECTION: Library Styling ===== */
+    #library-controls { text-align: center; margin-bottom: 1rem; }
+    #library {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .book {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 0.75rem;
+      width: 140px;
+      text-align: center;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+      border-radius: 6px;
+    }
+    .book img { width: 100%; height: auto; border-radius: 4px; }
+    .book h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
+    .book p { font-size: 0.8rem; margin: 0 0 0.5rem; color: #555; }
+    .book button {
+      margin: 4px 0;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .book button:hover { background-color: #0056b3; }
+
+    /* ===== SECTION: Reader Toolbar ===== */
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      z-index: 1002;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      padding: 0 10px;
+    }
+    #toolbar button {
+      width: 40px;
+      height: 40px;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.8;
+      pointer-events: auto;
+    }
+    #toolbar button:hover { opacity: 1; }
+
+    /* ===== SECTION: Bookmark Dropdown Panel ===== */
+    #bookmark-panel {
+      position: fixed;
+      top: 40px;
+      left: 0;
+      right: 0;
+      height: 70vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.85);
+      border-bottom: 1px solid #444;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      transform: translateY(-100%);
+    }
+    #bookmark-panel.open { transform: translateY(0); }
+    #bookmark-panel div {
+      display: block;
+      padding: 6px 10px;
+      text-decoration: none;
+      color: #fff;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    #bookmark-panel div:hover { background: rgba(255,255,255,0.1); }
   </style>
 </head>
 <body class="light-mode">
 
-<!-- 🔽 UI HTML structure -->
-<div id="library-container">
-  <h1>📚 Beta Epub Reader 📚</h1>
-  <div id="library-controls">
-    <button onclick="toggleLibrary(false)">Back to Reader</button>
+  <!-- ===== SECTION: Library Container ===== -->
+  <div id="library-container">
+    <h1>📚 My Book Library</h1>
+    <div id="library-controls">
+      <button onclick="toggleLibrary(false)">Back to Reader</button>
+    </div>
+    <div id="library">Loading books...</div>
   </div>
-  <div id="library">Loading books...</div>
-</div>
 
-<div id="reader-container">
-  <div id="toolbar">
-    <button id="menu-toggle" title="Main Menu">☰</button>
-    <button id="toc-toggle" title="Table of Contents">📖</button>
-    <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
-    <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
-    <button id="settings-toggle" title="Read Settings">Aa</button>
-    <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
-  </div>
-  <div id="bookmark-panel"></div>
-  <div id="menu-backdrop"></div>
-  <div id="expanded-menu">
-    <button class="close-menu" onclick="toggleMenu('menu')">×</button>
-    <div id="book-card">
-      <img id="cover" alt="Book Cover"/>
-      <div id="book-title"></div>
-      <div id="book-author"></div>
-      <div id="contact-image"></div>
+  <!-- ===== SECTION: Reader Container & Toolbar ===== -->
+  <div id="reader-container">
+    <div id="toolbar">
+      <button id="menu-toggle" title="Main Menu">☰</button>
+      <button id="toc-toggle" title="Table of Contents">📖</button>
+      <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
+      <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
+      <button id="settings-toggle" title="Read Settings">Aa</button>
+      <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
     </div>
-    <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
-  </div>
-  <div id="toc-panel"></div>
-  <div id="settings-modal">
-    <button class="close-settings" onclick="toggleMenu('settings')">×</button>
-    <h3>Reading Settings</h3>
-    <label for="font-switcher">Font</label>
-    <select id="font-switcher">
-      <option value="-apple-system">San Francisco (System)</option>
-      <option value="Helvetica Neue">Helvetica Neue</option>
-      <option value="Arial">Arial</option>
-      <option value="Courier New">Courier New</option>
-      <option value="Georgia">Georgia</option>
-      <option value="OpenDyslexic">OpenDyslexic</option>
-    </select>
-    <div class="font-size-buttons">
-      <button onclick="changeFontSize(-1)">A-</button>
-      <button onclick="changeFontSize(1)">A+</button>
+
+    <!-- ===== SECTION: Bookmark Panel Dropdown ===== -->
+    <div id="bookmark-panel"></div>
+
+    <!-- ===== SECTION: Slide-out Menu and Backdrop ===== -->
+    <div id="menu-backdrop"></div>
+    <div id="expanded-menu">
+      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
+      <div id="book-card">
+        <img id="cover" alt="Book Cover" />
+        <div id="book-title"></div>
+        <div id="book-author"></div>
+        <div id="contact-image"></div>
+      </div>
+      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
     </div>
-    <label for="reading-mode">Reading Mode</label>
-    <select id="reading-mode">
-      <option value="paginated">Page</option>
-      <option value="scrolled-doc">Scroll</option>
-      <option value="swipe">Swipe</option>
-    </select>
-    <label for="theme-select">Color Theme</label>
-    <select id="theme-select">
-      <option value="light">Light</option>
-      <option value="sepia">Sepia</option>
-      <option value="night">Night</option>
-      <option value="matcha">Matcha Green</option>
-    </select>
+
+    <!-- ===== SECTION: Table of Contents Panel ===== -->
+    <div id="toc-panel"></div>
+
+    <!-- ===== SECTION: Settings Modal ===== -->
+    <div id="settings-modal">
+      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+      <h3>Reading Settings</h3>
+      <!-- ===== Subsection: Font Switcher ===== -->
+      <label for="font-switcher">Font</label>
+      <select id="font-switcher">
+        <option value="-apple-system">San Francisco (System)</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
+        <option value="Arial">Arial</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Georgia">Georgia</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+      </select>
+      <div class="font-size-buttons">
+        <button onclick="changeFontSize(-1)">A-</button>
+        <button onclick="changeFontSize(1)">A+</button>
+      </div>
+
+      <!-- ===== Subsection: Reading Mode ===== -->
+      <label for="reading-mode">Reading Mode</label>
+      <select id="reading-mode">
+        <option value="paginated">Page</option>
+        <option value="scrolled-doc">Scroll</option>
+        <option value="swipe">Swipe</option>
+      </select>
+
+      <!-- ===== Subsection: Theme Selector ===== -->
+      <label for="theme-select">Color Theme</label>
+      <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="sepia">Sepia</option>
+        <option value="night">Night</option>
+        <option value="matcha">Matcha Green</option>
+      </select>
+    </div>
+
+    <!-- ===== SECTION: Viewer Area ===== -->
+    <div id="viewer">
+      <div id="tap-left"></div>
+      <div id="tap-right"></div>
+      <!-- Gesture zones are enabled only in swipe mode -->
+      <div id="gesture-left"></div>
+      <div id="gesture-right"></div>
+    </div>
+
+    <!-- ===== SECTION: Footer Elements ===== -->
+    <div id="progress-bar"></div>
+    <div id="continue-bar">Continue</div>
   </div>
-  <div id="viewer">
-    <div id="tap-left"></div>
-    <div id="tap-right"></div>
-    <div id="gesture-left"></div>
-    <div id="gesture-right"></div>
-  </div>
-  <div id="progress-bar"></div>
-  <div id="continue-bar">Continue</div>
-</div><script>
-/* 👇 Inserted compressed JavaScript (Parts 2A–2C combined) */
-let lastNonNightTheme="light",currentBookUrl="",bookmarks=[],xDown=null,yDown=null,SWIPE_THRESHOLD=20,swipeInProgress=false,currentFontSize=parseInt(localStorage.getItem("reader-font-size"))||100,currentFlow=localStorage.getItem("reading-mode")||"paginated",libraryVisible=!1,book,rendition,openMenuType=null;const qs=id=>document.getElementById(id),toggleLibrary=e=>{libraryVisible="boolean"==typeof e?e:!libraryVisible,qs("library-container").style.display=libraryVisible?"block":"none",qs("reader-container").style.display=libraryVisible?"none":"block",closeMenus()},loadLibrary=()=>{const e=qs("library");e.textContent="Loading books...",fetch("/ebooks/library.json").then(e=>e.json()).then(t=>{e.innerHTML="",t.forEach(t=>{const n=document.createElement("div");n.className="book",n.innerHTML=`<img src="${t.cover}" alt="Cover of ${t.title}" /><h3>${t.title}</h3><p>${t.author}</p><button onclick="readBook('${t.fileUrl}')">Read</button>`,e.appendChild(n)})}).catch(t=>{console.error("Failed to load library.json:",t),e.textContent="Failed to load book list."})};loadLibrary();const readBook=e=>{rendition&&currentBookUrl&&rendition.currentLocation()?.start?.cfi&&localStorage.setItem("last-location-"+currentBookUrl,rendition.currentLocation().start.cfi),cleanupReader(),localStorage.setItem("last-book",e);const t=new URLSearchParams(window.location.search);t.set("book",e),window.history.replaceState({},"","?"+t.toString()),initBook(e),toggleLibrary(!1)};function cleanupReader(){["tap-left","tap-right"].forEach(e=>qs(e)?.removeEventListener("click",e==="tap-left"?tapLeftHandler:tapRightHandler)),["gesture-left","gesture-right"].forEach(e=>qs(e)?.removeEventListener("click",e==="gesture-left"?swipePrev:swipeNext));const e=qs("viewer");e&&(e.removeEventListener("touchstart",handleTouchStart),e.removeEventListener("touchend",handleTouchEnd))}const tapLeftHandler=()=>"paginated"===currentFlow&&rendition?.prev(),tapRightHandler=()=>"paginated"===currentFlow&&rendition?.next();function initBook(e){if(!e)return;currentBookUrl=e,bookmarks=[],rendition&&(rendition.destroy(),rendition=null),book&&(book.destroy(),book=null),book=ePub(e),registerReaderEvents(),book.ready.then(()=>{initRendition(currentFlow),setTimeout(()=>book.locations.generate(1600),100),book.loaded.metadata.then(e=>{qs("book-title").textContent=e.title||"Untitled",qs("book-author").textContent=e.creator||""}),book.loaded.cover.then(e=>book.archive.createUrl(e,{base64:!0})).then(e=>{qs("cover").src=e}).catch(()=>console.warn("No cover found")),book.loaded.navigation.then(nav=>{const toc=qs("toc-panel");toc.innerHTML="",nav.toc.forEach(item=>{/contents|table of contents/i.test(item.label)||(link=document.createElement("a"),link.textContent=item.label,link.href="#",link.onclick=e=>(e.preventDefault(),rendition.display(item.href),toc.classList.remove("open")),toc.appendChild(link))}),applyFontSwitch(),loadBookmarks()})})}function initRendition(mode,cfi){rendition=book.renderTo("viewer",{width:"100%",height:"100%",flow:"scrolled-doc"===mode?"scrolled":"paginated",snap:"scrolled-doc"!==mode,spread:"always",direction:"ltr"}),registerHooks();const stored=localStorage.getItem("last-location-"+currentBookUrl);rendition.display(cfi||stored||void 0),rendition.on("relocated",e=>{e?.start?.cfi&&localStorage.setItem("last-location-"+currentBookUrl,e.start.cfi),updateBookmarkStar()}),rendition.on("rendered",()=>{applyThemeStylesFromCurrent(),applyFontSwitch(),updateBookmarkStar()}),updateSwipeListeners()}function registerReaderEvents(){qs("tap-left").addEventListener("click",tapLeftHandler),qs("tap-right").addEventListener("click",tapRightHandler)}function applyFontSwitch(){const e=localStorage.getItem("reader-font")||"-apple-system";qs("font-switcher").value=e,rendition&&("OpenDyslexic"===e?(styleEl=document.createElement("style"),styleEl.innerHTML='@font-face{font-family:"OpenDyslexic";src:url("/fonts/OpenDyslexic-Regular.otf") format("opentype");font-weight:normal;font-style:normal}@font-face{font-family:"OpenDyslexic";src:url("/fonts/OpenDyslexic-Bold.otf") format("opentype");font-weight:bold;font-style:normal}body{font-family:"OpenDyslexic",sans-serif!important}',rendition.getContents().forEach(c=>{doc=c.document,doc.getElementById("OpenDyslexicStyle")||((el=styleEl.cloneNode(!0)).id="OpenDyslexicStyle",doc.head.appendChild(el))}))):(rendition.themes.override("body",{"font-family":e+", serif!important"}),rendition.getContents().forEach(c=>{doc=c.document,styleEl=doc.getElementById("fontOverrideStyle")||doc.createElement("style"),styleEl.id="fontOverrideStyle",styleEl.textContent="body{font-family:"+e+", serif!important}",doc.head.appendChild(styleEl)})))}function updateSwipeListeners(){const v=qs("viewer");"swipe"===currentFlow?(["tap-left","tap-right"].forEach(e=>qs(e).style.pointerEvents="none"),v.addEventListener("touchstart",handleTouchStart),v.addEventListener("touchend",handleTouchEnd),["gesture-left","gesture-right"].forEach(id=>{qs(id).style.pointerEvents="auto",qs(id).addEventListener("click",id==="gesture-left"?swipePrev:swipeNext)})):(
-["gesture-left","gesture-right"].forEach(id=>{qs(id).removeEventListener("click",id==="gesture-left"?swipePrev:swipeNext),qs(id).style.pointerEvents="none"}),
-["tap-left","tap-right"].forEach(id=>qs(id).style.pointerEvents="auto"),v.removeEventListener("touchstart",handleTouchStart),v.removeEventListener("touchend",handleTouchEnd))}
-function handleTouchStart(e){"swipe"===currentFlow&&(xDown=e.touches[0].clientX,yDown=e.touches[0].clientY)}
-function handleTouchEnd(e){if("swipe"!==currentFlow||!xDown||!yDown)return;let t=e.changedTouches[0].clientX,n=e.changedTouches[0].clientY,r=xDown-t,o=yDown-n;Math.abs(r)>Math.abs(o)&&Math.abs(r)>SWIPE_THRESHOLD&&(r>0?swipeNext():swipePrev()),xDown=null,yDown=null}
-function swipeNext(){if(swipeInProgress)return;swipeInProgress=!0;const e=qs("viewer");e.classList.add("swipe-transition"),e.style.transform="translateX(-100%)",setTimeout(()=>{rendition.next(),e.classList.remove("swipe-transition"),e.style.transform="",swipeInProgress=!1},300)}
-function swipePrev(){if(swipeInProgress)return;swipeInProgress=!0;const e=qs("viewer");e.classList.add("swipe-transition"),e.style.transform="translateX(100%)",setTimeout(()=>{rendition.prev(),e.classList.remove("swipe-transition"),e.style.transform="",swipeInProgress=!1},300)}
-function getBookmarkKey(){return"bookmarks_"+currentBookUrl}
-function loadBookmarks(){const e=localStorage.getItem(getBookmarkKey());bookmarks=e?JSON.parse(e):[],updateBookmarkUI()}
-function saveBookmarks(){localStorage.setItem(getBookmarkKey(),JSON.stringify(bookmarks)),updateBookmarkUI()}
-function updateBookmarkStar(){const e=qs("bookmark-toggle"),t=rendition.currentLocation()?.start?.cfi;if(!t)return e.textContent="☆";const n=bookmarks.some(e=>e.cfi===t);e.textContent=n?"★":"☆",e.style.color=n?"blue":"inherit"}
-function updateBookmarkUI(){const e=qs("bookmark-panel");e.innerHTML="";const t=document.createDocumentFragment();0===bookmarks.length?(r=document.createElement("div")).textContent="No bookmarks yet.",t.appendChild(r):bookmarks.forEach(n=>{const r=document.createElement("div");r.textContent="Page "+(n.page||"?")+" - "+n.snippet,r.onclick=()=>{rendition.display(n.cfi),toggleBookmarkDropdown()},t.appendChild(r)}),e.appendChild(t)}
-function toggleBookmark(){const e=rendition.currentLocation();if(!e?.start?.cfi)return;const t=e.start.cfi,n=bookmarks.findIndex(e=>e.cfi===t);if(-1!==n)bookmarks.splice(n,1);else{let r="";rendition.getContents().forEach(c=>{const d=c.document;r||d?.body?.textContent&&(r=d.body.textContent.trim().substring(0,100)+"...")});const o=e.start.index||"?";bookmarks.push({cfi:t,snippet:r,page:o})}saveBookmarks(),updateBookmarkStar()}
-function toggleBookmarkDropdown(){qs("bookmark-panel").classList.toggle("open")}
-function toggleMenu(e){openMenuType===e?closeMenus():(closeMenus(),"menu"===e?(qs("expanded-menu").classList.add("open"),qs("menu-backdrop").style.display="block"):"settings"===e&&qs("settings-modal").classList.add("open"),openMenuType=e)}
-function closeMenus(){qs("expanded-menu").classList.remove("open"),qs("settings-modal").classList.remove("open"),qs("menu-backdrop").style.display="none",openMenuType=null}
-function applyThemeStylesFromCurrent(){if(!rendition)return;let e="#fff",t="#000";document.body.classList.contains("night-mode")?(e="#111",t="#eee"):document.body.classList.contains("sepia-mode")?(e="#f4ecd8",t="#000"):document.body.classList.contains("matcha-mode")?(e="#C3D8B6",t="#000"):document.body.classList.contains("light-mode")&&(e="#f5f5f5",t="#000"),rendition.getContents().forEach(n=>{const r=n.document;r.documentElement.style.background=e,r.body.style.background=e,r.body.style.color=t})}
-function changeFontSize(e){currentFontSize=Math.max(60,Math.min(200,currentFontSize+10*e)),localStorage.setItem("reader-font-size",currentFontSize),rendition&&rendition.themes.fontSize(currentFontSize+"%")}
-function changeTheme(e){document.body.className="",qs("theme-toggle").textContent="night"===e?"☀️":"🌙",qs("theme-select").value=e,localStorage.setItem("reader-theme",e),applyThemeStylesFromCurrent(),"night"===e?document.body.classList.add("night-mode"):"sepia"===e?document.body.classList.add("sepia-mode"):"matcha"===e?document.body.classList.add("matcha-mode"):document.body.classList.add("light-mode")}
-qs("menu-toggle").onclick=()=>{closeMenus(),toggleMenu("menu")};
-qs("toc-toggle").onclick=()=>qs("toc-panel").classList.toggle("open");
-qs("settings-toggle").onclick=()=>{closeMenus(),toggleMenu("settings")};
-qs("theme-toggle").onclick=()=>{closeMenus(),document.body.classList.contains("night-mode")?changeTheme(lastNonNightTheme):(lastNonNightTheme=qs("theme-select").value,changeTheme("night"))};
-qs("bookmark-toggle").onclick=toggleBookmark;
-qs("bookmark-dropdown").onclick=toggleBookmarkDropdown;
-qs("reading-mode").onchange=e=>{const t=e.target.value;localStorage.setItem("reading-mode",t),currentFlow=t;if(!rendition||!book)return;const n=rendition.location?.start?.cfi||localStorage.getItem("last-location-"+currentBookUrl);rendition.destroy(),setTimeout(()=>initRendition(t,n),50)};
-qs("theme-select").onchange=e=>changeTheme(e.target.value);
-qs("font-switcher").onchange=e=>{localStorage.setItem("reader-font",e.target.value),applyFontSwitch()};
-qs("continue-bar").onclick=()=>{if(!rendition||"scrolled-doc"!==currentFlow)return void(rendition&&rendition.next());const e=rendition.currentLocation();if(e?.start?.index!==void 0){const t=book.spine.get(e.start.index+1);t?rendition.display(t.href):console.warn("No next chapter found.")}else console.warn("Invalid current location:",e)};
-(function(){const e=new URLSearchParams(window.location.search).get("book")||localStorage.getItem("last-book");e?(qs("reader-container").style.display="block",qs("library-container").style.display="none",initBook(e)):(qs("library-container").style.display="block",qs("reader-container").style.display="none"));const t=localStorage.getItem("reader-theme")||"light";qs("theme-select").value=t,changeTheme(t)})();
-</script>
+    <!-- ===== SECTION: JavaScript Start ===== -->
+  <script>
+    // ===== GLOBAL VARS: Theme, Book, Bookmarks, Swipe Control =====
+    let lastNonNightTheme = "light";
+    let currentBookUrl = "";
+    let bookmarks = [];
+
+    let xDown = null;
+    let yDown = null;
+    const SWIPE_THRESHOLD = 20;
+    let swipeInProgress = false;
+
+    // ===== FUNCTION: Tap Handlers =====
+    function tapLeftHandler() {
+      if (currentFlow === "paginated" && rendition) rendition.prev();
+    }
+    function tapRightHandler() {
+      if (currentFlow === "paginated" && rendition) rendition.next();
+    }
+
+    // ===== FUNCTION: Cleanup Reader Events =====
+    function cleanupReader() {
+      const viewer = document.getElementById("viewer");
+      if (viewer) {
+        viewer.removeEventListener("touchstart", handleTouchStart, false);
+        viewer.removeEventListener("touchend", handleTouchEnd, false);
+      }
+      const gestureLeft = document.getElementById("gesture-left");
+      const gestureRight = document.getElementById("gesture-right");
+      if (gestureLeft) gestureLeft.removeEventListener("click", swipePrev);
+      if (gestureRight) gestureRight.removeEventListener("click", swipeNext);
+
+      const tapLeft = document.getElementById("tap-left");
+      const tapRight = document.getElementById("tap-right");
+      if (tapLeft) tapLeft.removeEventListener("click", tapLeftHandler);
+      if (tapRight) tapRight.removeEventListener("click", tapRightHandler);
+    }
+
+    // ===== BOOKMARK UTILITIES =====
+    function getBookmarkKey() {
+      return "bookmarks_" + currentBookUrl;
+    }
+    function loadBookmarks() {
+      const stored = localStorage.getItem(getBookmarkKey());
+      bookmarks = stored ? JSON.parse(stored) : [];
+      updateBookmarkUI();
+    }
+    function saveBookmarks() {
+      localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarks));
+      updateBookmarkUI();
+    }
+    function updateBookmarkStar() {
+      const btn = document.getElementById("bookmark-toggle");
+      const cfi = rendition?.currentLocation()?.start?.cfi;
+      if (!cfi) { btn.textContent = "☆"; return; }
+      const exists = bookmarks.some(bm => bm.cfi === cfi);
+      btn.textContent = exists ? "★" : "☆";
+      btn.style.color = exists ? "blue" : "inherit";
+    }
+
+    // ===== FUNCTION: Update Bookmark Panel UI =====
+    function updateBookmarkUI() {
+      const container = document.getElementById("bookmark-panel");
+      container.innerHTML = "";
+      const fragment = document.createDocumentFragment();
+      if (bookmarks.length === 0) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.textContent = "No bookmarks yet.";
+        fragment.appendChild(emptyDiv);
+      } else {
+        bookmarks.forEach((bm) => {
+          const item = document.createElement("div");
+          item.textContent = "Page " + (bm.page || "?") + " - " + bm.snippet;
+          item.addEventListener("click", () => {
+            rendition.display(bm.cfi);
+            toggleBookmarkDropdown();
+          });
+          fragment.appendChild(item);
+        });
+      }
+      container.appendChild(fragment);
+    }
+
+    // ===== FUNCTION: Add/Remove Bookmark =====
+    function toggleBookmark() {
+      const location = rendition.currentLocation();
+      if (!location?.start?.cfi) return;
+      const cfi = location.start.cfi;
+      const index = bookmarks.findIndex(bm => bm.cfi === cfi);
+      if (index !== -1) {
+        bookmarks.splice(index, 1);
+      } else {
+        let snippet = "";
+        rendition.getContents().forEach(contents => {
+          const doc = contents.document;
+          if (!snippet && doc?.body?.textContent) {
+            snippet = doc.body.textContent.trim().substring(0, 100) + "...";
+          }
+        });
+        const pageNum = location.start.index || "?";
+        bookmarks.push({ cfi, snippet, page: pageNum });
+      }
+      saveBookmarks();
+      updateBookmarkStar();
+    }
+
+    // ===== FUNCTION: Toggle Bookmark Panel =====
+    function toggleBookmarkDropdown() {
+      document.getElementById("bookmark-panel").classList.toggle("open");
+    }
+        // ===== SECTION: Library and Book Handling =====
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookParam = urlParams.get("book");
+    const lastSavedBook = localStorage.getItem("last-book");
+    let theBookUrl = bookParam ? decodeURIComponent(bookParam) : (lastSavedBook || null);
+
+    const libraryContainer = document.getElementById("library-container");
+    const readerContainer = document.getElementById("reader-container");
+    if (theBookUrl) {
+      readerContainer.style.display = "block";
+      libraryContainer.style.display = "none";
+    } else {
+      readerContainer.style.display = "none";
+      libraryContainer.style.display = "block";
+    }
+    let libraryVisible = !theBookUrl;
+
+    function toggleLibrary(forceState) {
+      libraryVisible = typeof forceState === 'boolean' ? forceState : !libraryVisible;
+      libraryContainer.style.display = libraryVisible ? "block" : "none";
+      readerContainer.style.display = libraryVisible ? "none" : "block";
+      closeMenus();
+    }
+
+    function loadLibrary() {
+      const libraryDiv = document.getElementById("library");
+      libraryDiv.textContent = "Loading books...";
+      fetch("/ebooks/library.json")
+        .then(response => response.json())
+        .then(books => {
+          libraryDiv.innerHTML = "";
+          books.forEach(book => {
+            const bookDiv = document.createElement("div");
+            bookDiv.className = "book";
+            bookDiv.innerHTML = `
+              <img src="${book.cover}" alt="Cover of ${book.title}" />
+              <h3>${book.title}</h3>
+              <p>${book.author}</p>
+              <button onclick="readBook('${book.fileUrl}')">Read</button>
+            `;
+            libraryDiv.appendChild(bookDiv);
+          });
+        })
+        .catch(err => {
+          console.error("Failed to load library.json:", err);
+          libraryDiv.textContent = "Failed to load book list.";
+        });
+    }
+
+    loadLibrary();
+
+    // ===== FUNCTION: Switch and Load Book =====
+    function readBook(epubUrl) {
+      if (rendition && currentBookUrl) {
+        const loc = rendition.currentLocation();
+        if (loc?.start?.cfi) {
+          localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
+        }
+      }
+
+      cleanupReader();
+      localStorage.setItem("last-book", epubUrl);
+      const newSearch = new URLSearchParams(window.location.search);
+      newSearch.set("book", epubUrl);
+      window.history.replaceState({}, "", `?${newSearch.toString()}`);
+      initBook(epubUrl);
+      toggleLibrary(false);
+    }
+
+    // ===== SECTION: Reader State =====
+    let book, rendition;
+    let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
+    let currentFlow = localStorage.getItem("reading-mode") || "swipe";
+
+    // ===== FUNCTION: Tap vs Swipe Handling =====
+    function updateSwipeListeners() {
+      const viewer = document.getElementById("viewer");
+      if (currentFlow === "swipe") {
+        document.getElementById("tap-left").style.pointerEvents = "none";
+        document.getElementById("tap-right").style.pointerEvents = "none";
+        viewer.addEventListener("touchstart", handleTouchStart, false);
+        viewer.addEventListener("touchend", handleTouchEnd, false);
+        document.getElementById("gesture-left").style.pointerEvents = "auto";
+        document.getElementById("gesture-right").style.pointerEvents = "auto";
+        document.getElementById("gesture-left").addEventListener("click", swipePrev);
+        document.getElementById("gesture-right").addEventListener("click", swipeNext);
+      } else {
+        viewer.removeEventListener("touchstart", handleTouchStart, false);
+        viewer.removeEventListener("touchend", handleTouchEnd, false);
+        document.getElementById("gesture-left").removeEventListener("click", swipePrev);
+        document.getElementById("gesture-right").removeEventListener("click", swipeNext);
+        document.getElementById("gesture-left").style.pointerEvents = "none";
+        document.getElementById("gesture-right").style.pointerEvents = "none";
+        document.getElementById("tap-left").style.pointerEvents = "auto";
+        document.getElementById("tap-right").style.pointerEvents = "auto";
+      }
+    }
+        // ===== SECTION: Swipe & Tap Event Setup =====
+    function updateSwipeListeners() {
+      const viewer = document.getElementById("viewer");
+      if (currentFlow === "swipe") {
+        document.getElementById("tap-left").style.pointerEvents = "none";
+        document.getElementById("tap-right").style.pointerEvents = "none";
+        viewer.addEventListener("touchstart", handleTouchStart, false);
+        viewer.addEventListener("touchend", handleTouchEnd, false);
+        document.getElementById("gesture-left").style.pointerEvents = "auto";
+        document.getElementById("gesture-right").style.pointerEvents = "auto";
+        document.getElementById("gesture-left").addEventListener("click", swipePrev);
+        document.getElementById("gesture-right").addEventListener("click", swipeNext);
+      } else {
+        viewer.removeEventListener("touchstart", handleTouchStart, false);
+        viewer.removeEventListener("touchend", handleTouchEnd, false);
+        document.getElementById("gesture-left").removeEventListener("click", swipePrev);
+        document.getElementById("gesture-right").removeEventListener("click", swipeNext);
+        document.getElementById("gesture-left").style.pointerEvents = "none";
+        document.getElementById("gesture-right").style.pointerEvents = "none";
+        document.getElementById("tap-left").style.pointerEvents = "auto";
+        document.getElementById("tap-right").style.pointerEvents = "auto";
+      }
+    }
+
+    function handleTouchStart(evt) {
+      if (currentFlow !== "swipe") return;
+      const firstTouch = evt.touches[0];
+      xDown = firstTouch.clientX;
+      yDown = firstTouch.clientY;
+    }
+
+    function handleTouchEnd(evt) {
+      if (currentFlow !== "swipe" || !xDown || !yDown) return;
+      let xUp = evt.changedTouches[0].clientX;
+      let yUp = evt.changedTouches[0].clientY;
+      let xDiff = xDown - xUp;
+      let yDiff = yDown - yUp;
+      if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
+        xDiff > 0 ? swipeNext() : swipePrev();
+      }
+      xDown = null;
+      yDown = null;
+    }
+
+    function swipeNext() {
+      if (swipeInProgress) return;
+      swipeInProgress = true;
+      const viewer = document.getElementById("viewer");
+      viewer.classList.add("swipe-transition");
+      viewer.style.transform = "translateX(-100%)";
+      setTimeout(() => {
+        rendition.next();
+        viewer.classList.remove("swipe-transition");
+        viewer.style.transform = "";
+        swipeInProgress = false;
+      }, 300);
+    }
+
+    function swipePrev() {
+      if (swipeInProgress) return;
+      swipeInProgress = true;
+      const viewer = document.getElementById("viewer");
+      viewer.classList.add("swipe-transition");
+      viewer.style.transform = "translateX(100%)";
+      setTimeout(() => {
+        rendition.prev();
+        viewer.classList.remove("swipe-transition");
+        viewer.style.transform = "";
+        swipeInProgress = false;
+      }, 300);
+    }
+
+    // ===== SECTION: Font Switching Setup =====
+    function applyFontSwitch() {
+      const storedFont = localStorage.getItem("reader-font") || "-apple-system";
+      document.getElementById("font-switcher").value = storedFont;
+      if (rendition) {
+        if (storedFont === "OpenDyslexic") {
+          const styleElTemplate = document.createElement("style");
+          styleElTemplate.innerHTML = `
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
+              font-weight: bold;
+              font-style: normal;
+            }
+            body { font-family: "OpenDyslexic", sans-serif !important; }
+          `;          rendition.getContents().forEach(contents => {
+            const doc = contents.document;
+            let existingStyle = doc.getElementById("OpenDyslexicStyle");
+            if (!existingStyle) {
+              existingStyle = styleElTemplate.cloneNode(true);
+              existingStyle.id = "OpenDyslexicStyle";
+              doc.head.appendChild(existingStyle);
+            }
+          });
+        } else {
+          rendition.themes.override("body", {
+            "font-family": storedFont + ", serif !important"
+          });
+          rendition.getContents().forEach(contents => {
+            const doc = contents.document;
+            let styleEl = doc.getElementById("fontOverrideStyle");
+            if (!styleEl) {
+              styleEl = doc.createElement("style");
+              styleEl.id = "fontOverrideStyle";
+              doc.head.appendChild(styleEl);
+            }
+            styleEl.textContent = "body { font-family: " + storedFont + ", serif !important; }";
+          });
+        }
+      }
+    }
+
+    // ===== SECTION: Font Switcher Dropdown Change Event =====
+    document.getElementById("font-switcher").addEventListener("change", function(e) {
+      const selectedFont = e.target.value;
+      localStorage.setItem("reader-font", selectedFont);
+      if (rendition) {
+        if (selectedFont === "OpenDyslexic") {
+          const styleElTemplate = document.createElement("style");
+          styleElTemplate.innerHTML = `
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
+              font-weight: bold;
+              font-style: normal;
+            }
+            body { font-family: "OpenDyslexic", sans-serif !important; }
+          `;
+          rendition.getContents().forEach((contents) => {
+            const doc = contents.document;
+            let existingStyle = doc.getElementById("OpenDyslexicStyle");
+            if (!existingStyle) {
+              existingStyle = styleElTemplate.cloneNode(true);
+              existingStyle.id = "OpenDyslexicStyle";
+              doc.head.appendChild(existingStyle);
+            }
+          });
+        } else {
+          rendition.themes.override("body", {
+            "font-family": selectedFont + ", serif !important"
+          });
+          rendition.getContents().forEach(contents => {
+            const doc = contents.document;
+            let styleEl = doc.getElementById("fontOverrideStyle");
+            if (!styleEl) {
+              styleEl = doc.createElement("style");
+              styleEl.id = "fontOverrideStyle";
+              doc.head.appendChild(styleEl);
+            }
+            styleEl.textContent = "body { font-family: " + selectedFont + ", serif !important; }";
+          });
+        }
+      }
+    });
+
+    // ===== SECTION: Init Book Load =====
+    function initBook(chosenUrl) {
+      if (!chosenUrl) return;
+      currentBookUrl = chosenUrl;
+      bookmarks = [];
+      if (rendition) {
+        rendition.destroy();
+        rendition = null;
+      }
+      if (book) {
+        book.destroy();
+        book = null;
+      }
+      book = ePub(chosenUrl);
+      registerReaderEvents();
+      book.ready.then(() => {
+        initRendition(currentFlow);
+        setTimeout(() => book.locations.generate(1600), 100);        book.loaded.metadata.then(meta => {
+          document.getElementById("book-title").textContent = meta.title || "Untitled";
+          document.getElementById("book-author").textContent = meta.creator || "";
+        });
+
+        book.loaded.cover
+          .then(coverUrl => book.archive.createUrl(coverUrl, { base64: true }))
+          .then(coverDataUrl => {
+            document.getElementById("cover").src = coverDataUrl;
+          })
+          .catch(() => console.warn("No cover image found."));
+
+        book.loaded.navigation.then(nav => {
+          const tocPanel = document.getElementById("toc-panel");
+          tocPanel.innerHTML = "";
+          nav.toc.forEach(chapter => {
+            if (/contents|table of contents/i.test(chapter.label)) return;
+            const link = document.createElement("a");
+            link.textContent = chapter.label;
+            link.href = "#";
+            link.addEventListener("click", e => {
+              e.preventDefault();
+              rendition.display(chapter.href);
+              tocPanel.classList.remove("open");
+            });
+            tocPanel.appendChild(link);
+          });
+
+          // ===== SECTION: Load Contact Image from About/Author Page =====
+          const aboutItem = nav.toc.find(chapter => /about|author/i.test(chapter.label));
+          if (aboutItem) {
+            const spineItem = book.spine.getByHref(aboutItem.href);
+            if (spineItem) {
+              spineItem.load(book.archive).then(doc => {
+                const imgElem = doc.querySelector("img[src$='.jpg'], img[src$='.jpeg'], img[src$='.png']");
+                if (imgElem) {
+                  const src = imgElem.getAttribute("src");
+                  book.archive.createUrl(src, { base64: true }).then(url => {
+                    const contactContainer = document.getElementById("contact-image");
+                    contactContainer.innerHTML = "";
+                    const image = document.createElement("img");
+                    image.src = url;
+                    contactContainer.appendChild(image);
+                  }).catch(err => console.warn("Error creating URL for contact image:", err));
+                }
+              }).catch(err => console.warn("Error loading About/Author item:", err));
+            }
+          }
+        });
+
+        applyFontSwitch();
+        loadBookmarks();
+      });
+    }
+
+    // ===== SECTION: Initialize Rendition Based on Flow Mode =====
+    function initRendition(flowMode, cfi) {
+      rendition = book.renderTo("viewer", {
+        width: "100%",
+        height: "100%",
+        flow: flowMode === "scrolled-doc" ? "scrolled" : "paginated",
+        snap: (flowMode === "scrolled-doc") ? false : true,
+        spread: "always",
+        direction: "ltr"
+      });
+      registerHooks();
+      const storedCfi = localStorage.getItem("last-location-" + currentBookUrl);
+      rendition.display(cfi || storedCfi || undefined);
+
+      rendition.on("relocated", location => {
+        if (location && location.start && location.start.cfi) {
+          localStorage.setItem("last-location-" + currentBookUrl, location.start.cfi);
+          updateBookmarkStar();
+        }
+      });
+
+      rendition.on("rendered", () => {
+        applyThemeStylesFromCurrent();
+        applyFontSwitch();
+        updateBookmarkStar();
+      });
+
+      updateSwipeListeners();
+      if (flowMode === "scrolled-doc") {
+        document.getElementById("toc-panel").classList.remove("open");
+      }
+    }
+
+    // ===== SECTION: Register Rendering Hooks =====
+    function registerHooks() {
+      rendition.hooks.content.register(contents => {
+        const doc = contents.document;        if (currentFlow === "scrolled-doc") {
+          doc.body.style.margin = "0";
+          doc.body.style.padding = "0";
+          doc.documentElement.style.margin = "0";
+          doc.documentElement.style.padding = "0";
+          doc.body.style.paddingBottom = "30px";
+
+          document.getElementById("tap-left").style.pointerEvents = "none";
+          document.getElementById("tap-right").style.pointerEvents = "none";
+
+          const sentinel = doc.createElement("div");
+          sentinel.style.width = "100%";
+          sentinel.style.height = "1px";
+          doc.body.appendChild(sentinel);
+
+          const observer = new IntersectionObserver(entries => {
+            const continueBar = document.getElementById("continue-bar");
+            entries.forEach(entry => {
+              continueBar.style.display = entry.isIntersecting ? "block" : "none";
+            });
+          }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" });
+          observer.observe(sentinel);
+        } else {
+          document.getElementById("tap-left").style.pointerEvents = "auto";
+          document.getElementById("tap-right").style.pointerEvents = "auto";
+          doc.body.style.paddingTop = "20px";
+          doc.body.style.paddingBottom = "30px";
+        }
+
+        rendition.themes.fontSize(currentFontSize + "%");
+        document.getElementById("viewer").style.overflow = "hidden";
+        applyThemeStylesFromCurrent();
+      });
+    }
+
+    // ===== SECTION: Reader Tap Event Listener Setup =====
+    function registerReaderEvents() {
+      document.getElementById("tap-left").addEventListener("click", tapLeftHandler);
+      document.getElementById("tap-right").addEventListener("click", tapRightHandler);
+    }
+
+    // ===== SECTION: Menu Toggle Logic =====
+    let openMenuType = null;
+    function toggleMenu(type) {
+      if (openMenuType === type) {
+        closeMenus();
+      } else {
+        closeMenus();
+        if (type === 'menu') {
+          document.getElementById("expanded-menu").classList.add("open");
+          document.getElementById("menu-backdrop").style.display = "block";
+        } else if (type === 'settings') {
+          document.getElementById("settings-modal").classList.add("open");
+        }
+        openMenuType = type;
+      }
+    }
+
+    function closeMenus() {
+      document.getElementById("expanded-menu").classList.remove("open");
+      document.getElementById("settings-modal").classList.remove("open");
+      document.getElementById("menu-backdrop").style.display = "none";
+      openMenuType = null;
+    }
+
+    // ===== SECTION: Apply Theme to iFrame Reader =====
+    function applyThemeStylesFromCurrent() {
+      if (!rendition) return;
+
+      let bg = "#fff", color = "#000";
+      if (document.body.classList.contains("night-mode")) {
+        bg = "#111"; color = "#eee";
+      } else if (document.body.classList.contains("sepia-mode")) {
+        bg = "#f4ecd8"; color = "#000";
+      } else if (document.body.classList.contains("matcha-mode")) {
+        bg = "#C3D8B6"; color = "#000";
+      } else if (document.body.classList.contains("light-mode")) {
+        bg = "#f5f5f5"; color = "#000";
+      }
+
+      rendition.getContents().forEach(contents => {
+        const doc = contents.document;
+        doc.documentElement.style.background = bg;
+        doc.body.style.background = bg;
+        doc.body.style.color = color;
+      });
+    }
+
+    // ===== SECTION: Toolbar Event Bindings =====
+    document.getElementById("menu-toggle").addEventListener("click", () => {
+      closeMenus();
+      toggleMenu('menu');
+    });
+    document.getElementById("toc-toggle").addEventListener("click", () => {
+      document.getElementById("toc-panel").classList.toggle("open");
+    });
+    document.getElementById("settings-toggle").addEventListener("click", () => {
+      closeMenus();
+      toggleMenu('settings');
+    });    document.getElementById("theme-toggle").addEventListener("click", () => {
+      closeMenus();
+      if (document.body.classList.contains("night-mode")) {
+        changeTheme(lastNonNightTheme);
+      } else {
+        lastNonNightTheme = document.getElementById("theme-select").value;
+        changeTheme("night");
+      }
+    });
+
+    // ===== SECTION: Bookmark Toolbar Actions =====
+    document.getElementById("bookmark-toggle").addEventListener("click", () => {
+      toggleBookmark();
+    });
+
+    document.getElementById("bookmark-dropdown").addEventListener("click", () => {
+      toggleBookmarkDropdown();
+    });
+
+    // ===== SECTION: Reading Mode Switcher =====
+    document.getElementById("reading-mode").addEventListener("change", e => {
+      const newMode = e.target.value;
+      localStorage.setItem("reading-mode", newMode);
+      currentFlow = newMode;
+      if (!rendition || !book) return;
+      const currentLocation = rendition.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
+      rendition.destroy();
+      setTimeout(() => {
+        initRendition(newMode, currentLocation);
+      }, 50);
+    });
+
+    // ===== SECTION: Theme Selector =====
+    document.getElementById("theme-select").addEventListener("change", e => {
+      changeTheme(e.target.value);
+    });
+
+    // ===== SECTION: Font Size Control =====
+    function changeFontSize(delta) {
+      currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
+      localStorage.setItem("reader-font-size", currentFontSize);
+      if (rendition) {
+        rendition.themes.fontSize(currentFontSize + "%");
+      }
+    }
+
+    // ===== SECTION: Theme Changer =====
+    function changeTheme(theme) {
+      document.body.className = "";
+      if (theme === "night") {
+        document.body.classList.add("night-mode");
+      } else if (theme === "sepia") {
+        document.body.classList.add("sepia-mode");
+      } else if (theme === "matcha") {
+        document.body.classList.add("matcha-mode");
+      } else {
+        document.body.classList.add("light-mode");
+      }
+
+      document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+      localStorage.setItem("reader-theme", theme);
+      document.getElementById("theme-select").value = theme;
+      applyThemeStylesFromCurrent();
+    }
+
+    // ===== SECTION: Continue Bar Tap Logic =====
+    document.getElementById("continue-bar").addEventListener("click", () => {
+      if (!rendition || currentFlow !== "scrolled-doc") {
+        if (rendition) rendition.next();
+        return;
+      }
+      const loc = rendition.currentLocation();
+      if (loc && loc.start && typeof loc.start.index !== "undefined") {
+        const currentIndex = loc.start.index;
+        const nextItem = book.spine.get(currentIndex + 1);
+        if (nextItem) {
+          rendition.display(nextItem.href);
+        } else {
+          console.warn("No next chapter found.");
+        }
+      } else {
+        console.warn("Invalid current location:", loc);
+      }
+    });
+
+    // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
+    if (theBookUrl) {
+      initBook(theBookUrl);
+    }
+
+    // ===== SECTION: Apply Last Saved Theme on Load =====
+    const savedTheme = localStorage.getItem("reader-theme") || "light";
+    document.getElementById("theme-select").value = savedTheme;
+    changeTheme(savedTheme);
+  </script>
 </body>
 </html>
