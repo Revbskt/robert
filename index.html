@@ -651,7 +651,7 @@
           // ===== SECTION: Load Contact Image from About/Author Page =====
           const aboutItem = nav.toc.find(chapter => /about|author/i.test(chapter.label));
           if (aboutItem) {
-            const spineItem = book.spine.getByHref(aboutItem.href);
+            const spineItem = book.spine.get(book.spine.hrefs.indexOf(aboutItem.href));
             if (spineItem) {
               spineItem.load(book.archive).then(doc => {
                 const imgElem = doc.querySelector("img[src$='.jpg'], img[src$='.jpeg'], img[src$='.png']");
