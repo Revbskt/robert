@@ -2,141 +2,140 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Highlight Mode Sandbox</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Highlight Mode Tester</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: sans-serif;
-      background: #f9f9f9;
-      color: #333;
     }
     #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #222;
+      color: #fff;
+      height: 40px;
       display: flex;
-      justify-content: space-between;
+      justify-content: space-around;
       align-items: center;
-      padding: 0.5rem 1rem;
-      background: #eee;
-      border-bottom: 1px solid #ccc;
+      z-index: 1000;
     }
-    #toolbar button {
-      font-size: 18px;
-      padding: 0.4rem 0.8rem;
-      border: none;
-      background: #ddd;
-      border-radius: 4px;
-      cursor: pointer;
+    #viewer {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
     }
-    #toolbar button:hover {
-      background: #ccc;
-    }
-    #reader {
-      padding: 1rem;
-      line-height: 1.6;
+    .page, .scrolled {
+      height: 100%;
+      width: 100%;
+      padding: 20px;
+      box-sizing: border-box;
       overflow-y: auto;
-      height: calc(100vh - 60px);
-    }
-    .page {
       display: none;
     }
-    .page.active {
+    .page.active, .scrolled.active {
       display: block;
+    }
+    #tap-left, #tap-right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      z-index: 999;
+    }
+    #tap-left { left: 0; }
+    #tap-right { right: 0; }
+    button {
+      background: none;
+      border: 1px solid #fff;
+      color: white;
+      padding: 4px 10px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="toolbar">
-    <button id="menu-btn">☰</button>
-    <span>Highlight Sandbox</span>
-    <button id="toggle-mode">Scroll Mode</button>
+    <button onclick="toggleMode()">Toggle Mode</button>
+    <span id="mode-label">Page Mode</span>
   </div>
 
-  <div id="reader"></div>
+  <div id="viewer">
+    <div id="tap-left" onclick="prevPage()"></div>
+    <div id="tap-right" onclick="nextPage()"></div>
+    <div class="page active" id="page-0">
+      <p>Page 1: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin quis justo at libero malesuada ultrices. Nullam congue libero sit amet nisi malesuada, nec varius justo porta.</p>
+    </div>
+    <div class="page" id="page-1">
+      <p>Page 2: Integer tincidunt, nibh in aliquam fringilla, erat erat suscipit lorem, eget ullamcorper nulla est a risus. Aenean eleifend purus sed neque malesuada posuere.</p>
+    </div>
+    <div class="page" id="page-2">
+      <p>Page 3: Vivamus scelerisque facilisis elit, vel placerat neque fringilla nec. Sed porta, metus nec vulputate dapibus, lorem risus finibus nisi, non gravida nunc sem id turpis.</p>
+    </div>
+    <div class="scrolled" id="scroll-mode">
+      <p><strong>Scroll Mode:</strong></p>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin quis justo at libero malesuada ultrices. Nullam congue libero sit amet nisi malesuada, nec varius justo porta.</p>
+      <p>Integer tincidunt, nibh in aliquam fringilla, erat erat suscipit lorem, eget ullamcorper nulla est a risus. Aenean eleifend purus sed neque malesuada posuere.</p>
+      <p>Vivamus scelerisque facilisis elit, vel placerat neque fringilla nec. Sed porta, metus nec vulputate dapibus, lorem risus finibus nisi, non gravida nunc sem id turpis.</p>
+      <p>Curabitur tristique, turpis sed cursus facilisis, sapien felis sodales velit, ac tincidunt erat nulla a mi. Mauris posuere justo non sapien pretium dapibus.</p>
+    </div>
+  </div>
 
   <script>
-    let isScrollMode = true;
-    const toggleBtn = document.getElementById("toggle-mode");
-    const reader = document.getElementById("reader");
+    let currentPage = 0;
+    let mode = 'page'; // or 'scroll'
 
-    toggleBtn.addEventListener("click", () => {
-      isScrollMode = !isScrollMode;
-      toggleBtn.textContent = isScrollMode ? "Scroll Mode" : "Page Mode";
-      renderText(sampleText);
-    });
+    function showPage(n) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const page = document.getElementById(`page-${n}`);
+      if (page) page.classList.add('active');
+    }
 
-    const sampleText = Array(60).fill().map((_, i) => 
-      `This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-      `This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`\
-       This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-      `This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-       This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-      `This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-    This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-      `This is paragraph ${i + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-       Quisque sit amet accumsan tortor. Donec vel vestibulum diam. Nulla facilisi. 
-       Curabitur in finibus sapien. Integer nec justo euismod, suscipit nulla ac, 
-       tincidunt quam. Phasellus feugiat facilisis elit, sed tempor nulla dapibus at.`
-    );
-
-    function renderText(paragraphs) {
-      reader.innerHTML = "";
-      if (isScrollMode) {
-        paragraphs.forEach(text => {
-          const p = document.createElement("p");
-          p.textContent = text;
-          reader.appendChild(p);
-        });
-        reader.style.overflowY = "auto";
-      } else {
-        paragraphs.forEach((text, i) => {
-          const div = document.createElement("div");
-          div.className = "page" + (i === 0 ? " active" : "");
-          div.textContent = text;
-          reader.appendChild(div);
-        });
-        reader.style.overflowY = "hidden";
-        setupPageNavigation();
+    function nextPage() {
+      if (mode !== 'page') return;
+      const next = currentPage + 1;
+      if (document.getElementById(`page-${next}`)) {
+        currentPage = next;
+        showPage(currentPage);
       }
     }
 
-    function setupPageNavigation() {
-      let currentPage = 0;
-      document.addEventListener("keydown", e => {
-        if (isScrollMode) return;
-        const pages = document.querySelectorAll(".page");
-        pages[currentPage].classList.remove("active");
-        if (e.key === "ArrowRight") {
-          currentPage = Math.min(currentPage + 1, pages.length - 1);
-        } else if (e.key === "ArrowLeft") {
-          currentPage = Math.max(currentPage - 1, 0);
-        }
-        pages[currentPage].classList.add("active");
-      });
+    function prevPage() {
+      if (mode !== 'page') return;
+      const prev = currentPage - 1;
+      if (document.getElementById(`page-${prev}`)) {
+        currentPage = prev;
+        showPage(currentPage);
+      }
     }
 
-    // Initial render
-    renderText(sampleText);
+    function toggleMode() {
+      const label = document.getElementById("mode-label");
+      if (mode === 'page') {
+        mode = 'scroll';
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('scroll-mode').classList.add('active');
+        document.getElementById('tap-left').style.display = 'none';
+        document.getElementById('tap-right').style.display = 'none';
+        label.textContent = "Scroll Mode";
+      } else {
+        mode = 'page';
+        document.getElementById('scroll-mode').classList.remove('active');
+        showPage(currentPage);
+        document.getElementById('tap-left').style.display = 'block';
+        document.getElementById('tap-right').style.display = 'block';
+        label.textContent = "Page Mode";
+      }
+    }
+
+    showPage(currentPage);
   </script>
 </body>
 </html>
