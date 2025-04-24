@@ -746,42 +746,35 @@
       document.getElementById("tap-right").addEventListener("click", tapRightHandler);
     }
 
-<!-- ===== SECTION: Menu Toggle Logic ===== -->
+<!-- ===== SECTION: Menu Toggle Logic & Reader Setup ===== -->
 <script>
-  // ------------------------------------------
-  // tiny helper to shorten element look-ups
+  // helper
   const $ = id => document.getElementById(id);
 
-  // ==== 0.  Critical DOM sanity-check  ====
-  ["expanded-menu", "settings-modal", "menu-backdrop", "continue-bar"]
+  // 0. DOM sanity-check
+  ["expanded-menu","settings-modal","menu-backdrop","continue-bar","theme-toggle","theme-select"]
     .forEach(id => {
-      if (!$(id)) {
-        console.error(`💥  Missing required element: #${id}`);
-      }
+      if (!$(id)) console.error(`Missing element #${id}`);
     });
 
-  // surface any silent epub.js promise failures
-  window.addEventListener("unhandledrejection",
-    e => console.error("🔴 Unhandled promise rejection:", e.reason)
+  // surface silent rejections
+  window.addEventListener("unhandledrejection", e =>
+    console.error("Unhandled promise:", e.reason)
   );
 
+  // ===== Menu Toggle =====
   let openMenuType = null;
-
   function toggleMenu(type) {
-    if (openMenuType === type) {
-      closeMenus();
-    } else {
-      closeMenus();
-      if (type === "menu") {
-        $("expanded-menu").classList.add("open");
-        $("menu-backdrop").style.display = "block";
-      } else if (type === "settings") {
-        $("settings-modal").classList.add("open");
-      }
-      openMenuType = type;
+    if (openMenuType === type) return closeMenus();
+    closeMenus();
+    if (type === "menu") {
+      $("expanded-menu").classList.add("open");
+      $("menu-backdrop").style.display = "block";
+    } else if (type === "settings") {
+      $("settings-modal").classList.add("open");
     }
+    openMenuType = type;
   }
-
   function closeMenus() {
     $("expanded-menu").classList.remove("open");
     $("settings-modal").classList.remove("open");
@@ -789,86 +782,70 @@
     openMenuType = null;
   }
 
-  // ===== SECTION: Apply Theme to iFrame Reader =====
+  // ===== Apply Theme =====
   function applyThemeStylesFromCurrent() {
     if (!window.rendition) return;
-    console.log("» applyThemeStylesFromCurrent reached");
-
-    let bg = "#fff", color = "#000";
-    if (document.body.classList.contains("night-mode")) {
-      bg = "#111"; color = "#eee";
-    } else if (document.body.classList.contains("sepia-mode")) {
-      bg = "#f4ecd8";
-    } else if (document.body.classList.contains("matcha-mode")) {
-      bg = "#C3D8B6";
-    } else {
-      bg = "#f5f5f5";
-    }
-
-    rendition.getContents().forEach(contents => {
-      const doc = contents.document;
-      doc.documentElement.style.background = bg;
-      doc.body.style.background = bg;
-      doc.body.style.color = color;
+    let bg="#fff", color="#000";
+    if (document.body.classList.contains("night-mode")) { bg="#111"; color="#eee"; }
+    else if (document.body.classList.contains("sepia-mode")) bg="#f4ecd8";
+    else if (document.body.classList.contains("matcha-mode")) bg="#C3D8B6";
+    else bg="#f5f5f5";
+    rendition.getContents().forEach(c => {
+      c.document.documentElement.style.background = bg;
+      c.document.body.style.background = bg;
+      c.document.body.style.color = color;
     });
   }
 
-  // ===== SECTION: Font Size Control =====
+  // ===== Font Size Control =====
+  let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
   function changeFontSize(delta) {
-    window.currentFontSize = Math.max(
-      60,
-      Math.min(200, (currentFontSize || 100) + delta * 10)
-    );
+    currentFontSize = Math.min(200, Math.max(60, currentFontSize + delta*10));
     localStorage.setItem("reader-font-size", currentFontSize);
-    if (window.rendition) {
-      rendition.themes.fontSize(currentFontSize + "%");
-    }
+    window.rendition?.themes.fontSize(currentFontSize + "%");
   }
 
-  // ===== SECTION: Theme Changer =====
+  // ===== Theme Changer =====
   function changeTheme(theme) {
     document.body.className = "";
-    if (theme === "night")      document.body.classList.add("night-mode");
-    else if (theme === "sepia") document.body.classList.add("sepia-mode");
-    else if (theme === "matcha")document.body.classList.add("matcha-mode");
-    else                        document.body.classList.add("light-mode");
+    if (theme==="night")      document.body.classList.add("night-mode");
+    else if (theme==="sepia") document.body.classList.add("sepia-mode");
+    else if (theme==="matcha")document.body.classList.add("matcha-mode");
+    else                      document.body.classList.add("light-mode");
 
     $("theme-toggle").textContent =
       document.body.classList.contains("night-mode") ? "☀️" : "🌙";
-
     localStorage.setItem("reader-theme", theme);
     $("theme-select").value = theme;
     applyThemeStylesFromCurrent();
   }
 
-  // ===== SECTION: Continue Bar Tap Logic =====
+  // ===== Continue-Bar Tap =====
   $("continue-bar")?.addEventListener("click", () => {
     if (!window.rendition || window.currentFlow !== "scrolled-doc") {
-      if (rendition) rendition.next();
+      rendition?.next();
       return;
     }
     const loc = rendition.currentLocation();
-    if (loc?.start?.index !== undefined) {
-      const nextItem = book.spine.get(loc.start.index + 1);
-      nextItem ? rendition.display(nextItem.href)
-               : console.warn("No next chapter found.");
+    if (loc?.start?.index != null) {
+      const next = book.spine.get(loc.start.index + 1);
+      next ? rendition.display(next.href) : console.warn("No next chapter");
     } else {
-      console.warn("Invalid current location:", loc);
+      console.warn("Bad location", loc);
     }
   });
 
-  // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
-  if (window.theBookUrl) {
-    console.log("» initBook called with", theBookUrl);
-    initBook(theBookUrl);
-  } else {
-    console.warn("⚠️  theBookUrl is undefined – reader never initialised.");
-  }
-
-  // ===== SECTION: Apply Last Saved Theme on Load =====
+  // ===== Init Book & Apply Stored Theme =====
   const savedTheme = localStorage.getItem("reader-theme") || "light";
   $("theme-select").value = savedTheme;
   changeTheme(savedTheme);
+
+  if (window.theBookUrl) {
+    console.log("initBook with", theBookUrl);
+    initBook(theBookUrl);
+  } else {
+    console.warn("No theBookUrl – library shows");
+  }
 </script>
 </body>
 </html>
