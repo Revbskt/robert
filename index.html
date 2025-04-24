@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Highlight Mode Tester</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+    }
+    #toolbar {
+      height: 40px;
+      background: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      border-bottom: 1px solid #ccc;
+    }
+    #toolbar button {
+      font-size: 18px;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    #viewer {
+      padding: 20px;
+      height: calc(100vh - 40px);
+      overflow-y: auto;
+    }
+    #viewer.page-mode {
+      overflow: hidden;
+    }
+    .chapter {
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="menu-toggle">☰</button>
+    <div>
+      <button onclick="setMode('page')">Page Mode</button>
+      <button onclick="setMode('scroll')">Scroll Mode</button>
+    </div>
+  </div>
+  <div id="viewer" class="scroll-mode"></div>
+
+  <script>
+    function setMode(mode) {
+      const viewer = document.getElementById("viewer");
+      viewer.classList.remove("scroll-mode", "page-mode");
+      viewer.classList.add(mode === "scroll" ? "scroll-mode" : "page-mode");
+    }
+
+    async function loadBook() {
+      try {
+        const response = await fetch("/ebooks/liars.json");
+        const book = await response.json();
+        const viewer = document.getElementById("viewer");
+        viewer.innerHTML = "";
+        book.chapters.forEach((chapter, index) => {
+          const div = document.createElement("div");
+          div.className = "chapter";
+          div.innerHTML = `<h2>Chapter ${index + 1}</h2><p>${chapter}</p>`;
+          viewer.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Failed to load /ebooks/liars.json:", err);
+        document.getElementById("viewer").textContent = "Error loading book.";
+      }
+    }
+
+    loadBook();
+  </script>
+</body>
+</html>
