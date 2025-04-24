@@ -412,28 +412,28 @@
     let currentFlow = localStorage.getItem("reading-mode") || "swipe";
 
     // ===== FUNCTION: Tap vs Swipe Handling =====
-    function updateSwipeListeners() {
-      const viewer = document.getElementById("viewer");
-      if (currentFlow === "swipe") {
-        document.getElementById("tap-left").style.pointerEvents = "none";
-        document.getElementById("tap-right").style.pointerEvents = "none";
-        viewer.addEventListener("touchstart", handleTouchStart, false);
-        viewer.addEventListener("touchend", handleTouchEnd, false);
-        document.getElementById("gesture-left").style.pointerEvents = "auto";
-        document.getElementById("gesture-right").style.pointerEvents = "auto";
-        document.getElementById("gesture-left").addEventListener("click", swipePrev);
-        document.getElementById("gesture-right").addEventListener("click", swipeNext);
-      } else {
-        viewer.removeEventListener("touchstart", handleTouchStart, false);
-        viewer.removeEventListener("touchend", handleTouchEnd, false);
-        document.getElementById("gesture-left").removeEventListener("click", swipePrev);
-        document.getElementById("gesture-right").removeEventListener("click", swipeNext);
-        document.getElementById("gesture-left").style.pointerEvents = "none";
-        document.getElementById("gesture-right").style.pointerEvents = "none";
-        document.getElementById("tap-left").style.pointerEvents = "auto";
-        document.getElementById("tap-right").style.pointerEvents = "auto";
-      }
-    }
+   // function updateSwipeListeners() {
+   //   const viewer = document.getElementById("viewer");
+   //   if (currentFlow === "swipe") {
+   //     document.getElementById("tap-left").style.pointerEvents = "none";
+    //    document.getElementById("tap-right").style.pointerEvents = "none";
+    //    viewer.addEventListener("touchstart", handleTouchStart, false);
+   //     viewer.addEventListener("touchend", handleTouchEnd, false);
+    //    document.getElementById("gesture-left").style.pointerEvents = "auto";
+    //    document.getElementById("gesture-right").style.pointerEvents = "auto";
+    //    document.getElementById("gesture-left").addEventListener("click", swipePrev);
+    //    document.getElementById("gesture-right").addEventListener("click", swipeNext);
+    //  } else {
+     //   viewer.removeEventListener("touchstart", handleTouchStart, false);
+    //    viewer.removeEventListener("touchend", handleTouchEnd, false);
+     //   document.getElementById("gesture-left").removeEventListener("click", swipePrev);
+//        document.getElementById("gesture-right").removeEventListener("click", swipeNext);
+    //    document.getElementById("gesture-left").style.pointerEvents = "none";
+  //      document.getElementById("gesture-right").style.pointerEvents = "none";
+    //    document.getElementById("tap-left").style.pointerEvents = "auto";
+    //    document.getElementById("tap-right").style.pointerEvents = "auto";
+    //  }
+   // }
         // ===== SECTION: Swipe & Tap Event Setup =====
     function updateSwipeListeners() {
       const viewer = document.getElementById("viewer");
