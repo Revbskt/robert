@@ -647,34 +647,27 @@
             });
             tocPanel.appendChild(link);
           });
-
-          // ===== SECTION: Load Contact Image from About/Author Page =====
-          const aboutItem = nav.toc.find(chapter => /about|author/i.test(chapter.label));
-          if (aboutItem) {
-            const spineItem = book.spine.get(book.spine.hrefs.indexOf(aboutItem.href));
-            if (spineItem) {
-              spineItem.load(book.archive).then(doc => {
-                const imgElem = doc.querySelector("img[src$='.jpg'], img[src$='.jpeg'], img[src$='.png']");
-                if (imgElem) {
-                  const src = imgElem.getAttribute("src");
-                  book.archive.createUrl(src, { base64: true }).then(url => {
-                    const contactContainer = document.getElementById("contact-image");
-                    contactContainer.innerHTML = "";
-                    const image = document.createElement("img");
-                    image.src = url;
-                    contactContainer.appendChild(image);
-                  }).catch(err => console.warn("Error creating URL for contact image:", err));
-                }
-              }).catch(err => console.warn("Error loading About/Author item:", err));
-            }
-          }
-        });
-
-        applyFontSwitch();
-        loadBookmarks();
-      });
-    }
-
+// ===== SECTION: Load Contact Image from About/Author Page =====
+const aboutItem = nav.toc.find(chapter => /about|author/i.test(chapter.label));
+if (aboutItem) {
+  const spineItem = book.spine.items.find(item => item.href.includes(aboutItem.href));
+  if (spineItem) {
+    spineItem.load(book.archive).then(doc => {
+      const imgElem = doc.querySelector("img[src$='.jpg'], img[src$='.jpeg'], img[src$='.png']");
+      if (imgElem) {
+        const src = imgElem.getAttribute("src");
+        book.archive.createUrl(src, { base64: true }).then(url => {
+          const contactContainer = document.getElementById("contact-image");
+          contactContainer.innerHTML = "";
+          const image = document.createElement("img");
+          image.src = url;
+          contactContainer.appendChild(image);
+        }).catch(err => console.warn("Error creating URL for contact image:", err));
+      }
+    }).catch(err => console.warn("Error loading About/Author item:", err));
+  }
+}
+  
     // ===== SECTION: Initialize Rendition Based on Flow Mode =====
     function initRendition(flowMode, cfi) {
       rendition = book.renderTo("viewer", {
