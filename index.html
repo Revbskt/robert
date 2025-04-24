@@ -869,7 +869,7 @@
       applyThemeStylesFromCurrent();
     }
 
-    // ===== SECTION: Continue Bar Tap Logic =====
+       // ===== SECTION: Continue Bar Tap Logic =====
     document.getElementById("continue-bar").addEventListener("click", () => {
       if (!rendition || currentFlow !== "scrolled-doc") {
         if (rendition) rendition.next();
@@ -887,8 +887,9 @@
       } else {
         console.warn("Invalid current location:", loc);
       }
-    });
-            // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
+    }); // <-- This closing line was missing
+
+    // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
     if (theBookUrl) {
       initBook(theBookUrl);
     }
