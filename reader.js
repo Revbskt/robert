@@ -491,3 +491,55 @@ document.getElementById("continue-bar").addEventListener("click", () => {
 
 if (theBookUrl) initBook(theBookUrl);
 changeTheme(localStorage.getItem("reader-theme") || "light");
+//Highlight Mode Start
+// ===== SECTION: Highlight Mode Toggle Button =====
+let highlightModeActive = false;
+let previousFlowMode = localStorage.getItem("reading-mode") || "swipe";
+
+function toggleHighlightMode() {
+  highlightModeActive = !highlightModeActive;
+  const highlightButton = document.getElementById("highlight-toggle");
+
+  if (highlightModeActive) {
+    // Save current mode, switch to scrolled-doc, disable tap zones
+    previousFlowMode = currentFlow;
+    localStorage.setItem("reading-mode", "scrolled-doc");
+    currentFlow = "scrolled-doc";
+    highlightButton.style.color = "gold";
+    disableTapZones();
+  } else {
+    // Revert back to previous mode
+    localStorage.setItem("reading-mode", previousFlowMode);
+    currentFlow = previousFlowMode;
+    highlightButton.style.color = "inherit";
+    enableTapZones();
+  }
+
+  const currentLocation = rendition?.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
+  rendition.destroy();
+  setTimeout(() => {
+    initRendition(currentFlow, currentLocation);
+  }, 50);
+}
+
+function disableTapZones() {
+  document.getElementById("tap-left").style.pointerEvents = "none";
+  document.getElementById("tap-right").style.pointerEvents = "none";
+  document.getElementById("gesture-left").style.pointerEvents = "none";
+  document.getElementById("gesture-right").style.pointerEvents = "none";
+}
+
+function enableTapZones() {
+  if (currentFlow !== "swipe") {
+    document.getElementById("tap-left").style.pointerEvents = "auto";
+    document.getElementById("tap-right").style.pointerEvents = "auto";
+    document.getElementById("gesture-left").style.pointerEvents = "none";
+    document.getElementById("gesture-right").style.pointerEvents = "none";
+  } else {
+    document.getElementById("tap-left").style.pointerEvents = "none";
+    document.getElementById("tap-right").style.pointerEvents = "none";
+    document.getElementById("gesture-left").style.pointerEvents = "auto";
+    document.getElementById("gesture-right").style.pointerEvents = "auto";
+  }
+}
+//highlight mode stop
