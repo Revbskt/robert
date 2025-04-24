@@ -775,14 +775,19 @@
       if (!rendition) return;
 
       let bg = "#fff", color = "#000";
+
       if (document.body.classList.contains("night-mode")) {
-        bg = "#111"; color = "#eee";
+        bg = "#111";
+        color = "#eee";
       } else if (document.body.classList.contains("sepia-mode")) {
-        bg = "#f4ecd8"; color = "#000";
+        bg = "#f4ecd8";
+        color = "#000";
       } else if (document.body.classList.contains("matcha-mode")) {
-        bg = "#C3D8B6"; color = "#000";
+        bg = "#C3D8B6";
+        color = "#000";
       } else if (document.body.classList.contains("light-mode")) {
-        bg = "#f5f5f5"; color = "#000";
+        bg = "#f5f5f5";
+        color = "#000";
       }
 
       rendition.getContents().forEach(contents => {
@@ -792,54 +797,6 @@
         doc.body.style.color = color;
       });
     }
-
-    // ===== SECTION: Toolbar Event Bindings =====
-    document.getElementById("menu-toggle").addEventListener("click", () => {
-      closeMenus();
-      toggleMenu('menu');
-    });
-    document.getElementById("toc-toggle").addEventListener("click", () => {
-      document.getElementById("toc-panel").classList.toggle("open");
-    });
-    document.getElementById("settings-toggle").addEventListener("click", () => {
-      closeMenus();
-      toggleMenu('settings');
-    });    document.getElementById("theme-toggle").addEventListener("click", () => {
-      closeMenus();
-      if (document.body.classList.contains("night-mode")) {
-        changeTheme(lastNonNightTheme);
-      } else {
-        lastNonNightTheme = document.getElementById("theme-select").value;
-        changeTheme("night");
-      }
-    });
-
-    // ===== SECTION: Bookmark Toolbar Actions =====
-    document.getElementById("bookmark-toggle").addEventListener("click", () => {
-      toggleBookmark();
-    });
-
-    document.getElementById("bookmark-dropdown").addEventListener("click", () => {
-      toggleBookmarkDropdown();
-    });
-
-    // ===== SECTION: Reading Mode Switcher =====
-    document.getElementById("reading-mode").addEventListener("change", e => {
-      const newMode = e.target.value;
-      localStorage.setItem("reading-mode", newMode);
-      currentFlow = newMode;
-      if (!rendition || !book) return;
-      const currentLocation = rendition.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
-      rendition.destroy();
-      setTimeout(() => {
-        initRendition(newMode, currentLocation);
-      }, 50);
-    });
-
-    // ===== SECTION: Theme Selector =====
-    document.getElementById("theme-select").addEventListener("change", e => {
-      changeTheme(e.target.value);
-    });
 
     // ===== SECTION: Font Size Control =====
     function changeFontSize(delta) {
@@ -869,7 +826,7 @@
       applyThemeStylesFromCurrent();
     }
 
-       // ===== SECTION: Continue Bar Tap Logic =====
+    // ===== SECTION: Continue Bar Tap Logic =====
     document.getElementById("continue-bar").addEventListener("click", () => {
       if (!rendition || currentFlow !== "scrolled-doc") {
         if (rendition) rendition.next();
@@ -887,7 +844,7 @@
       } else {
         console.warn("Invalid current location:", loc);
       }
-    }); // <-- This closing line was missing
+    });
 
     // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
     if (theBookUrl) {
