@@ -746,115 +746,129 @@
       document.getElementById("tap-right").addEventListener("click", tapRightHandler);
     }
 
-    // ===== SECTION: Menu Toggle Logic =====
-    let openMenuType = null;
-    function toggleMenu(type) {
-      if (openMenuType === type) {
-        closeMenus();
-      } else {
-        closeMenus();
-        if (type === 'menu') {
-          document.getElementById("expanded-menu").classList.add("open");
-          document.getElementById("menu-backdrop").style.display = "block";
-        } else if (type === 'settings') {
-          document.getElementById("settings-modal").classList.add("open");
-        }
-        openMenuType = type;
-      }
-    }
+<!-- ===== SECTION: Menu Toggle Logic ===== -->
+<script>
+  // ------------------------------------------
+  // tiny helper to shorten element look-ups
+  const $ = id => document.getElementById(id);
 
-    function closeMenus() {
-      document.getElementById("expanded-menu").classList.remove("open");
-      document.getElementById("settings-modal").classList.remove("open");
-      document.getElementById("menu-backdrop").style.display = "none";
-      openMenuType = null;
-    }
-
-    // ===== SECTION: Apply Theme to iFrame Reader =====
-    function applyThemeStylesFromCurrent() {
-      if (!rendition) return;
-
-      let bg = "#fff", color = "#000";
-
-      if (document.body.classList.contains("night-mode")) {
-        bg = "#111";
-        color = "#eee";
-      } else if (document.body.classList.contains("sepia-mode")) {
-        bg = "#f4ecd8";
-        color = "#000";
-      } else if (document.body.classList.contains("matcha-mode")) {
-        bg = "#C3D8B6";
-        color = "#000";
-      } else if (document.body.classList.contains("light-mode")) {
-        bg = "#f5f5f5";
-        color = "#000";
-      }
-
-      rendition.getContents().forEach(contents => {
-        const doc = contents.document;
-        doc.documentElement.style.background = bg;
-        doc.body.style.background = bg;
-        doc.body.style.color = color;
-      });
-    }
-
-    // ===== SECTION: Font Size Control =====
-    function changeFontSize(delta) {
-      currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
-      localStorage.setItem("reader-font-size", currentFontSize);
-      if (rendition) {
-        rendition.themes.fontSize(currentFontSize + "%");
-      }
-    }
-
-    // ===== SECTION: Theme Changer =====
-    function changeTheme(theme) {
-      document.body.className = "";
-      if (theme === "night") {
-        document.body.classList.add("night-mode");
-      } else if (theme === "sepia") {
-        document.body.classList.add("sepia-mode");
-      } else if (theme === "matcha") {
-        document.body.classList.add("matcha-mode");
-      } else {
-        document.body.classList.add("light-mode");
-      }
-
-      document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
-      localStorage.setItem("reader-theme", theme);
-      document.getElementById("theme-select").value = theme;
-      applyThemeStylesFromCurrent();
-    }
-
-    // ===== SECTION: Continue Bar Tap Logic =====
-    document.getElementById("continue-bar").addEventListener("click", () => {
-      if (!rendition || currentFlow !== "scrolled-doc") {
-        if (rendition) rendition.next();
-        return;
-      }
-      const loc = rendition.currentLocation();
-      if (loc && loc.start && typeof loc.start.index !== "undefined") {
-        const currentIndex = loc.start.index;
-        const nextItem = book.spine.get(currentIndex + 1);
-        if (nextItem) {
-          rendition.display(nextItem.href);
-        } else {
-          console.warn("No next chapter found.");
-        }
-      } else {
-        console.warn("Invalid current location:", loc);
+  // ==== 0.  Critical DOM sanity-check  ====
+  ["expanded-menu", "settings-modal", "menu-backdrop", "continue-bar"]
+    .forEach(id => {
+      if (!$(id)) {
+        console.error(`💥  Missing required element: #${id}`);
       }
     });
 
-    // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
-    if (theBookUrl) {
-      initBook(theBookUrl);
+  // surface any silent epub.js promise failures
+  window.addEventListener("unhandledrejection",
+    e => console.error("🔴 Unhandled promise rejection:", e.reason)
+  );
+
+  let openMenuType = null;
+
+  function toggleMenu(type) {
+    if (openMenuType === type) {
+      closeMenus();
+    } else {
+      closeMenus();
+      if (type === "menu") {
+        $("expanded-menu").classList.add("open");
+        $("menu-backdrop").style.display = "block";
+      } else if (type === "settings") {
+        $("settings-modal").classList.add("open");
+      }
+      openMenuType = type;
+    }
+  }
+
+  function closeMenus() {
+    $("expanded-menu").classList.remove("open");
+    $("settings-modal").classList.remove("open");
+    $("menu-backdrop").style.display = "none";
+    openMenuType = null;
+  }
+
+  // ===== SECTION: Apply Theme to iFrame Reader =====
+  function applyThemeStylesFromCurrent() {
+    if (!window.rendition) return;
+    console.log("» applyThemeStylesFromCurrent reached");
+
+    let bg = "#fff", color = "#000";
+    if (document.body.classList.contains("night-mode")) {
+      bg = "#111"; color = "#eee";
+    } else if (document.body.classList.contains("sepia-mode")) {
+      bg = "#f4ecd8";
+    } else if (document.body.classList.contains("matcha-mode")) {
+      bg = "#C3D8B6";
+    } else {
+      bg = "#f5f5f5";
     }
 
-    // ===== SECTION: Apply Last Saved Theme on Load =====
-    const savedTheme = localStorage.getItem("reader-theme") || "light";
-    document.getElementById("theme-select").value = savedTheme;
-    changeTheme(savedTheme);
-  </script>
+    rendition.getContents().forEach(contents => {
+      const doc = contents.document;
+      doc.documentElement.style.background = bg;
+      doc.body.style.background = bg;
+      doc.body.style.color = color;
+    });
+  }
+
+  // ===== SECTION: Font Size Control =====
+  function changeFontSize(delta) {
+    window.currentFontSize = Math.max(
+      60,
+      Math.min(200, (currentFontSize || 100) + delta * 10)
+    );
+    localStorage.setItem("reader-font-size", currentFontSize);
+    if (window.rendition) {
+      rendition.themes.fontSize(currentFontSize + "%");
+    }
+  }
+
+  // ===== SECTION: Theme Changer =====
+  function changeTheme(theme) {
+    document.body.className = "";
+    if (theme === "night")      document.body.classList.add("night-mode");
+    else if (theme === "sepia") document.body.classList.add("sepia-mode");
+    else if (theme === "matcha")document.body.classList.add("matcha-mode");
+    else                        document.body.classList.add("light-mode");
+
+    $("theme-toggle").textContent =
+      document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+
+    localStorage.setItem("reader-theme", theme);
+    $("theme-select").value = theme;
+    applyThemeStylesFromCurrent();
+  }
+
+  // ===== SECTION: Continue Bar Tap Logic =====
+  $("continue-bar")?.addEventListener("click", () => {
+    if (!window.rendition || window.currentFlow !== "scrolled-doc") {
+      if (rendition) rendition.next();
+      return;
+    }
+    const loc = rendition.currentLocation();
+    if (loc?.start?.index !== undefined) {
+      const nextItem = book.spine.get(loc.start.index + 1);
+      nextItem ? rendition.display(nextItem.href)
+               : console.warn("No next chapter found.");
+    } else {
+      console.warn("Invalid current location:", loc);
+    }
+  });
+
+  // ===== SECTION: Initialize Book If Found in Query or LocalStorage =====
+  if (window.theBookUrl) {
+    console.log("» initBook called with", theBookUrl);
+    initBook(theBookUrl);
+  } else {
+    console.warn("⚠️  theBookUrl is undefined – reader never initialised.");
+  }
+
+  // ===== SECTION: Apply Last Saved Theme on Load =====
+  const savedTheme = localStorage.getItem("reader-theme") || "light";
+  $("theme-select").value = savedTheme;
+  changeTheme(savedTheme);
+</script>
 </body>
 </html>
