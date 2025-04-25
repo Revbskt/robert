@@ -2,133 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ePub Reader with Paragraph Highlights</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>My ePub Reader and Library</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
 
   <!-- Essential Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      width: 100%;
-      height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-      overscroll-behavior-y: contain;
-      -webkit-text-size-adjust: 100%;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-      background: #f5f5f5;
-      overflow: hidden;
-    }
-
-    /* Library Container */
-    #library-container {
-      flex-grow: 1;
-      padding: 1rem;
-      overflow-y: auto;
-    }
-
-    #library {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 20px;
-      justify-content: center;
-    }
-
-    .book {
-      background: #fff;
-      border: 1px solid #ddd;
-      padding: 0.75rem;
-      text-align: center;
-      box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
-      border-radius: 6px;
-    }
-
-    .book img { 
-      width: 100%; 
-      height: auto; 
-      max-height: 200px;
-      object-fit: contain;
-      border-radius: 4px; 
-    }
-
-    .book h3 { 
-      font-size: 0.9rem; 
-      margin: 0.5rem 0 0.25rem; 
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .book p { 
-      font-size: 0.8rem; 
-      margin: 0 0 0.5rem; 
-      color: #555; 
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .book button {
-      width: 100%;
-      margin-top: 0.5rem;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 4px;
-      background-color: #007bff;
-      color: white;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .book button:hover { 
-      background-color: #0056b3; 
-    }
-
-    /* Reader Container */
-    #reader-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      display: none;
-      flex-direction: column;
-    }
-
-    #toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      background-color: #f0f0f0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    #toolbar button {
-      background: transparent;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      padding: 5px;
-      margin: 0 5px;
-    }
-
-    #viewer {
-      flex-grow: 1;
-      position: relative;
-      overflow: hidden;
-    }
-
+    /* Previous styles remain the same, add these new styles */
+    
     /* Highlight Mode Styles */
     #toolbar button.highlight-mode-active {
       background-color: rgba(255,255,0,0.3);
@@ -188,80 +71,188 @@
     .color-green { background-color: green; }
     .color-pink { background-color: pink; }
     .color-blue { background-color: blue; }
-
-    /* Expanded Menu */
-    #expanded-menu {
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: -100%;
-      width: 80%;
-      max-width: 300px;
-      background: rgba(128,128,128,0.90);
-      color: #fff;
-      z-index: 1010;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      transition: left 0.3s ease;
-    }
-
-    #expanded-menu.open { 
-      left: 0; 
-    }
-
-    #menu-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.3);
-      z-index: 1001;
-    }
   </style>
 </head>
 <body>
-  <!-- Library Container -->
-  <div id="library-container">
-    <h1 style="text-align: center; margin-bottom: 1rem;">📚 ePub Reader</h1>
-    <div id="library">Loading books...</div>
+  <!-- Before the last script tag, add this highlight color menu -->
+  <div id="highlight-color-menu">
+    <div class="color-option color-yellow" data-color="yellow"></div>
+    <div class="color-option color-green" data-color="green"></div>
+    <div class="color-option color-pink" data-color="pink"></div>
+    <div class="color-option color-blue" data-color="blue"></div>
   </div>
 
-  <!-- Reader Container -->
-  <div id="reader-container">
-    <div id="toolbar">
-      <div>
-        <button id="menu-toggle">☰</button>
-        <button id="reading-mode-toggle">📖</button>
-        <button id="highlight-mode-toggle">🖍️</button>
-      </div>
-    </div>
-
-    <!-- Highlight Color Menu -->
-    <div id="highlight-color-menu">
-      <div class="color-option color-yellow" data-color="yellow"></div>
-      <div class="color-option color-green" data-color="green"></div>
-      <div class="color-option color-pink" data-color="pink"></div>
-      <div class="color-option color-blue" data-color="blue"></div>
-    </div>
-
-    <!-- Viewer -->
-    <div id="viewer"></div>
-
-    <!-- Menu Backdrop and Expanded Menu -->
-    <div id="menu-backdrop"></div>
-    <div id="expanded-menu">
-      <button class="close-menu" onclick="toggleMenu('menu')" style="align-self: flex-end; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
-      <div id="book-details" style="text-align: center; margin-bottom: 20px;">
-        <h2 id="book-title" style="color: white; margin-bottom: 10px;">Book Title</h2>
-        <p id="book-author" style="color: white;">Author Name</p>
-      </div>
-      <button onclick="toggleLibrary(true)" style="padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Back to Library</button>
-    </div>
+  <!-- Modify the toolbar to include highlight mode toggle -->
+  <div id="toolbar">
+    <button id="menu-toggle">☰</button>
+    <button id="reading-mode-toggle">📖</button>
+    <button id="highlight-mode-toggle">🖍️</button>
   </div>
 
   <script>
-    // The previous JavaScript remains the same
-    // Only changes are in the added responsive styles above
+    // Add these to your existing global variables
+    let isHighlightMode = false;
+    let currentHighlightColor = 'yellow';
+    let highlights = {};
+
+    // Add these functions to your existing script
+    function setupHighlightMode() {
+      const highlightModeToggle = document.getElementById('highlight-mode-toggle');
+      const highlightColorMenu = document.getElementById('highlight-color-menu');
+      const colorOptions = document.querySelectorAll('#highlight-color-menu .color-option');
+
+      // Toggle highlight mode
+      highlightModeToggle.addEventListener('click', () => {
+        isHighlightMode = !isHighlightMode;
+        highlightModeToggle.classList.toggle('highlight-mode-active', isHighlightMode);
+        
+        if (isHighlightMode) {
+          highlightColorMenu.style.display = 'block';
+        } else {
+          highlightColorMenu.style.display = 'none';
+        }
+      });
+
+      // Color selection
+      colorOptions.forEach(option => {
+        option.addEventListener('click', () => {
+          currentHighlightColor = option.dataset.color;
+          colorOptions.forEach(opt => opt.style.border = 'none');
+          option.style.border = '2px solid white';
+        });
+      });
+
+      // Add event listeners to paragraphs when in highlight mode
+      rendition.on('rendered', () => {
+        if (!isHighlightMode) return;
+
+        rendition.getContents().forEach(content => {
+          const doc = content.document;
+          const paragraphs = doc.querySelectorAll('p');
+          
+          paragraphs.forEach(para => {
+            para.addEventListener('click', handleParagraphHighlight);
+          });
+        });
+      });
+    }
+
+    function handleParagraphHighlight(event) {
+      if (!isHighlightMode) return;
+
+      const paragraph = event.target;
+      const bookKey = currentBookUrl;
+      const paragraphText = paragraph.textContent.trim();
+
+      // Toggle highlight
+      if (paragraph.classList.contains(`epub-highlight highlight-${currentHighlightColor}`)) {
+        // Remove highlight
+        paragraph.classList.remove(`epub-highlight highlight-${currentHighlightColor}`);
+        
+        // Remove from saved highlights
+        if (highlights[bookKey]) {
+          highlights[bookKey] = highlights[bookKey].filter(h => 
+            h.text !== paragraphText || h.color !== currentHighlightColor
+          );
+        }
+      } else {
+        // Add highlight
+        paragraph.classList.add(`epub-highlight highlight-${currentHighlightColor}`);
+        
+        // Save highlight
+        if (!highlights[bookKey]) {
+          highlights[bookKey] = [];
+        }
+        highlights[bookKey].push({
+          text: paragraphText,
+          color: currentHighlightColor,
+          cfi: rendition.currentLocation().start.cfi
+        });
+      }
+
+      // Save highlights to localStorage
+      saveHighlights();
+    }
+
+    function saveHighlights() {
+      localStorage.setItem('epub-highlights', JSON.stringify(highlights));
+    }
+
+    function loadHighlights() {
+      const savedHighlights = localStorage.getItem('epub-highlights');
+      if (savedHighlights) {
+        highlights = JSON.parse(savedHighlights);
+      }
+    }
+
+    function restoreHighlights() {
+      if (!currentBookUrl) return;
+
+      const bookHighlights = highlights[currentBookUrl] || [];
+      
+      rendition.on('rendered', () => {
+        rendition.getContents().forEach(content => {
+          const doc = content.document;
+          const paragraphs = doc.querySelectorAll('p');
+          
+          paragraphs.forEach(para => {
+            const paraText = para.textContent.trim();
+            
+            bookHighlights.forEach(highlight => {
+              if (highlight.text === paraText) {
+                para.classList.add(`epub-highlight highlight-${highlight.color}`);
+              }
+            });
+          });
+        });
+      });
+    }
+
+    // Modify your existing readBook function to include:
+    function readBook(epubUrl) {
+      currentBookUrl = epubUrl;
+      toggleLibrary(false);
+      
+      if (book) {
+        book.destroy();
+      }
+      
+      book = ePub(epubUrl);
+      book.ready.then(() => {
+        initRendition(currentFlow);
+        
+        // Update book details in menu
+        book.loaded.metadata.then(meta => {
+          document.getElementById("book-title").textContent = meta.title || "Untitled";
+          document.getElementById("book-author").textContent = meta.creator || "";
+        });
+
+        // Load and restore highlights
+        loadHighlights();
+        restoreHighlights();
+      });
+    }
+
+    // Modify your existing initRendition function to include:
+    function initRendition(flowMode) {
+      rendition = book.renderTo("viewer", {
+        width: "100%",
+        height: "100%",
+        flow: flowMode === "scrolled" ? "scrolled" : "paginated",
+        snap: flowMode !== "scrolled"
+      });
+
+      // Default display
+      rendition.display();
+
+      // Setup highlight mode
+      setupHighlightMode();
+
+      // Reading Mode Toggle
+      setupReadingModeEvents();
+    }
+
+    // The rest of your previous script remains the same
   </script>
 </body>
 </html>
