@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ePub Reader</title>
+  <title>ePub Reader Template</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
 
   <!-- Essential Libraries -->
@@ -10,47 +10,187 @@
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    /* All previous styles remain the same */
+    /* Previous styles remain the same */
 
     /* Highlight Styles */
+    .epub-highlight {
+      transition: background-color 0.3s ease;
+    }
     .highlight-yellow { background-color: rgba(255,255,0,0.3); }
     .highlight-green { background-color: rgba(0,255,0,0.3); }
     .highlight-pink { background-color: rgba(255,192,203,0.3); }
     .highlight-blue { background-color: rgba(0,0,255,0.3); }
+
+    /* Highlight Color Selector */
+    #highlight-color-menu {
+      display: none;
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      z-index: 1100;
+    }
+
+    #highlight-color-menu .color-option {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      margin: 0 5px;
+      border-radius: 50%;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    #highlight-color-menu .color-option:hover {
+      opacity: 1;
+    }
+
+    .color-yellow { background-color: yellow; }
+    .color-green { background-color: green; }
+    .color-pink { background-color: pink; }
+    .color-blue { background-color: blue; }
+
+    /* Highlight Mode Button */
+    #toolbar button.highlight-mode-active {
+      background-color: rgba(255,255,0,0.3);
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
-  <!-- Existing HTML remains the same -->
-  
-  <script>
-    // Existing script remains the same, with these additions:
+  <!-- Modify toolbar to include highlight mode toggle -->
+  <div id="reader-container">
+    <div id="toolbar">
+      <button id="menu-toggle">☰</button>
+      <button id="reading-mode-toggle">📖</button>
+      <button id="highlight-mode-toggle">🖍️</button>
+    </div>
 
-    // Highlight Mode Variables
+    <!-- Highlight Color Menu -->
+    <div id="highlight-color-menu">
+      <div class="color-option color-yellow" data-color="yellow"></div>
+      <div class="color-option color-green" data-color="green"></div>
+      <div class="color-option color-pink" data-color="pink"></div>
+      <div class="color-option color-blue" data-color="blue"></div>
+    </div>
+
+    <!-- Rest of the existing HTML remains the same -->
+  </div>
+
+  <script>
+    // Add to existing global variables
     let isHighlightMode = false;
     let currentHighlightColor = 'yellow';
     let highlights = {};
 
-    // Highlight Mode Toggle
-    function toggleHighlightMode() {
-      isHighlightMode = !isHighlightMode;
-      console.log('Highlight mode:', isHighlightMode);
+    // Modify the existing script, adding these functions
+    function setupHighlightMode() {
+      const highlightModeToggle = document.getElementById('highlight-mode-toggle');
+      const highlightColorMenu = document.getElementById('highlight-color-menu');
+      const colorOptions = document.querySelectorAll('#highlight-color-menu .color-option');
+
+      // Toggle highlight mode
+      highlightModeToggle.addEventListener('click', () => {
+        isHighlightMode = !isHighlightMode;
+        highlightModeToggle.classList.toggle('highlight-mode-active', isHighlightMode);
+        
+        if (isHighlightMode) {
+          highlightColorMenu.style.display = 'block';
+        } else {
+          highlightColorMenu.style.display = 'none';
+        }
+      });
+
+      // Color selection
+      colorOptions.forEach(option => {
+        option.addEventListener('click', () => {
+          currentHighlightColor = option.dataset.color;
+          colorOptions.forEach(opt => opt.style.border = 'none');
+          option.style.border = '2px solid white';
+        });
+      });
     }
 
-    // Highlight Paragraph
-    function highlightParagraph(paragraph) {
+    function handleParagraphHighlight(event) {
       if (!isHighlightMode) return;
 
-      const currentClass = `highlight-${currentHighlightColor}`;
-      
+      const paragraph = event.target;
+      const bookKey = currentBookUrl;
+      const paragraphText = paragraph.textContent.trim();
+      const currentClass = `epub-highlight highlight-${currentHighlightColor}`;
+
       // Toggle highlight
       if (paragraph.classList.contains(currentClass)) {
         paragraph.classList.remove(currentClass);
+        
+        // Remove from saved highlights
+        if (highlights[bookKey]) {
+          highlights[bookKey] = highlights[bookKey].filter(h => 
+            h.text !== paragraphText || h.color !== currentHighlightColor
+          );
+        }
       } else {
+        // Add highlight
         paragraph.classList.add(currentClass);
+        
+        // Save highlight
+        if (!highlights[bookKey]) {
+          highlights[bookKey] = [];
+        }
+        highlights[bookKey].push({
+          text: paragraphText,
+          color: currentHighlightColor,
+          cfi: rendition.currentLocation().start.cfi
+        });
+      }
+
+      // Save highlights to localStorage
+      saveHighlights();
+    }
+
+    function saveHighlights() {
+      localStorage.setItem('epub-highlights', JSON.stringify(highlights));
+    }
+
+    function loadHighlights() {
+      const savedHighlights = localStorage.getItem('epub-highlights');
+      if (savedHighlights) {
+        highlights = JSON.parse(savedHighlights);
       }
     }
 
-    // Modify initRendition to set up highlight listeners
+    function restoreHighlights() {
+      if (!currentBookUrl) return;
+
+      const bookHighlights = highlights[currentBookUrl] || [];
+      
+      rendition.on('rendered', () => {
+        rendition.getContents().forEach(content => {
+          const doc = content.document;
+          const paragraphs = doc.querySelectorAll('p');
+          
+          paragraphs.forEach(para => {
+            const paraText = para.textContent.trim();
+            
+            bookHighlights.forEach(highlight => {
+              if (highlight.text === paraText) {
+                para.classList.add(`epub-highlight highlight-${highlight.color}`);
+              }
+            });
+
+            // Add click listener for highlighting
+            para.addEventListener('click', handleParagraphHighlight);
+          });
+        });
+      });
+    }
+
+    // Modify existing initRendition function
     function initRendition(flowMode) {
       rendition = book.renderTo("viewer", {
         width: "100%",
@@ -59,34 +199,42 @@
         snap: flowMode !== "scrolled"
       });
 
-      // Add highlight listener
-      rendition.on('rendered', () => {
-        rendition.getContents().forEach(content => {
-          const doc = content.document;
-          const paragraphs = doc.querySelectorAll('p');
-          
-          paragraphs.forEach(para => {
-            para.addEventListener('click', () => highlightParagraph(para));
-          });
-        });
-      });
+      // Setup highlight mode
+      setupHighlightMode();
 
       // Default display
       rendition.display();
 
-      // Existing reading mode setup
+      // Reading Mode Toggle
       setupReadingModeEvents();
     }
 
-    // Add highlight mode toggle to toolbar
-    document.getElementById('toolbar').innerHTML += `
-      <button id="highlight-mode-toggle">🖍️</button>
-    `;
+    // Modify existing readBook function
+    function readBook(epubUrl) {
+      currentBookUrl = epubUrl;
+      toggleLibrary(false);
+      
+      if (book) {
+        book.destroy();
+      }
+      
+      book = ePub(epubUrl);
+      book.ready.then(() => {
+        initRendition(currentFlow);
+        
+        // Update book details in menu
+        book.loaded.metadata.then(meta => {
+          document.getElementById("book-title").textContent = meta.title || "Untitled";
+          document.getElementById("book-author").textContent = meta.creator || "";
+        });
 
-    // Add highlight mode toggle event
-    document.getElementById('highlight-mode-toggle').addEventListener('click', () => {
-      toggleHighlightMode();
-    });
+        // Load and restore highlights
+        loadHighlights();
+        restoreHighlights();
+      });
+    }
+
+    // The rest of the existing script remains the same
   </script>
 </body>
 </html>
