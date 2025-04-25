@@ -1,40 +1,4 @@
-
-// Update highlights list in the menu
-    function updateHighlightsList() {
-      const highlightsList = document.getElementById("highlights-list");
-      const bookTitle = "Demo Book";
-      
-      // Clear current list
-      highlightsList.innerHTML = "";
-      
-      // Add each highlight to the list
-      if (bookHighlights[bookTitle] && bookHighlights[bookTitle].length > 0) {
-        bookHighlights[bookTitle].forEach((highlight, index) => {
-          const highlightDiv = document.createElement("div");
-          highlightDiv.className = "highlight-item";
-          highlightDiv.style.borderLeft = `4px solid ${getColorHex(highlight.color)}`;
-          
-          // Add text content
-          const textSpan = document.createElement("div");
-          textSpan.textContent = highlight.text;
-          highlightDiv.appendChild(textSpan);
-          
-          // Add note content if exists
-          if (highlight.note) {
-            const noteSpan = document.createElement("div");
-            noteSpan.className = "highlight-note-indicator";
-            noteSpan.textContent = "📝 " + highlight.note;
-            highlightDiv.appendChild(noteSpan);
-          }
-          
-          // Add delete option
-          const deleteBtn = document.createElement("button");
-          deleteBtn.innerHTML = "🗑️";
-          deleteBtn.title = "Delete highlight";
-          deleteBtn.style.position = "absolute";
-          deleteBtn.style.right = "8px";
-          deleteBtn.style.top = "8px";
-      <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -211,7 +175,7 @@
       border-radius: 4px !important;
       padding: 4px !important;
       margin: 4px 0 !important;
-      position: relative;
+      position: relative !important;
     }
 
     .highlight-green {
@@ -220,7 +184,7 @@
       border-radius: 4px !important;
       padding: 4px !important;
       margin: 4px 0 !important;
-      position: relative;
+      position: relative !important;
     }
 
     .highlight-blue {
@@ -229,7 +193,7 @@
       border-radius: 4px !important;
       padding: 4px !important;
       margin: 4px 0 !important;
-      position: relative;
+      position: relative !important;
     }
 
     .highlight-pink {
@@ -238,7 +202,7 @@
       border-radius: 4px !important;
       padding: 4px !important;
       margin: 4px 0 !important;
-      position: relative;
+      position: relative !important;
     }
     
     /* Note indicator */
@@ -252,8 +216,7 @@
     
     /* Note display */
     .note-display {
-      display: none;
-      position: absolute;
+      display: block;
       background: white;
       border: 1px solid #ddd;
       border-radius: 4px;
@@ -918,388 +881,4 @@
             const noteDisplay = document.createElement("div");
             noteDisplay.className = "note-display";
             noteDisplay.textContent = highlight.note;
-            paragraphs[randomIndex].appendChild(noteDisplay);
-          }
-          
-          // Add control buttons for edit/delete
-          const controls = document.createElement("div");
-          controls.className = "highlight-controls";
-          controls.innerHTML = `
-            <button class="highlight-edit" title="Edit Note">✏️</button>
-            <button class="highlight-delete" title="Delete Highlight">🗑️</button>
-          `;
-          paragraphs[randomIndex].appendChild(controls);
-          
-          // Setup event listeners for buttons
-          const editBtn = controls.querySelector(".highlight-edit");
-          const deleteBtn = controls.querySelector(".highlight-delete");
-          
-          // Edit note (or add one if none exists)
-          editBtn.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent other handlers
-            
-            // Set active element for saving
-            activeHighlightElement = paragraphs[randomIndex];
-            const highlightId = paragraphs[randomIndex].getAttribute("data-highlight-id");
-            
-            // Find the highlight in saved highlights
-            const bookTitle = "Demo Book";
-            const highlightIndex = bookHighlights[bookTitle].findIndex(h => h.cfiRange === highlightId);
-            
-            if (highlightIndex !== -1) {
-              // Show popup with current note
-              const notePopup = document.getElementById("note-popup");
-              const noteTextarea = document.getElementById("edit-note-text");
-              
-              // Set current note text
-              noteTextarea.value = bookHighlights[bookTitle][highlightIndex].note || "";
-              
-              // Show popup
-              notePopup.style.display = "block";
-            }
-          });
-          
-          // Delete highlight
-          deleteBtn.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent other handlers
-            
-            if (confirm("Are you sure you want to delete this highlight?")) {
-              const highlightId = paragraphs[randomIndex].getAttribute("data-highlight-id");
-              deleteHighlight(highlightId, paragraphs[randomIndex]);
-            }
-          });
-        });
-      }
-      
-      // Initialize the reading mode
-      if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
-        // Set default to hidden overflow (paginated mode)
-        iframe.style.overflowY = "hidden";
-        iframe.contentDocument.body.style.overflow = "hidden";
-      }
-    }
-
-    // Toggle Library and Reader Views
-    function toggleLibrary(forceLibrary) {
-      const libraryContainer = document.getElementById("library-container");
-      const readerContainer = document.getElementById("reader-container");
-      
-      if (forceLibrary) {
-        libraryContainer.style.display = "block";
-        readerContainer.style.display = "none";
-      } else {
-        libraryContainer.style.display = "none";
-        readerContainer.style.display = "block";
-      }
-      closeMenus();
-    }
-
-    // Menu and Interaction Utilities
-    function toggleMenu(type) {
-      const expandedMenu = document.getElementById("expanded-menu");
-      const menuBackdrop = document.getElementById("menu-backdrop");
-
-      if (type === 'menu') {
-        expandedMenu.classList.toggle("open");
-        menuBackdrop.style.display = expandedMenu.classList.contains("open") ? "block" : "none";
-        
-        // Update highlights list if opening menu
-        if (expandedMenu.classList.contains("open")) {
-          updateHighlightsList();
-        }
-      }
-    }
-
-    function closeMenus() {
-      const expandedMenu = document.getElementById("expanded-menu");
-      const menuBackdrop = document.getElementById("menu-backdrop");
-      const highlightMenu = document.getElementById("highlight-menu");
-      
-      expandedMenu.classList.remove("open");
-      menuBackdrop.style.display = "none";
-      highlightMenu.style.display = "none";
-    }
-
-    // Menu Toggle Event
-    document.getElementById("menu-toggle").addEventListener("click", () => toggleMenu('menu'));
-    document.getElementById("menu-backdrop").addEventListener("click", closeMenus);
-    
-    // Save highlight to storage
-    function saveHighlight(cfiRange, color, note = "") {
-      const bookTitle = "Demo Book";
-      
-      // Initialize if needed
-      if (!bookHighlights[bookTitle]) {
-        bookHighlights[bookTitle] = [];
-      }
-      
-      // Add highlight to the array
-      bookHighlights[bookTitle].push({
-        cfiRange: cfiRange,
-        text: selectedText.substring(0, 100) + (selectedText.length > 100 ? "..." : ""),
-        color: color,
-        type: "highlight",
-        note: note,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Save to local storage
-      try {
-        localStorage.setItem("bookHighlights", JSON.stringify(bookHighlights));
-      } catch (e) {
-        console.error("Error saving to localStorage:", e);
-      }
-      
-      // Update highlights list in menu
-      updateHighlightsList();
-    }
-    
-    // Delete highlight
-    function deleteHighlight(highlightId, element) {
-      const bookTitle = "Demo Book";
-      
-      // Find the highlight in the array
-      const index = bookHighlights[bookTitle].findIndex(h => h.cfiRange === highlightId);
-      
-      if (index !== -1) {
-        // Remove from array
-        bookHighlights[bookTitle].splice(index, 1);
-        
-        // Save updated highlights
-        try {
-          localStorage.setItem("bookHighlights", JSON.stringify(bookHighlights));
-        } catch (e) {
-          console.error("Error saving to localStorage:", e);
-        }
-        
-        // Remove highlight from DOM
-        element.className = ""; // Remove highlight class
-        element.classList.remove("has-note");
-        
-        // Remove note display if exists
-        const noteDisplay = element.querySelector(".note-display");
-        if (noteDisplay) {
-          element.removeChild(noteDisplay);
-        }
-        
-        // Remove controls
-        const controls = element.querySelector(".highlight-controls");
-        if (controls) {
-          element.removeChild(controls);
-        }
-        
-        // Update highlights list
-        updateHighlightsList();
-        
-        // Show toast message
-        showToast("Highlight deleted");
-      }
-    }
-    
-    // Update note
-    function updateNote(element, note) {
-      const bookTitle = "Demo Book";
-      const highlightId = element.getAttribute("data-highlight-id");
-      
-      // Find the highlight in the array
-      const index = bookHighlights[bookTitle].findIndex(h => h.cfiRange === highlightId);
-      
-      if (index !== -1) {
-        // Update note
-        bookHighlights[bookTitle][index].note = note;
-        
-        // Save updated highlights
-        try {
-          localStorage.setItem("bookHighlights", JSON.stringify(bookHighlights));
-        } catch (e) {
-          console.error("Error saving to localStorage:", e);
-        }
-        
-        // Update display
-        if (note) {
-          // Add 'has-note' class if not already present
-          element.classList.add("has-note");
-          
-          // Update or create note display
-          let noteDisplay = element.querySelector(".note-display");
-          if (!noteDisplay) {
-            noteDisplay = document.createElement("div");
-            noteDisplay.className = "note-display";
-            element.appendChild(noteDisplay);
-          }
-          noteDisplay.textContent = note;
-        } else {
-          // Remove 'has-note' class and note display if note is empty
-          element.classList.remove("has-note");
-          const noteDisplay = element.querySelector(".note-display");
-          if (noteDisplay) {
-            element.removeChild(noteDisplay);
-          }
-        }
-        
-        // Update highlights list
-        updateHighlightsList();
-        
-        // Show toast message
-        showToast("Note updated");
-      }
-    }
-    
-    // Helper function to show toast messages
-    function showToast(message) {
-      const toast = document.createElement("div");
-      toast.style.position = "fixed";
-      toast.style.bottom = "20px";
-      toast.style.left = "50%";
-      toast.style.transform = "translateX(-50%)";
-      toast.style.background = "rgba(0,0,0,0.7)";
-      toast.style.color = "white";
-      toast.style.padding = "8px 16px";
-      toast.style.borderRadius = "20px";
-      toast.style.zIndex = "9999";
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      
-      // Remove toast after 2 seconds
-      setTimeout(() => {
-        if (document.body.contains(toast)) {
-          document.body.removeChild(toast);
-        }
-      }, 2000);
-    }
-    
-    // Load highlights from storage
-    function loadHighlights(bookTitle) {
-      try {
-        const savedHighlights = localStorage.getItem("bookHighlights");
-        if (savedHighlights) {
-          bookHighlights = JSON.parse(savedHighlights);
-        } else {
-          bookHighlights = {};
-        }
-        
-        // Ensure the current book's highlights are initialized
-        if (!bookHighlights[bookTitle]) {
-          bookHighlights[bookTitle] = [];
-        }
-        
-        // Update highlights list
-        updateHighlightsList();
-        
-      } catch (e) {
-        console.error("Error loading highlights:", e);
-        bookHighlights = {};
-      }
-    }
-    
-    // Update highlights list in the menu
-    function updateHighlightsList() {
-      const highlightsList = document.getElementById("highlights-list");
-      const bookTitle = "Demo Book";
-      
-      // Clear current list
-      highlightsList.innerHTML = "";
-      
-      // Add each highlight to the list
-      if (bookHighlights[bookTitle] && bookHighlights[bookTitle].length > 0) {
-        bookHighlights[bookTitle].forEach((highlight, index) => {
-          const highlightDiv = document.createElement("div");
-          highlightDiv.className = "highlight-item";
-          highlightDiv.style.borderLeft = `4px solid ${getColorHex(highlight.color)}`;
-          
-          // Add text content
-          const textSpan = document.createElement("div");
-          textSpan.textContent = highlight.text;
-          highlightDiv.appendChild(textSpan);
-          
-          // Add note content if exists
-          if (highlight.note) {
-            const noteSpan = document.createElement("div");
-            noteSpan.className = "highlight-note-indicator";
-            noteSpan.textContent = "📝 " + highlight.note;
-            highlightDiv.appendChild(noteSpan);
-          }
-          
-          // Jump to highlight when clicked
-          highlightDiv.addEventListener("click", () => {
-            // For demo - find paragraph with matching data attribute
-            const iframe = document.querySelector("#viewer iframe");
-            if (iframe && iframe.contentDocument) {
-              const paragraphs = iframe.contentDocument.querySelectorAll("p");
-              paragraphs.forEach(p => {
-                if (p.getAttribute("data-highlight-id") === highlight.cfiRange) {
-                  p.scrollIntoView({ behavior: "smooth", block: "center" });
-                  
-                  // Flash effect to show location
-                  const originalColor = p.style.backgroundColor;
-                  p.style.backgroundColor = "rgba(255,255,255,0.8)";
-                  setTimeout(() => {
-                    p.style.backgroundColor = originalColor;
-                  }, 1000);
-                }
-              });
-            }
-            
-            // In a real implementation, we would use rendition.display(highlight.cfiRange)
-            closeMenus();
-          });
-          
-          highlightsList.appendChild(highlightDiv);
-        });
-      } else {
-        highlightsList.innerHTML = "<p>No highlights for this book yet.</p>";
-      }
-    }
-    
-    // Get color hex value from name
-    function getColorHex(colorName) {
-      const colors = {
-        yellow: "#ffff00",
-        green: "#00ff00",
-        blue: "#00c8ff",
-        pink: "#ff69b4"
-      };
-      return colors[colorName] || "#ffff00";
-    }
-    
-    // Initialize the demo
-    document.addEventListener("DOMContentLoaded", function() {
-      // Start with library view
-      toggleLibrary(true);
-      
-      // Setup note popup events
-      const notePopup = document.getElementById("note-popup");
-      const saveNoteBtn = document.getElementById("save-note");
-      const cancelNoteBtn = document.getElementById("cancel-note");
-      
-      // Save note
-      saveNoteBtn.addEventListener("click", () => {
-        if (activeHighlightElement) {
-          const noteText = document.getElementById("edit-note-text").value;
-          updateNote(activeHighlightElement, noteText);
-          
-          // Hide popup
-          notePopup.style.display = "none";
-          
-          // Reset active element
-          activeHighlightElement = null;
-        }
-      });
-      
-      // Cancel note edit
-      cancelNoteBtn.addEventListener("click", () => {
-        notePopup.style.display = "none";
-        activeHighlightElement = null;
-      });
-      
-      // Close popup if clicked outside
-      window.addEventListener("click", (e) => {
-        if (e.target === notePopup) {
-          notePopup.style.display = "none";
-          activeHighlightElement = null;
-        }
-      });
-    });
-  </script>
-</body>
-</html>
+            paragraphs[randomIndex].appendChil
