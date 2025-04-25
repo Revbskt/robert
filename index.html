@@ -243,21 +243,6 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       z-index: 1000;
     }
-    
-    /* Debugger panel */
-    #debug-panel {
-      position: fixed;
-      bottom: 0;
-      right: 0;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 10px;
-      font-size: 12px;
-      max-width: 300px;
-      max-height: 200px;
-      overflow: auto;
-      display: none;
-    }
   </style>
 </head>
 <body>
@@ -307,9 +292,6 @@
         <button id="cancel-highlight">Cancel</button>
       </div>
     </div>
-    
-    <!-- Debug Panel -->
-    <div id="debug-panel"></div>
   </div>
 
   <script>
@@ -326,7 +308,6 @@
     const noteInput = document.getElementById('note-input');
     const colorOptions = document.querySelectorAll('.color-option');
     const paragraphs = document.querySelectorAll('#book-content p');
-    const debugPanel = document.getElementById('debug-panel');
     
     // Global Variables
     let highlightMode = false;
@@ -338,20 +319,12 @@
     if (localStorage.getItem('bookHighlights')) {
       try {
         highlights = JSON.parse(localStorage.getItem('bookHighlights'));
-        log('Loaded highlights from storage: ' + highlights.length);
+        console.log('Loaded highlights from storage: ' + highlights.length);
       } catch (e) {
-        log('Error loading highlights: ' + e.message);
+        console.error('Error loading highlights: ' + e.message);
         highlights = [];
         localStorage.removeItem('bookHighlights');
       }
-    }
-    
-    // Debug logging function
-    function log(message) {
-      console.log(message);
-      // Uncomment for visual debugging
-      // debugPanel.style.display = 'block';
-      // debugPanel.innerHTML += message + '<br>';
     }
     
     // Show toast notification
@@ -475,7 +448,7 @@
       // Save to localStorage
       localStorage.setItem('bookHighlights', JSON.stringify(highlights));
       
-      log('Saved highlight: ' + JSON.stringify(highlight));
+      console.log('Saved highlight: ' + JSON.stringify(highlight));
       
       // Close highlight menu
       highlightMenu.style.display = 'none';
@@ -502,7 +475,7 @@
       // Clear the container
       highlightsContainer.innerHTML = '';
       
-      log('Updating highlights list with ' + highlights.length + ' highlights');
+      console.log('Updating highlights list with ' + highlights.length + ' highlights');
       
       if (highlights.length === 0) {
         highlightsContainer.innerHTML = '<p>No highlights yet. Use highlight mode to create some!</p>';
@@ -565,7 +538,7 @@
     
     // Apply saved highlights to paragraphs
     function applyHighlights() {
-      log('Applying ' + highlights.length + ' highlights to paragraphs');
+      console.log('Applying ' + highlights.length + ' highlights to paragraphs');
       
       highlights.forEach(highlight => {
         if (highlight.paragraphIndex >= 0 && highlight.paragraphIndex < paragraphs.length) {
