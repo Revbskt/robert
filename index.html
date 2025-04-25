@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,6 +181,176 @@
       font-size: 18px;
       cursor: pointer;
     }
+    
+    /* Magnifier Highlight Styles */
+    .magnifier-container {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1500;
+      display: none;
+      background-color: white;
+      border-radius: 50%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      border: 2px solid #007bff;
+      overflow: hidden;
+      width: 200px;
+      height: 200px;
+    }
+    
+    .magnifier-content {
+      position: absolute;
+      transform-origin: 0 0;
+      white-space: nowrap;
+    }
+    
+    /* Magnifier Control Panel */
+    #magnifier-panel {
+      position: fixed;
+      top: 40px;
+      left: 0;
+      right: 0;
+      height: 70vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.85);
+      border-bottom: 1px solid #444;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      transform: translateY(-100%);
+    }
+    
+    #magnifier-panel.open {
+      transform: translateY(0);
+    }
+    
+    .magnifier-item {
+      display: flex;
+      padding: 10px;
+      border-bottom: 1px solid #444;
+      color: #fff;
+      cursor: pointer;
+    }
+    
+    .magnifier-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    .magnifier-text {
+      flex: 1;
+      padding-right: 10px;
+    }
+    
+    .magnifier-note {
+      color: #aaa;
+      font-style: italic;
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+    
+    .magnifier-actions {
+      display: flex;
+      align-items: center;
+    }
+    
+    .magnifier-delete-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    
+    .add-note-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    
+    /* Magnifier overlay for selection mode */
+    #magnifier-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.2);
+      z-index: 1200;
+      display: none;
+    }
+    
+    #magnifier-instruction {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px 25px;
+      border-radius: 10px;
+      text-align: center;
+      z-index: 1201;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Note input modal */
+    #note-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 1600;
+      width: 80%;
+      max-width: 400px;
+      display: none;
+    }
+    
+    #note-modal h3 {
+      color: white;
+      margin-top: 0;
+    }
+    
+    #note-input {
+      width: 100%;
+      height: 100px;
+      margin: 10px 0;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 5px;
+      border: 1px solid #555;
+      background: #222;
+      color: white;
+      resize: none;
+    }
+    
+    #note-modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    #note-modal-buttons button {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    #save-note-btn {
+      background: #007bff;
+      color: white;
+    }
+    
+    #cancel-note-btn {
+      background: #444;
+      color: white;
+    }
+    
     /* ===== Slide-out Menu Backdrop & Panel ===== */
     #menu-backdrop {
       display: none;
@@ -389,6 +558,8 @@
       <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
       <button id="highlight-toggle" title="Highlight Text">🖌️</button>  
       <button id="highlight-list" title="View Highlights">📝</button>
+      <button id="magnifier-toggle" title="Magnification Highlight">🔍</button>
+      <button id="magnifier-list" title="View Magnifications">📋</button>
       <button id="settings-toggle" title="Read Settings">Aa</button>
       <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
     </div>
@@ -398,6 +569,29 @@
     
     <!-- Highlight Panel -->
     <div id="highlight-panel"></div>
+    
+    <!-- Magnifier Panel -->
+    <div id="magnifier-panel"></div>
+    
+    <!-- Magnifier Overlay for Selection Mode -->
+    <div id="magnifier-overlay">
+      <div id="magnifier-instruction">Select text to magnify</div>
+    </div>
+    
+    <!-- Magnifier Container -->
+    <div class="magnifier-container">
+      <div class="magnifier-content"></div>
+    </div>
+    
+    <!-- Note Modal -->
+    <div id="note-modal">
+      <h3>Add Note</h3>
+      <textarea id="note-input" placeholder="Enter your note here..."></textarea>
+      <div id="note-modal-buttons">
+        <button id="cancel-note-btn">Cancel</button>
+        <button id="save-note-btn">Save</button>
+      </div>
+    </div>
 
     <div id="menu-backdrop"></div>
     <div id="expanded-menu">
@@ -463,12 +657,20 @@
     let currentBookUrl = "";
     let bookmarks = []; // bookmarks for the current book
     let highlights = []; // highlights for the current book
+    let magnifications = []; // magnifications for the current book
+    let currentMagnifierSelection = null; // To store current selection for magnifier
 
     // Global swipe detection variables
     let xDown = null;
     let yDown = null;
     const SWIPE_THRESHOLD = 20;  // Configurable swipe detection threshold (in pixels)
     let swipeInProgress = false;
+    
+    // Magnifier state
+    let magnifierMode = false;
+    let magnifierFirstSelection = null;
+    let magnifierSecondSelection = null;
+    let currentNoteIndex = -1;
 
     // Named tap handlers (for cleanup purposes)
     function tapLeftHandler() {
@@ -504,6 +706,9 @@
       
       // Add cleanup for highlight mode
       disableHighlightMode();
+      
+      // Add cleanup for magnifier mode
+      disableMagnifierMode();
     }
 
     // Helpers for bookmark storage
@@ -580,6 +785,7 @@
       // Close other panels
       document.getElementById("highlight-panel").classList.remove("open");
       document.getElementById("toc-panel").classList.remove("open");
+      document.getElementById("magnifier-panel").classList.remove("open");
     }
     
     // Helpers for highlight storage
@@ -607,6 +813,7 @@
       // Close other panels
       document.getElementById("bookmark-panel").classList.remove("open");
       document.getElementById("toc-panel").classList.remove("open");
+      document.getElementById("magnifier-panel").classList.remove("open");
     }
     
     function updateHighlightUI() {
@@ -786,495 +993,300 @@
       highlights[index].color = colors[nextIndex];
       saveHighlights();
     }
-
-    // URL and library handling
-    const urlParams = new URLSearchParams(window.location.search);
-    const bookParam = urlParams.get("book");
-    const lastSavedBook = localStorage.getItem("last-book");
-    let theBookUrl = bookParam ? decodeURIComponent(bookParam) : (lastSavedBook || null);
-    const libraryContainer = document.getElementById("library-container");
-    const readerContainer = document.getElementById("reader-container");
-    if (theBookUrl) {
-      readerContainer.style.display = "block";
-      libraryContainer.style.display = "none";
-    } else {
-      readerContainer.style.display = "none";
-      libraryContainer.style.display = "block";
+    
+    // Magnifier helpers
+    function getMagnifierKey() {
+      return "magnifiers_" + currentBookUrl;
     }
-    let libraryVisible = !theBookUrl;
-    function toggleLibrary(forceState) {
-      libraryVisible = typeof forceState === 'boolean' ? forceState : !libraryVisible;
-      libraryContainer.style.display = libraryVisible ? "block" : "none";
-      readerContainer.style.display = libraryVisible ? "none" : "block";
-      closeMenus();
+    
+    function loadMagnifications() {
+      const stored = localStorage.getItem(getMagnifierKey());
+      magnifications = stored ? JSON.parse(stored) : [];
+      updateMagnifierUI();
+      renderMagnifications();
     }
-    function loadLibrary() {
-      const libraryDiv = document.getElementById("library");
-      libraryDiv.textContent = "Loading books...";
-      fetch("/ebooks/library.json")
-        .then(response => response.json())
-        .then(books => {
-          libraryDiv.innerHTML = "";
-          books.forEach(book => {
-            const bookDiv = document.createElement("div");
-            bookDiv.className = "book";
-            bookDiv.innerHTML = `
-              <img src="${book.cover}" alt="Cover of ${book.title}" />
-              <h3>${book.title}</h3>
-              <p>${book.author}</p>
-              <button onclick="readBook('${book.fileUrl}')">Read</button>
-            `;
-            libraryDiv.appendChild(bookDiv);
-          });
-        })
-        .catch(err => {
-          console.error("Failed to load library.json:", err);
-          libraryDiv.textContent = "Failed to load book list.";
-        });
+    
+    function saveMagnifications() {
+      localStorage.setItem(getMagnifierKey(), JSON.stringify(magnifications));
+      updateMagnifierUI();
+      renderMagnifications();
     }
-    loadLibrary();
-
-    // Modified readBook to cleanup old events/objects and save current book location before switching
-    function readBook(epubUrl) {
-      if (rendition && currentBookUrl) {
-        const loc = rendition.currentLocation();
-        if (loc && loc.start && loc.start.cfi) {
-          localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
-        }
-      }
-      // Cleanup previous reader events and listeners
-      cleanupReader();
-      localStorage.setItem("last-book", epubUrl);
-      const newSearch = new URLSearchParams(window.location.search);
-      newSearch.set("book", epubUrl);
-      window.history.replaceState({}, "", `?${newSearch.toString()}`);
-      initBook(epubUrl);
-      toggleLibrary(false);
+    
+    function toggleMagnifierPanel() {
+      const panel = document.getElementById("magnifier-panel");
+      panel.classList.toggle("open");
+      
+      // Close other panels
+      document.getElementById("bookmark-panel").classList.remove("open");
+      document.getElementById("highlight-panel").classList.remove("open");
+      document.getElementById("toc-panel").classList.remove("open");
     }
-
-    // Reader logic
-    let book, rendition;
-    let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
-    let currentFlow = localStorage.getItem("reading-mode") || "paginated";
-
-    // Swipe/tap handling for page vs. swipe mode
-    function updateSwipeListeners() {
-      const viewer = document.getElementById("viewer");
-      if (currentFlow === "swipe") {
-        document.getElementById("tap-left").style.pointerEvents = "none";
-        document.getElementById("tap-right").style.pointerEvents = "none";
-        viewer.addEventListener("touchstart", handleTouchStart, false);
-        viewer.addEventListener("touchend", handleTouchEnd, false);
-        document.getElementById("gesture-left").style.pointerEvents = "auto";
-        document.getElementById("gesture-right").style.pointerEvents = "auto";
-        document.getElementById("gesture-left").addEventListener("click", swipePrev);
-        document.getElementById("gesture-right").addEventListener("click", swipeNext);
+    
+    function updateMagnifierUI() {
+      const container = document.getElementById("magnifier-panel");
+      container.innerHTML = "";
+      const fragment = document.createDocumentFragment();
+      
+      if (magnifications.length === 0) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.textContent = "No magnified text yet.";
+        fragment.appendChild(emptyDiv);
       } else {
-        viewer.removeEventListener("touchstart", handleTouchStart, false);
-        viewer.removeEventListener("touchend", handleTouchEnd, false);
-        document.getElementById("gesture-left").removeEventListener("click", swipePrev);
-        document.getElementById("gesture-right").removeEventListener("click", swipeNext);
-        document.getElementById("gesture-left").style.pointerEvents = "none";
-        document.getElementById("gesture-right").style.pointerEvents = "none";
-        document.getElementById("tap-left").style.pointerEvents = "auto";
-        document.getElementById("tap-right").style.pointerEvents = "auto";
-      }
-    }
-    
-    function handleTouchStart(evt) {
-      if (currentFlow !== "swipe") return;
-      const firstTouch = evt.touches[0];
-      xDown = firstTouch.clientX;
-      yDown = firstTouch.clientY;
-    }
-    function handleTouchEnd(evt) {
-      if (currentFlow !== "swipe" || !xDown || !yDown) return;
-      let xUp = evt.changedTouches[0].clientX;
-      let yUp = evt.changedTouches[0].clientY;
-      let xDiff = xDown - xUp;
-      let yDiff = yDown - yUp;
-      if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
-        xDiff > 0 ? swipeNext() : swipePrev();
-      }
-      xDown = null;
-      yDown = null;
-    }
-    
-    function swipeNext() {
-      if (swipeInProgress) return;
-      swipeInProgress = true;
-      const viewer = document.getElementById("viewer");
-      viewer.classList.add("swipe-transition");
-      viewer.style.transform = "translateX(-100%)";
-      setTimeout(() => {
-        rendition.next();
-        viewer.classList.remove("swipe-transition");
-        viewer.style.transform = "";
-        swipeInProgress = false;
-      }, 300);
-    }
-    function swipePrev() {
-      if (swipeInProgress) return;
-      swipeInProgress = true;
-      const viewer = document.getElementById("viewer");
-      viewer.classList.add("swipe-transition");
-      viewer.style.transform = "translateX(100%)";
-      setTimeout(() => {
-        rendition.prev();
-        viewer.classList.remove("swipe-transition");
-        viewer.style.transform = "";
-        swipeInProgress = false;
-      }, 300);
-    }
-
-    // NEW FONT SWITCHER CODE: Updated to handle "OpenDyslexic"
-    function applyFontSwitch() {
-      const storedFont = localStorage.getItem("reader-font") || "-apple-system";
-      document.getElementById("font-switcher").value = storedFont;
-      if (rendition) {
-        if (storedFont === "OpenDyslexic") {
-          const styleElTemplate = document.createElement("style");
-          styleElTemplate.innerHTML = `
-            @font-face {
-              font-family: "OpenDyslexic";
-              src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
-              font-weight: normal;
-              font-style: normal;
-            }
-            @font-face {
-              font-family: "OpenDyslexic";
-              src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
-              font-weight: bold;
-              font-style: normal;
-            }
-            body { font-family: "OpenDyslexic", sans-serif !important; }
-          `;
-          rendition.getContents().forEach(contents => {
-            const doc = contents.document;
-            let existingStyle = doc.getElementById("OpenDyslexicStyle");
-            if (!existingStyle) {
-              existingStyle = styleElTemplate.cloneNode(true);
-              existingStyle.id = "OpenDyslexicStyle";
-              doc.head.appendChild(existingStyle);
-            }
-          });
-        } else {
-          rendition.themes.override("body", {
-            "font-family": storedFont + ", serif !important"
-          });
-          rendition.getContents().forEach(contents => {
-            const doc = contents.document;
-            let styleEl = doc.getElementById("fontOverrideStyle");
-            if (!styleEl) {
-              styleEl = doc.createElement("style");
-              styleEl.id = "fontOverrideStyle";
-              doc.head.appendChild(styleEl);
-            }
-            styleEl.textContent = "body { font-family: " + storedFont + ", serif !important; }";
-          });
-        }
-      }
-    }
-    document.getElementById("font-switcher").addEventListener("change", function(e) {
-      const selectedFont = e.target.value;
-      localStorage.setItem("reader-font", selectedFont);
-      if (rendition) {
-        if (selectedFont === "OpenDyslexic") {
-          const styleElTemplate = document.createElement("style");
-          styleElTemplate.innerHTML = `
-            @font-face {
-              font-family: "OpenDyslexic";
-              src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
-              font-weight: normal;
-              font-style: normal;
-            }
-            @font-face {
-              font-family: "OpenDyslexic";
-              src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
-              font-weight: bold;
-              font-style: normal;
-            }
-            body { font-family: "OpenDyslexic", sans-serif !important; }
-          `;
-          rendition.getContents().forEach((contents) => {
-            const doc = contents.document;
-            let existingStyle = doc.getElementById("OpenDyslexicStyle");
-            if (!existingStyle) {
-              existingStyle = styleElTemplate.cloneNode(true);
-              existingStyle.id = "OpenDyslexicStyle";
-              doc.head.appendChild(existingStyle);
-            }
-          });
-        } else {
-          rendition.themes.override("body", {
-            "font-family": selectedFont + ", serif !important"
-          });
-          rendition.getContents().forEach(contents => {
-            const doc = contents.document;
-            let styleEl = doc.getElementById("fontOverrideStyle");
-            if (!styleEl) {
-              styleEl = doc.createElement("style");
-              styleEl.id = "fontOverrideStyle";
-              doc.head.appendChild(styleEl);
-            }
-            styleEl.textContent = "body { font-family: " + selectedFont + ", serif !important; }";
-          });
-        }
-      }
-    });
-
-    function initBook(chosenUrl) {
-      if (!chosenUrl) return;
-      currentBookUrl = chosenUrl;
-      bookmarks = [];
-      highlights = [];
-      if (rendition) {
-        rendition.destroy();
-        rendition = null;
-      }
-      if (book) {
-        book.destroy();
-        book = null;
-      }
-      book = ePub(chosenUrl);
-      registerReaderEvents();
-      book.ready.then(() => {
-        initRendition(currentFlow);
-        setTimeout(() => book.locations.generate(1600), 100);
-        book.loaded.metadata.then(meta => {
-          document.getElementById("book-title").textContent = meta.title || "Untitled";
-          document.getElementById("book-author").textContent = meta.creator || "";
-        });
-        book.loaded.cover
-          .then(coverUrl => book.archive.createUrl(coverUrl, { base64: true }))
-          .then(coverDataUrl => { document.getElementById("cover").src = coverDataUrl; })
-          .catch(() => console.warn("No cover image found."));
-        book.loaded.navigation.then(nav => {
-          const tocPanel = document.getElementById("toc-panel");
-          tocPanel.innerHTML = "";
-          nav.toc.forEach(chapter => {
-            if (/contents|table of contents/i.test(chapter.label)) return;
-            const link = document.createElement("a");
-            link.textContent = chapter.label;
-            link.href = "#";
-            link.addEventListener("click", e => {
-              e.preventDefault();
-              rendition.display(chapter.href);
-              tocPanel.classList.remove("open");
-            });
-            tocPanel.appendChild(link);
-          });
-          const aboutItem = nav.toc.find(chapter => /about|author/i.test(chapter.label));
-          if (aboutItem) {
-            const spineItem = book.spine.getByHref(aboutItem.href);
-            if (spineItem) {
-              spineItem.load(book.archive).then(doc => {
-                const imgElem = doc.querySelector("img[src$='.jpg'], img[src$='.jpeg'], img[src$='.png']");
-                if (imgElem) {
-                  const src = imgElem.getAttribute("src");
-                  book.archive.createUrl(src, { base64: true }).then(url => {
-                    const contactContainer = document.getElementById("contact-image");
-                    contactContainer.innerHTML = "";
-                    const image = document.createElement("img");
-                    image.src = url;
-                    contactContainer.appendChild(image);
-                  }).catch(err => console.warn("Error creating URL for contact image:", err));
-                }
-              }).catch(err => console.warn("Error loading About/Author item:", err));
-            }
+        magnifications.forEach((mag, index) => {
+          const item = document.createElement("div");
+          item.className = "magnifier-item";
+          
+          let noteHtml = "";
+          if (mag.note) {
+            noteHtml = `<div class="magnifier-note">${mag.note}</div>`;
           }
+          
+          item.innerHTML = `
+            <div class="magnifier-text">
+              ${mag.text}
+              ${noteHtml}
+            </div>
+            <div class="magnifier-actions">
+              <button class="add-note-btn" onclick="addMagnifierNote(${index})">📝</button>
+              <button class="magnifier-delete-btn" onclick="deleteMagnification(${index})">×</button>
+            </div>
+          `;
+          
+          // Add click event to navigate to the magnification
+          item.addEventListener("click", (e) => {
+            if (!e.target.closest('button')) {
+              rendition.display(mag.cfi);
+              toggleMagnifierPanel();
+              
+              // Show the magnified text
+              setTimeout(() => {
+                showMagnifierForSavedItem(index);
+              }, 500);
+            }
+          });
+          
+          fragment.appendChild(item);
         });
-        applyFontSwitch();
-        loadBookmarks();
-        loadHighlights();
-      });
-    }
-    function initRendition(flowMode, cfi) {
-      rendition = book.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        flow: flowMode === "scrolled-doc" ? "scrolled" : "paginated",
-        snap: (flowMode === "scrolled-doc") ? false : true,
-        spread: "always",
-        direction: "ltr"
-      });
-      registerHooks();
-      const storedCfi = localStorage.getItem("last-location-" + currentBookUrl);
-      rendition.display(cfi || storedCfi || undefined);
-      rendition.on("relocated", location => {
-        if (location && location.start && location.start.cfi) {
-          localStorage.setItem("last-location-" + currentBookUrl, location.start.cfi);
-          updateBookmarkStar();
-          renderHighlights();
-        }
-      });
-      rendition.on("rendered", () => {
-        applyThemeStylesFromCurrent();
-        applyFontSwitch();
-        updateBookmarkStar();
-        renderHighlights();
-      });
-      updateSwipeListeners();
-      if (flowMode === "scrolled-doc") {
-        document.getElementById("toc-panel").classList.remove("open");
       }
+      container.appendChild(fragment);
     }
-    function registerHooks() {
-      rendition.hooks.content.register(contents => {
-        const doc = contents.document;
-        if (currentFlow === "scrolled-doc") {
-          doc.body.style.margin = "0";
-          doc.body.style.padding = "0";
-          doc.documentElement.style.margin = "0";
-          doc.documentElement.style.padding = "0";
-          doc.body.style.paddingBottom = "30px";
-          document.getElementById("tap-left").style.pointerEvents = "none";
-          document.getElementById("tap-right").style.pointerEvents = "none";
-          const sentinel = doc.createElement("div");
-          sentinel.style.width = "100%";
-          sentinel.style.height = "1px";
-          doc.body.appendChild(sentinel);
-          const observer = new IntersectionObserver(entries => {
-            const continueBar = document.getElementById("continue-bar");
-            entries.forEach(entry => {
-              continueBar.style.display = entry.isIntersecting ? "block" : "none";
-            });
-          }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" });
-          observer.observe(sentinel);
-        } else {
-          document.getElementById("tap-left").style.pointerEvents = "auto";
-          document.getElementById("tap-right").style.pointerEvents = "auto";
-          doc.body.style.paddingTop = "20px";
-          doc.body.style.paddingBottom = "30px";
-        }
-        rendition.themes.fontSize(currentFontSize + "%");
-        document.getElementById("viewer").style.overflow = "hidden";
-        applyThemeStylesFromCurrent();
-      });
-    }
-    // Register named tap event listeners for paginated mode.
-    function registerReaderEvents() {
-      document.getElementById("tap-left").addEventListener("click", tapLeftHandler);
-      document.getElementById("tap-right").addEventListener("click", tapRightHandler);
-    }
-    let openMenuType = null;
-    function toggleMenu(type) {
-      if (openMenuType === type) { closeMenus(); }
-      else {
-        closeMenus();
-        if (type === 'menu') {
-          document.getElementById("expanded-menu").classList.add("open");
-          document.getElementById("menu-backdrop").style.display = "block";
-        } else if (type === 'settings') {
-          document.getElementById("settings-modal").classList.add("open");
-        }
-        openMenuType = type;
-      }
-    }
-    function closeMenus() {
-      document.getElementById("expanded-menu").classList.remove("open");
-      document.getElementById("settings-modal").classList.remove("open");
-      document.getElementById("menu-backdrop").style.display = "none";
-      openMenuType = null;
-    }
-    function applyThemeStylesFromCurrent() {
+    
+    function enableMagnifierMode() {
       if (!rendition) return;
-      let bg = "#fff", color = "#000";
-      if (document.body.classList.contains("night-mode")) {
-        bg = "#111"; color = "#eee";
-      } else if (document.body.classList.contains("sepia-mode")) {
-        bg = "#f4ecd8"; color = "#000";
-      } else if (document.body.classList.contains("matcha-mode")) {
-        bg = "#C3D8B6"; color = "#000";
-      } else if (document.body.classList.contains("light-mode")) {
-        bg = "#f5f5f5"; color = "#000";
-      }
+      
+      magnifierMode = true;
+      magnifierFirstSelection = null;
+      magnifierSecondSelection = null;
+      
+      // Show overlay with instructions
+      document.getElementById("magnifier-overlay").style.display = "block";
+      document.getElementById("magnifier-instruction").textContent = "Select the start of text to magnify";
+      
+      // Disable tap zones
+      document.getElementById("tap-left").style.pointerEvents = "none";
+      document.getElementById("tap-right").style.pointerEvents = "none";
+      
       rendition.getContents().forEach(contents => {
         const doc = contents.document;
-        doc.documentElement.style.background = bg;
-        doc.body.style.background = bg;
-        doc.body.style.color = color;
+        
+        // For iOS compatibility - use touchend instead of mouseup
+        doc.addEventListener("touchend", handleMagnifierSelection, false);
+        doc.addEventListener("mouseup", handleMagnifierSelection, false);
       });
     }
-    // Toolbar button event listeners
-    document.getElementById("menu-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('menu'); });
-    document.getElementById("toc-toggle").addEventListener("click", () => { document.getElementById("toc-panel").classList.toggle("open"); });
-    document.getElementById("settings-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('settings'); });
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-      closeMenus();
-      if (document.body.classList.contains("night-mode")) {
-        changeTheme(lastNonNightTheme);
-      } else {
-        lastNonNightTheme = document.getElementById("theme-select").value;
-        changeTheme("night");
+    
+    function disableMagnifierMode() {
+      magnifierMode = false;
+      magnifierFirstSelection = null;
+      magnifierSecondSelection = null;
+      
+      // Hide overlay and magnifier container
+      document.getElementById("magnifier-overlay").style.display = "none";
+      document.querySelector(".magnifier-container").style.display = "none";
+      
+      // Re-enable tap zones based on current flow
+      updateSwipeListeners();
+      
+      if (!rendition) return;
+      
+      rendition.getContents().forEach(contents => {
+        const doc = contents.document;
+        doc.removeEventListener("touchend", handleMagnifierSelection, false);
+        doc.removeEventListener("mouseup", handleMagnifierSelection, false);
+      });
+    }
+    
+    function handleMagnifierSelection(event) {
+      const doc = event.currentTarget;
+      const selection = doc.getSelection();
+      
+      if (selection && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        const text = selection.toString().trim();
+        
+        if (text.length > 0) {
+          if (!magnifierFirstSelection) {
+            // This is the first selection
+            magnifierFirstSelection = {
+              range: range.cloneRange(),
+              text: text,
+              cfi: new ePub.CFI(range, rendition.currentBook.package.metadata).toString()
+            };
+            
+            // Update instruction
+            document.getElementById("magnifier-instruction").textContent = "Now select the end of text to magnify";
+            
+            // Clear selection
+            selection.removeAllRanges();
+          } else {
+            // This is the second selection
+            magnifierSecondSelection = {
+              range: range.cloneRange(),
+              text: text,
+              cfi: new ePub.CFI(range, rendition.currentBook.package.metadata).toString()
+            };
+            
+            // Process the complete selection
+            processMagnifierSelections();
+            
+            // Clear selection
+            selection.removeAllRanges();
+          }
+        }
       }
-    });
-    // Bookmark toolbar event listeners
-    document.getElementById("bookmark-toggle").addEventListener("click", () => {
-      toggleBookmark();
-    });
-    document.getElementById("bookmark-dropdown").addEventListener("click", () => {
-      toggleBookmarkDropdown();
-    });
+    }
     
-    // Highlight toolbar event listeners
-    document.getElementById("highlight-toggle").addEventListener("click", () => {
-      enableHighlightMode();
-    });
-    document.getElementById("highlight-list").addEventListener("click", () => {
-      toggleHighlightPanel();
-    });
+    function processMagnifierSelections() {
+      if (!magnifierFirstSelection || !magnifierSecondSelection) return;
+      
+      const firstCFI = magnifierFirstSelection.cfi;
+      const secondCFI = magnifierSecondSelection.cfi;
+      
+      // Get the full text between selections
+      rendition.getRange(firstCFI, secondCFI).then(range => {
+        if (!range) {
+          console.error("Could not get range between selections");
+          disableMagnifierMode();
+          return;
+        }
+        
+        const fullText = range.toString().trim();
+        
+        // Create and save the magnification
+        createMagnification(firstCFI, fullText);
+        
+        // Clean up
+        disableMagnifierMode();
+      }).catch(err => {
+        console.error("Error getting range:", err);
+        disableMagnifierMode();
+      });
+    }
     
-    document.getElementById("reading-mode").addEventListener("change", e => {
-      const newMode = e.target.value;
-      localStorage.setItem("reading-mode", newMode);
-      currentFlow = newMode;
-      if (!rendition || !book) return;
-      const currentLocation = rendition.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
-      rendition.destroy();
+    function createMagnification(cfi, text) {
+      if (!rendition) return;
+      
+      // Add to magnifications array
+      magnifications.push({
+        cfi: cfi,
+        text: text,
+        created: new Date().toISOString(),
+        note: ""
+      });
+      
+      // Save magnifications
+      saveMagnifications();
+      
+      // Show a confirmation
+      alert("Text magnification saved!");
+    }
+    
+    function renderMagnifications() {
+      if (!rendition) return;
+      
+      // We don't need to add visual indicators for magnifications,
+      // as they'll be accessed from the magnifier panel
+    }
+    
+    function deleteMagnification(index) {
+      if (index >= 0 && index < magnifications.length) {
+        magnifications.splice(index, 1);
+        saveMagnifications();
+      }
+    }
+    
+    function showMagnifierForSavedItem(index) {
+      if (index < 0 || index >= magnifications.length) return;
+      
+      const mag = magnifications[index];
+      const magnifierContainer = document.querySelector(".magnifier-container");
+      const magnifierContent = document.querySelector(".magnifier-content");
+      
+      // Set the content
+      magnifierContent.textContent = mag.text;
+      
+      // Position in center of screen
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      magnifierContainer.style.left = (windowWidth / 2 - 100) + "px";
+      magnifierContainer.style.top = (windowHeight / 2 - 100) + "px";
+      
+      // Apply magnification effect
+      magnifierContent.style.fontSize = "24px";
+      magnifierContent.style.lineHeight = "1.5";
+      magnifierContent.style.padding = "10px";
+      
+      // Show the magnifier
+      magnifierContainer.style.display = "block";
+      
+      // Auto-hide after 5 seconds
       setTimeout(() => {
-        initRendition(newMode, currentLocation);
-      }, 50);
-    });
-    document.getElementById("theme-select").addEventListener("change", e => { changeTheme(e.target.value); });
-    function changeFontSize(delta) {
-      currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
-      localStorage.setItem("reader-font-size", currentFontSize);
-      if (rendition) { rendition.themes.fontSize(currentFontSize + "%"); }
+        magnifierContainer.style.display = "none";
+      }, 5000);
     }
-    function changeTheme(theme) {
-      document.body.className = "";
-      if (theme === "night") {
-        document.body.classList.add("night-mode");
-      } else if (theme === "sepia") {
-        document.body.classList.add("sepia-mode");
-      } else if (theme === "matcha") {
-        document.body.classList.add("matcha-mode");
-      } else {
-        document.body.classList.add("light-mode");
-      }
-      document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
-      localStorage.setItem("reader-theme", theme);
-      document.getElementById("theme-select").value = theme;
-      applyThemeStylesFromCurrent();
+    
+    function addMagnifierNote(index) {
+      if (index < 0 || index >= magnifications.length) return;
+      
+      // Set current note index
+      currentNoteIndex = index;
+      
+      // Set current note content if any
+      document.getElementById("note-input").value = magnifications[index].note || "";
+      
+      // Show the modal
+      document.getElementById("note-modal").style.display = "block";
+      
+      // Focus the text area
+      document.getElementById("note-input").focus();
+      
+      // Stop event propagation
+      event.stopPropagation();
     }
-    document.getElementById("continue-bar").addEventListener("click", () => {
-      if (!rendition || currentFlow !== "scrolled-doc") {
-        if (rendition) rendition.next();
-        return;
+    
+    function saveNote() {
+      if (currentNoteIndex >= 0 && currentNoteIndex < magnifications.length) {
+        // Get the note text
+        const noteText = document.getElementById("note-input").value.trim();
+        
+        // Save to the magnification
+        magnifications[currentNoteIndex].note = noteText;
+        
+        // Save magnifications
+        saveMagnifications();
+        
+        // Close the modal
+        document.getElementById("note-modal").style.display = "none";
+        
+        // Reset current note index
+        currentNoteIndex = -1;
       }
-      const loc = rendition.currentLocation();
-      if (loc && loc.start && typeof loc.start.index !== "undefined") {
-        const currentIndex = loc.start.index;
-        const nextItem = book.spine.get(currentIndex + 1);
-        if (nextItem) { rendition.display(nextItem.href); }
-        else { console.warn("No next chapter found."); }
-      } else { console.warn("Invalid current location:", loc); }
-    });
-    if (theBookUrl) { initBook(theBookUrl); }
-    const savedTheme = localStorage.getItem("reader-theme") || "light";
-    document.getElementById("theme-select").value = savedTheme;
-    changeTheme(savedTheme);
-  </script>
-</body>
-</html>
+    }
+    
+    function cancelNote() {
+      // Close the modal
+      document.getElementById("note-modal").style.display = "none";
+      
+      // Reset current note index
+      currentNoteIndex = -1;
+    }
