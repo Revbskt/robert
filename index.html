@@ -1,886 +1,1189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern E-Reader with Text Selection</title>
-    <style>
-        :root {
-            --font-size: a18px;
-            --line-height: 1.8;
-            --primary-color: #4361ee;
-            --primary-light: rgba(67, 97, 238, 0.1);
-            --primary-medium: rgba(67, 97, 238, 0.2);
-            --text-color: #333;
-            --bg-color: #fff;
-            --container-bg: #f8f9fa;
-            --highlight-color: #FFEB3B;
-            --highlight-bg: rgba(255, 235, 59, 0.3);
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--container-bg);
-            color: var(--text-color);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        
-        .e-reader {
-            position: relative;
-            width: 100%;
-            height: auto;
-            min-height: 600px;
-            margin: 0 auto;
-            background-color: var(--bg-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            padding: 40px;
-            font-size: var(--font-size);
-            line-height: var(--line-height);
-            color: var(--text-color);
-            transition: all 0.3s ease;
-            user-select: text; /* Enable text selection */
-        }
-        
-        .e-reader p {
-            margin-bottom: 20px;
-            transition: font-size 0.3s ease;
-            position: relative;
-        }
-        
-        /* Text selection style */
-        .e-reader ::selection {
-            background-color: var(--highlight-bg);
-            color: var(--text-color);
-        }
-        
-        .user-highlight {
-            background-color: var(--highlight-bg);
-            border-radius: 2px;
-            padding: 0 2px;
-            margin: 0 -2px;
-            position: relative;
-        }
-        
-        .user-highlight.has-note:after {
-            content: "📝";
-            font-size: 10px;
-            position: absolute;
-            right: -4px;
-            top: -8px;
-            color: var(--primary-color);
-        }
-        
-        .toolbar {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            background-color: var(--bg-color);
-            padding: 10px 20px;
-            border-radius: 50px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            gap: 10px;
-            transition: background-color 0.3s;
-        }
-        
-        .toolbar button {
-            padding: 10px 16px;
-            cursor: pointer;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-        }
-        
-        .toolbar button:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-        
-        .toolbar button.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .toolbar .zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .toolbar .zoom-level {
-            font-weight: 600;
-            margin: 0 5px;
-            min-width: 24px;
-            text-align: center;
-        }
-        
-        .icon {
-            width: 18px;
-            height: 18px;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .selection-toolbar {
-            position: absolute;
-            background-color: var(--bg-color);
-            border-radius: 50px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            padding: 6px 12px;
-            display: flex;
-            gap: 8px;
-            z-index: 200;
-            opacity: 0;
-            transform: translateY(10px);
-            pointer-events: none;
-            transition: opacity 0.2s, transform 0.2s;
-        }
-        
-        .selection-toolbar.visible {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-        
-        .selection-toolbar button {
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--text-color);
-            transition: background-color 0.2s;
-        }
-        
-        .selection-toolbar button:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-        
-        /* Note popup */
-        .note-popup {
-            position: absolute;
-            background-color: var(--bg-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            padding: 10px;
-            width: 240px;
-            z-index: 201;
-            opacity: 0;
-            transform: translateY(10px);
-            pointer-events: none;
-            transition: opacity 0.2s, transform 0.2s;
-        }
-        
-        .note-popup.visible {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-        
-        .note-popup textarea {
-            width: 100%;
-            height: 80px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: none;
-            margin-bottom: 8px;
-        }
-        
-        .note-popup .buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-        
-        .note-popup button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .note-popup button.cancel {
-            background-color: #ccc;
-        }
-        
-        .note-popup button:hover {
-            opacity: 0.9;
-        }
-        
-        /* Highlights panel - similar to bookmark panel */
-        #highlights-panel {
-            position: fixed;
-            top: 40px;
-            left: 0;
-            right: 0;
-            height: 70vh;
-            overflow-y: auto;
-            background: rgba(0,0,0,0.85);
-            border-bottom: 1px solid #444;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-            transform: translateY(-100%);
-        }
-        
-        #highlights-panel.open {
-            transform: translateY(0);
-        }
-        
-        #highlights-panel .highlight-item {
-            display: flex;
-            align-items: flex-start;
-            padding: 10px;
-            color: #fff;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        #highlights-panel .highlight-item:hover {
-            background-color: rgba(255,255,255,0.1);
-        }
-        
-        #highlights-panel .highlight-text {
-            flex: 1;
-            margin-right: 10px;
-        }
-        
-        #highlights-panel .highlight-note {
-            font-style: italic;
-            margin-top: 5px;
-            color: #ccc;
-            font-size: 0.9em;
-        }
-        
-        #highlights-panel .highlight-actions {
-            display: flex;
-            gap: 5px;
-        }
-        
-        #highlights-panel .highlight-actions button {
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            font-size: 14px;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-        
-        #highlights-panel .highlight-actions button:hover {
-            opacity: 1;
-        }
-        
-        /* Dark mode toggle */
-        .dark-mode {
-            --container-bg: #121212;
-            --bg-color: #1e1e1e;
-            --text-color: #e0e0e0;
-            --primary-light: rgba(67, 97, 238, 0.2);
-            --primary-medium: rgba(67, 97, 238, 0.3);
-            --highlight-bg: rgba(255, 235, 59, 0.2);
-        }
-        
-        .dark-mode .toolbar,
-        .dark-mode .selection-toolbar,
-        .dark-mode .note-popup {
-            background-color: #2d2d2d;
-        }
-        
-        .dark-mode .toolbar button,
-        .dark-mode .selection-toolbar button {
-            background-color: #2d2d2d;
-            color: #e0e0e0;
-        }
-        
-        .dark-mode .toolbar button:hover,
-        .dark-mode .selection-toolbar button:hover {
-            background-color: #3d3d3d;
-        }
-        
-        .dark-mode .toolbar button.active {
-            background-color: #3a56e4;
-        }
-        
-        .dark-mode .note-popup textarea {
-            background-color: #333;
-            color: #eee;
-            border-color: #555;
-        }
-        
-        .dark-mode .note-popup button.cancel {
-            background-color: #555;
-        }
-        
-        /* Line height adjustment for readability */
-        .line-height-1 { --line-height: 1.5; }
-        .line-height-2 { --line-height: 1.8; }
-        .line-height-3 { --line-height: 2.1; }
-        
-        /* Animation for highlighting */
-        @keyframes flash-highlight {
-            0% { background-color: var(--primary-light); }
-            50% { background-color: var(--primary-medium); }
-            100% { background-color: var(--highlight-bg); }
-        }
-        
-        .highlight-animation {
-            animation: flash-highlight 0.5s ease;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>My ePub Reader and Library</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- JSZip and epub.js for the reader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
+  <style>
+    /* ===== Global UI Font Setup ===== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
+      background: #f5f5f5;
+    }
+    /* ===== Theme Classes for the Body ===== */
+    body.light-mode { background: #f5f5f5; }
+    body.light-mode #toolbar { background: #eee; }
+    body.sepia-mode { background: #f4ecd8; }
+    body.sepia-mode #toolbar { background: #e7dbc3; }
+    body.matcha-mode { background: #C3D8B6; }
+    body.matcha-mode #toolbar { background: #B0CFA3; }
+    body.night-mode { background: #111 !important; }
+    body.night-mode #toolbar { background: #222 !important; }
+    body.night-mode #continue-bar { background: #111 !important; color: #eee !important; }
+    /* ===== Layout for Library and Reader Containers ===== */
+    #reader-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #library-container {
+      display: none;
+      position: relative;
+      min-height: 100vh;
+      background: #f5f5f5;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+    h1 { text-align: center; margin: 0 0 1rem; }
+    /* ===== Library Grid Styling ===== */
+    #library-controls { text-align: center; margin-bottom: 1rem; }
+    #library {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .book {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 0.75rem;
+      width: 140px;
+      text-align: center;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+      border-radius: 6px;
+    }
+    .book img { width: 100%; height: auto; border-radius: 4px; }
+    .book h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
+    .book p { font-size: 0.8rem; margin: 0 0 0.5rem; color: #555; }
+    .book button {
+      margin: 4px 0;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .book button:hover { background-color: #0056b3; }
+    /* ===== Reader Toolbar (UI) ===== */
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      z-index: 1002;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      padding: 0 10px;
+    }
+    #toolbar button {
+      width: 40px;
+      height: 40px;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.8;
+      pointer-events: auto;
+    }
+    #toolbar button:hover { opacity: 1; }
+    /* ===== Bookmark Panel (dropdown like the TOC) ===== */
+    #bookmark-panel {
+      position: fixed;
+      top: 40px;
+      left: 0;
+      right: 0;
+      height: 70vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.85);
+      border-bottom: 1px solid #444;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      transform: translateY(-100%);
+    }
+    #bookmark-panel.open { transform: translateY(0); }
+    #bookmark-panel div {
+      display: block;
+      padding: 6px 10px;
+      text-decoration: none;
+      color: #fff;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    #bookmark-panel div:hover { background: rgba(255,255,255,0.1); }
+    /* ===== Slide-out Menu Backdrop & Panel ===== */
+    #menu-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 1001;
+    }
+    #expanded-menu {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: -100%;
+      width: 80%;
+      max-width: 300px;
+      background: rgba(128,128,128,0.90);
+      color: #fff;
+      z-index: 1010;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      overflow-y: auto;
+      transition: left 0.3s ease;
+    }
+    #expanded-menu.open { left: 0; }
+    #expanded-menu .close-menu {
+      align-self: flex-end;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      color: #fff;
+      transition: transform 0.2s ease;
+    }
+    #expanded-menu .close-menu:hover { transform: scale(1.1); }
+    #expanded-menu .menu-button {
+      margin: 4px auto;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #expanded-menu .menu-button:hover { background-color: #0056b3; }
+    /* ===== Book Card in Menu ===== */
+    #book-card { margin: 0 auto 20px; max-width: 240px; text-align: center; }
+    #book-card img { width: 100%; max-height: 320px; object-fit: contain; border-radius: 4px; margin-bottom: 10px; }
+    #book-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+    #book-author { font-size: 16px; color: #fff; }
+    #contact-image { margin-top: 10px; }
+    #contact-image img { display: block; margin: 0 auto; max-width: 80%; height: auto; border-radius: 4px; }
+    /* ===== Table of Contents Panel ===== */
+    #toc-panel {
+      position: fixed;
+      top: 40px;
+      left: 0;
+      right: 0;
+      height: 70vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.85);
+      border-bottom: 1px solid #444;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      transform: translateY(-100%);
+    }
+    #toc-panel.open { transform: translateY(0); }
+    #toc-panel a { display: block; padding: 6px 10px; text-decoration: none; color: #fff; }
+    #toc-panel a:hover { background: rgba(255,255,255,0.1); }
+    /* ===== ePub Viewer Area & Zones ===== */
+    #viewer {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      right: 0;
+      bottom: 30px;
+      touch-action: pan-x;
+      overflow: hidden;
+    }
+    /* Tap zones for paginated mode */
+    #tap-left, #tap-right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 33.3333%;
+      z-index: 998;
+    }
+    #tap-left { left: 0; }
+    #tap-right { right: 0; }
+    /* Gesture zones for additional tap support in swipe mode */
+    #gesture-left, #gesture-right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 40%;
+      z-index: 999;
+      pointer-events: none;
+    }
+    #gesture-left { left: 0; }
+    #gesture-right { right: 0; }
+    /* ===== Swipe Transition Styles ===== */
+    #viewer.swipe-transition {
+      transition: transform 0.3s ease;
+    }
+    /* ===== Progress Bar + Continue Bar ===== */
+    #progress-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: #007bff;
+      width: 0%;
+      z-index: 1000;
+    }
+    #continue-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #d3d3d3;
+      color: #000;
+      text-align: center;
+      padding: 5px 0;
+      font-size: 18px;
+      line-height: 1.2;
+      cursor: pointer;
+      z-index: 1001;
+      transition: background 0.3s;
+      display: none;
+    }
+    #continue-bar:hover { background: #c0c0c0; }
+    /* ===== Settings Modal ("Aa") ===== */
+    #settings-modal {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, -50%) scale(0.95);
+      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      width: 90%;
+      max-width: 360px;
+      padding: 20px;
+      z-index: 2000;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    #settings-modal.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    #settings-modal h3 { margin: 0 0 1rem; font-size: 18px; text-align: center; }
+    /* --- NEW FONT SWITCHER CONTROLS (with OpenDyslexic option) --- */
+    #settings-modal label { margin-bottom: 0.3rem; }
+    #settings-modal select,
+    #settings-modal button {
+      font-size: 16px;
+      padding: 8px;
+      margin-bottom: 16px;
+      background: #222;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 4px;
+    }
+    #settings-modal .font-size-buttons { display: flex; justify-content: space-between; }
+    #settings-modal .close-settings {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 24px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #fff;
+      transition: transform 0.2s ease;
+    }
+    #settings-modal .close-settings:hover { transform: scale(1.1); }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <div class="e-reader" id="reader">
-            <p>The old man had lived in the valley for over forty years. He knew every tree, every stream, and every shift in the wind. As the sun rose over the eastern mountains, casting long shadows across the fields, he sat on his porch watching the day unfold with the patience of someone who had seen thousands of such mornings.</p>
-            
-            <p>Nature had been his companion, his teacher, and sometimes his adversary. Through floods and droughts, through harsh winters and brilliant springs, he had observed the rhythms of the land. His weathered hands told stories of hard work, of coaxing life from the soil, of building and repairing what storms had damaged.</p>
-            
-            <p>The village down in the valley had grown over the decades. What once was a handful of families was now a bustling community with paved roads and streetlights that dimmed the stars he loved to watch. Progress, they called it. He didn't mind the changes, though sometimes he missed the deeper silence of the past.</p>
-            
-            <p>Children from the village would occasionally venture up to his cabin, curious about the old man who lived alone on the hillside. He would tell them stories of the valley before they were born, of great snowstorms that buried the world in white, of the time the river jumped its banks and reshaped the valley floor. They listened with wide eyes, unable to imagine the landscape as anything different from what they knew.</p>
-            
-            <p>Today, as he rocked gently in his chair, he noticed a young family making their way up the path toward his home. New faces, he thought, newcomers to the valley. He smiled, ready to welcome them, to share what he knew, to become part of their story as they became part of his.</p>
-        </div>
+<body class="light-mode">
+  <!-- LIBRARY CONTAINER -->
+  <div id="library-container">
+    <h1>📚 Beta Epub Reader 📚</h1>
+    <div id="library-controls">
+      <button onclick="toggleLibrary(false)">Back to Reader</button>
     </div>
-    
-    <div class="selection-toolbar" id="selection-toolbar">
-        <button id="highlight-btn"><span class="icon">🖌️</span> Highlight</button>
-        <button id="note-btn"><span class="icon">📝</span> Note</button>
-        <button id="clear-btn"><span class="icon">❌</span></button>
-    </div>
-    
-    <div class="note-popup" id="note-popup">
-        <textarea id="note-text" placeholder="Add a note..."></textarea>
-        <div class="buttons">
-            <button class="cancel" id="cancel-note">Cancel</button>
-            <button id="save-note">Save</button>
-        </div>
-    </div>
-    
-    <!-- Highlights panel (similar to bookmark panel) -->
-    <div id="highlights-panel"></div>
-    
-    <div class="toolbar" id="toolbar">
-        <button id="toggle-highlight" class="toggle-button">
-            <span class="icon">🖌️</span> Highlight
-        </button>
-        <button id="view-highlights">
-            <span class="icon">🔍</span> Highlights
-        </button>
-        <div class="zoom-controls">
-            <button id="decrease-font">
-                <span class="icon">A-</span>
-            </button>
-            <span class="zoom-level" id="font-display">100%</span>
-            <button id="increase-font">
-                <span class="icon">A+</span>
-            </button>
-        </div>
-        <button id="toggle-spacing">
-            <span class="icon">↕️</span> Spacing
-        </button>
-        <button id="toggle-dark-mode">
-            <span class="icon">🌙</span> Dark
-        </button>
+    <div id="library">Loading books...</div>
+  </div>
+
+  <!-- READER CONTAINER -->
+  <div id="reader-container">
+    <div id="toolbar">
+      <button id="menu-toggle" title="Main Menu">☰</button>
+      <button id="toc-toggle" title="Table of Contents">📖</button>
+      <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
+      <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
+      <button id="settings-toggle" title="Read Settings">Aa</button>
+      <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Elements
-            const body = document.body;
-            const reader = document.getElementById('reader');
-            const paragraphs = reader.querySelectorAll('p');
-            const toggleHighlightButton = document.getElementById('toggle-highlight');
-            const viewHighlightsButton = document.getElementById('view-highlights');
-            const increaseFontButton = document.getElementById('increase-font');
-            const decreaseFontButton = document.getElementById('decrease-font');
-            const fontDisplay = document.getElementById('font-display');
-            const toggleSpacingButton = document.getElementById('toggle-spacing');
-            const darkModeToggle = document.getElementById('toggle-dark-mode');
-            const selectionToolbar = document.getElementById('selection-toolbar');
-            const highlightBtn = document.getElementById('highlight-btn');
-            const noteBtn = document.getElementById('note-btn');
-            const clearBtn = document.getElementById('clear-btn');
-            const notePopup = document.getElementById('note-popup');
-            const noteText = document.getElementById('note-text');
-            const saveNoteBtn = document.getElementById('save-note');
-            const cancelNoteBtn = document.getElementById('cancel-note');
-            const highlightsPanel = document.getElementById('highlights-panel');
-            
-            // State
-            let highlightModeEnabled = false;
-            let fontSizePercent = 100;
-            let spacingLevel = 2; // 1-3
-            let highlights = [];
-            let lastSelectionRange = null;
-            let currentHighlightId = null;
-            
-            // Initialize
-            updateFontSize();
-            loadHighlights();
-            
-            // Toggle highlight mode
-            toggleHighlightButton.addEventListener('click', function() {
-                highlightModeEnabled = !highlightModeEnabled;
-                toggleHighlightButton.classList.toggle('active');
-            });
-            
-            // View highlights
-            viewHighlightsButton.addEventListener('click', function() {
-                toggleHighlightsPanel();
-            });
-            
-            // Increase font size
-            increaseFontButton.addEventListener('click', function() {
-                if (fontSizePercent < 200) {
-                    fontSizePercent += 10;
-                    updateFontSize();
-                }
-            });
-            
-            // Decrease font size
-            decreaseFontButton.addEventListener('click', function() {
-                if (fontSizePercent > 70) {
-                    fontSizePercent -= 10;
-                    updateFontSize();
-                }
-            });
-            
-            // Toggle spacing
-            toggleSpacingButton.addEventListener('click', function() {
-                spacingLevel = (spacingLevel % 3) + 1;
-                
-                // Remove all current line height classes
-                reader.classList.remove('line-height-1', 'line-height-2', 'line-height-3');
-                
-                // Add the appropriate class
-                reader.classList.add(`line-height-${spacingLevel}`);
-                
-                // Update button label
-                const spacingLabels = ['Compact', 'Normal', 'Relaxed'];
-                toggleSpacingButton.innerHTML = `<span class="icon">↕️</span> ${spacingLabels[spacingLevel - 1]}`;
-            });
-            
-            // Toggle dark mode
-            darkModeToggle.addEventListener('click', function() {
-                body.classList.toggle('dark-mode');
-                darkModeToggle.classList.toggle('active');
-                if (body.classList.contains('dark-mode')) {
-                    darkModeToggle.innerHTML = '<span class="icon">☀️</span> Light';
-                } else {
-                    darkModeToggle.innerHTML = '<span class="icon">🌙</span> Dark';
-                }
-            });
-            
-            // Update font size
-            function updateFontSize() {
-                document.documentElement.style.setProperty('--font-size', `${(18 * fontSizePercent / 100)}px`);
-                fontDisplay.textContent = `${fontSizePercent}%`;
-            }
-            
-            // Selection handling
-            document.addEventListener('selectionchange', function() {
-                const selection = window.getSelection();
-                
-                if (selection.toString().trim().length > 0 && highlightModeEnabled) {
-                    // Save the selection range
-                    lastSelectionRange = selection.getRangeAt(0).cloneRange();
-                    
-                    // Get the bounding rectangle of the selection
-                    const rect = lastSelectionRange.getBoundingClientRect();
-                    
-                    // Position the toolbar
-                    selectionToolbar.style.left = `${(rect.left + rect.right) / 2 - selectionToolbar.offsetWidth / 2}px`;
-                    selectionToolbar.style.top = `${rect.top - selectionToolbar.offsetHeight - 10}px`;
-                    
-                    // Show the toolbar
-                    selectionToolbar.classList.add('visible');
-                } else {
-                    // Hide the toolbar after a brief delay (to allow button clicks)
-                    setTimeout(() => {
-                        if (selection.toString().trim().length === 0) {
-                            selectionToolbar.classList.remove('visible');
-                        }
-                    }, 100);
-                }
-            });
-            
-            // When user clicks outside, hide the selection toolbar
-            document.addEventListener('click', function(e) {
-                if (!selectionToolbar.contains(e.target) && 
-                    !notePopup.contains(e.target) &&
-                    !e.target.closest('#reader') &&
-                    window.getSelection().toString().trim().length === 0) {
-                    selectionToolbar.classList.remove('visible');
-                    notePopup.classList.remove('visible');
-                }
-            });
-            
-            // Highlight button
-            highlightBtn.addEventListener('click', function() {
-                if (lastSelectionRange) {
-                    const highlightSpan = createHighlight(lastSelectionRange);
-                    
-                    if (highlightSpan) {
-                        // Show the note popup after a short delay
-                        setTimeout(() => {
-                            const rect = highlightSpan.getBoundingClientRect();
-                            notePopup.style.left = `${rect.left}px`;
-                            notePopup.style.top = `${rect.bottom + 10}px`;
-                            noteText.value = '';
-                            currentHighlightId = highlightSpan.dataset.highlightId;
-                            notePopup.classList.add('visible');
-                            noteText.focus();
-                        }, 100);
-                    }
-                    
-                    window.getSelection().removeAllRanges();
-                    selectionToolbar.classList.remove('visible');
-                }
-            });
-            
-            // Note button
-            noteBtn.addEventListener('click', function() {
-                if (lastSelectionRange) {
-                    const highlightSpan = createHighlight(lastSelectionRange);
-                    
-                    if (highlightSpan) {
-                        // Position and show note popup
-                        const rect = highlightSpan.getBoundingClientRect();
-                        notePopup.style.left = `${rect.left}px`;
-                        notePopup.style.top = `${rect.bottom + 10}px`;
-                        noteText.value = '';
-                        currentHighlightId = highlightSpan.dataset.highlightId;
-                        notePopup.classList.add('visible');
-                        noteText.focus();
-                    }
-                    
-                    window.getSelection().removeAllRanges();
-                    selectionToolbar.classList.remove('visible');
-                }
-            });
-            
-            // Save note button
-            saveNoteBtn.addEventListener('click', function() {
-                const note = noteText.value.trim();
-                if (currentHighlightId) {
-                    const index = highlights.findIndex(h => h.id === currentHighlightId);
-                    if (index !== -1) {
-                        highlights[index].note = note;
-                        saveHighlights();
-                        updateHighlightUI();
-                        
-                        // Add visual indicator that this highlight has a note
-                        const highlightSpan = document.querySelector(`[data-highlight-id="${currentHighlightId}"]`);
-                        if (highlightSpan && note) {
-                            highlightSpan.classList.add('has-note');
-                        } else if (highlightSpan && !note) {
-                            highlightSpan.classList.remove('has-note');
-                        }
-                    }
-                }
-                notePopup.classList.remove('visible');
-                currentHighlightId = null;
-            });
-            
-            // Cancel note button
-            cancelNoteBtn.addEventListener('click', function() {
-                notePopup.classList.remove('visible');
-                currentHighlightId = null;
-            });
-            
-            // Clear button - Clear selection
-            clearBtn.addEventListener('click', function() {
-                window.getSelection().removeAllRanges();
-                selectionToolbar.classList.remove('visible');
-            });
-            
-            // Create highlight from selection
-            function createHighlight(range) {
-                // Create span element for highlight
-                const highlightSpan = document.createElement('span');
-                highlightSpan.className = 'user-highlight highlight-animation';
-                
-                // Set unique ID for the highlight
-                const highlightId = 'highlight-' + Date.now();
-                highlightSpan.dataset.highlightId = highlightId;
-                
-                // Surround the selected content with the highlight span
-                try {
-                    range.surroundContents(highlightSpan);
-                    
-                    // Add the highlight to our list with empty note initially
-                    highlights.push({
-                        id: highlightId,
-                        text: highlightSpan.textContent,
-                        note: '',
-                        timestamp: Date.now()
-                    });
-                    
-                    saveHighlights();
-                    return highlightSpan;
-                } catch (e) {
-                    console.error('Could not highlight selection: ', e);
-                    // Handle complex selections (when selection spans multiple nodes)
-                    alert('Please select text within a single paragraph for highlighting');
-                    return null;
-                }
-            }
-            
-            // Save and load highlights from localStorage
-            function saveHighlights() {
-                localStorage.setItem('user-highlights', JSON.stringify(highlights));
-            }
-            
-            function loadHighlights() {
-                const stored = localStorage.getItem('user-highlights');
-                if (stored) {
-                    highlights = JSON.parse(stored);
-                    updateHighlightUI();
-                }
-            }
-            
-            // Update highlights panel UI
-            function updateHighlightUI() {
-                const panel = document.getElementById('highlights-panel');
-                panel.innerHTML = '';
-                
-                if (highlights.length === 0) {
-                    const emptyMsg = document.createElement('div');
-                    emptyMsg.className = 'highlight-item';
-                    emptyMsg.textContent = 'No highlights yet.';
-                    panel.appendChild(emptyMsg);
-                    return;
-                }
-                
-                // Sort highlights by timestamp (newest first)
-                const sortedHighlights = [...highlights].sort((a, b) => b.timestamp - a.timestamp);
-                
-                sortedHighlights.forEach(highlight => {
-                    const item = document.createElement('div');
-                    item.className = 'highlight-item';
-                    
-                    const textDiv = document.createElement('div');
-                    textDiv.className = 'highlight-text';
-                    textDiv.textContent = `"${highlight.text}"`;
-                    
-                    if (highlight.note) {
-                        const noteDiv = document.createElement('div');
-                        noteDiv.className = 'highlight-note';
-                        noteDiv.textContent = highlight.note;
-                        textDiv.appendChild(noteDiv);
-                    }
-                    
-                    const actionsDiv = document.createElement('div');
-                    actionsDiv.className = 'highlight-actions';
-                    
-                    // Edit note button
-                    const editBtn = document.createElement('button');
-                    editBtn.innerHTML = '✏️';
-                    editBtn.title = 'Edit Note';
-                    editBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        editHighlightNote(highlight.id);
-                    });
-                    
-                    // Delete highlight button
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.innerHTML = '🗑️';
-                    deleteBtn.title = 'Delete Highlight';
-                    deleteBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteHighlight(highlight.id);
-                    });
-                    
-                    actionsDiv.appendChild(editBtn);
-                    actionsDiv.appendChild(deleteBtn);
-                    
-                    item.appendChild(textDiv);
-                    item.appendChild(actionsDiv);
-                    
-                    // Click on highlight to jump to it
-                    item.addEventListener('click', () => {
-                        jumpToHighlight(highlight.id);
-                        toggleHighlightsPanel();
-                    });
-                    
-                    panel.appendChild(item);
-                });
-            }
-            
-            // Toggle highlights panel visibility
-            function toggleHighlightsPanel() {
-                highlightsPanel.classList.toggle('open');
-            }
-            
-            // Edit a highlight's note
-            function editHighlightNote(id) {
-                const highlight = highlights.find(h => h.id === id);
-                if (highlight) {
-                    const span = document.querySelector(`[data-highlight-id="${id}"]`);
-                    if (span) {
-                        const rect = span.getBoundingClientRect();
-                        notePopup.style.left = `${rect.left}px`;
-                        notePopup.style.top = `${rect.bottom + 10}px`;
-                        noteText.value = highlight.note || '';
-                        currentHighlightId = id;
-                        notePopup.classList.add('visible');
-                        noteText.focus();
-                    }
-                }
-            }
-            
-            // Delete a highlight
-            function deleteHighlight(id) {
-                const index = highlights.findIndex(h => h.id === id);
-                if (index !== -1) {
-                    highlights.splice(index, 1);
-                    saveHighlights();
-                    
-                    // Remove the highlight span from the DOM
-                    const span = document.querySelector(`[data-highlight-id="${id}"]`);
-                    if (span) {
-                        // Replace the span with its text content
-                        const textNode = document.createTextNode(span.textContent);
-                        span.parentNode.replaceChild(textNode, span);
-                    }
-                    
-                    updateHighlightUI();
-                }
-            }
-            
-            // Jump to a highlight in the text
-            function jumpToHighlight(id) {
-                const span = document.querySelector(`[data-highlight-id="${id}"]`);
-                if (span) {
-                    span.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    // Flash animation to make it obvious where we jumped to
-                    span.classList.remove('highlight-animation');
-                    void span.offsetWidth; // Force reflow
-                    span.classList.add('highlight-animation');
-                }
-            }
-            
-            // Initialize touch-to-select on mobile devices
-            let touchStartNode = null;
-            let touchStartOffset = 0;
-            
-            // Handle touch start
-            reader.addEventListener('touchstart', function(e) {
-                if (!highlightModeEnabled) return;
-                
-                // Prevent default behavior to enable custom selection
-                e.preventDefault();
-                
-                const touch = e.touches[0];
-                const range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
-                
-                if (range) {
-                    touchStartNode = range.startContainer;
-                    touchStartOffset = range.startOffset;
-                }
-            });
-            
-            // Handle touch end
-            reader.addEventListener('touchend', function(e) {
-                if (!highlightModeEnabled || !touchStartNode) return;
-                
-                // Prevent default behavior
-                e.preventDefault();
-                
-                const touch = e.changedTouches[0];
-                const range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
-                
-                if (range) {
-                    // Create a new range from start to end touch points
-                    const selection = window.getSelection();
-                    const newRange = document.createRange();
-                    
-                    // Determine if we need to swap start and end based on direction
-                    if (touchStartNode === range.startContainer && 
-                        touchStartOffset > range.startOffset ||
-                        touchStartNode !== range.startContainer && 
-                        compareNodes(touchStartNode, range.startContainer) > 0) {
-                        
-                        newRange.setStart(range.startContainer, range.startOffset);
-                        newRange.setEnd(touchStartNode, touchStartOffset
-                                        );
-                    } else {
-                        newRange.setStart(touchStartNode, touchStartOffset);
-                        newRange.setEnd(range.startContainer, range.startOffset);
-                    }
-                    
-                    // Apply the selection
-                    selection.removeAllRanges();
-                    selection.addRange(newRange);
-                    
-                    // Trigger the selection change event
-                    const selectionEvent = new Event('selectionchange');
-                    document.dispatchEvent(selectionEvent);
-                    
-                    // Update last selection range
-                    lastSelectionRange = newRange.cloneRange();
-                }
-                
-                // Reset touch start
-                touchStartNode = null;
-            });
-            
-            // Helper function to compare DOM positions
-            function compareNodes(nodeA, nodeB) {
-                if (nodeA === nodeB) return 0;
-                
-                const position = nodeA.compareDocumentPosition(nodeB);
-                
-                if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    return -1; // nodeA is before nodeB
-                } else if (position & Node.DOCUMENT_POSITION_PRECEDING) {
-                    return 1;  // nodeA is after nodeB
-                }
-                
-                return 0;
-            }
-            
-            // Find the parent paragraph of a text node
-            function findParentParagraph(node) {
-                while (node && node.nodeName !== 'P') {
-                    node = node.parentNode;
-                }
-                return node;
-            }
+    <!-- Bookmark Panel Dropdown -->
+    <div id="bookmark-panel"></div>
+
+    <div id="menu-backdrop"></div>
+    <div id="expanded-menu">
+      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
+      <div id="book-card">
+        <img id="cover" alt="Book Cover" />
+        <div id="book-title"></div>
+        <div id="book-author"></div>
+        <div id="contact-image"></div>
+      </div>
+      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
+    </div>
+
+    <div id="toc-panel"></div>
+
+    <div id="settings-modal">
+      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
+      <h3>Reading Settings</h3>
+      <!-- UPDATED FONT SWITCHER: Added OpenDyslexic option -->
+      <label for="font-switcher">Font</label>
+      <select id="font-switcher">
+        <option value="-apple-system">San Francisco (System)</option>
+        <option value="Helvetica Neue">Helvetica Neue</option>
+        <option value="Arial">Arial</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Georgia">Georgia</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+      </select>
+      <div class="font-size-buttons">
+        <button onclick="changeFontSize(-1)">A-</button>
+        <button onclick="changeFontSize(1)">A+</button>
+      </div>
+      <label for="reading-mode">Reading Mode</label>
+      <select id="reading-mode">
+        <option value="paginated">Page</option>
+        <option value="scrolled-doc">Scroll</option>
+        <option value="swipe">Swipe</option>
+      </select>
+      <label for="theme-select">Color Theme</label>
+      <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="sepia">Sepia</option>
+        <option value="night">Night</option>
+        <option value="matcha">Matcha Green</option>
+      </select>
+    </div>
+
+    <div id="viewer">
+      <div id="tap-left"></div>
+      <div id="tap-right"></div>
+      <!-- Gesture zones are enabled only in swipe mode -->
+      <div id="gesture-left"></div>
+      <div id="gesture-right"></div>
+    </div>
+
+    <div id="progress-bar"></div>
+    <div id="continue-bar">Continue</div>
+  </div>
+
+  <script>
+    // Global variables for theme, book, bookmarks, and swipe control
+    let lastNonNightTheme = "light";
+    let currentBookUrl = "";
+    let bookmarks = []; // bookmarks for the current book
+
+    // Global swipe detection variables
+    let xDown = null;
+    let yDown = null;
+    const SWIPE_THRESHOLD = 20;  // Configurable swipe detection threshold (in pixels)
+    let swipeInProgress = false;
+
+    // Named tap handlers (for cleanup purposes)
+    function tapLeftHandler() {
+      if (currentFlow === "paginated" && rendition) rendition.prev();
+    }
+    function tapRightHandler() {
+      if (currentFlow === "paginated" && rendition) rendition.next();
+    }
+
+    // Cleanup function to remove event listeners and avoid memory leaks.
+    function cleanupReader() {
+      const viewer = document.getElementById("viewer");
+      if (viewer) {
+        viewer.removeEventListener("touchstart", handleTouchStart, false);
+        viewer.removeEventListener("touchend", handleTouchEnd, false);
+      }
+      const gestureLeft = document.getElementById("gesture-left");
+      const gestureRight = document.getElementById("gesture-right");
+      if (gestureLeft) {
+        gestureLeft.removeEventListener("click", swipePrev);
+      }
+      if (gestureRight) {
+        gestureRight.removeEventListener("click", swipeNext);
+      }
+      const tapLeft = document.getElementById("tap-left");
+      const tapRight = document.getElementById("tap-right");
+      if (tapLeft) {
+        tapLeft.removeEventListener("click", tapLeftHandler);
+      }
+      if (tapRight) {
+        tapRight.removeEventListener("click", tapRightHandler);
+      }
+    }
+
+    // Helpers for bookmark storage
+    function getBookmarkKey() {
+      return "bookmarks_" + currentBookUrl;
+    }
+    function loadBookmarks() {
+      const stored = localStorage.getItem(getBookmarkKey());
+      bookmarks = stored ? JSON.parse(stored) : [];
+      updateBookmarkUI();
+    }
+    function saveBookmarks() {
+      localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarks));
+      updateBookmarkUI();
+    }
+    // Update the star button color (blue if current location bookmarked)
+    function updateBookmarkStar() {
+      const btn = document.getElementById("bookmark-toggle");
+      const cfi = rendition && rendition.currentLocation() && rendition.currentLocation().start && rendition.currentLocation().start.cfi;
+      if (!cfi) { btn.textContent = "☆"; return; }
+      const exists = bookmarks.some(bm => bm.cfi === cfi);
+      btn.textContent = exists ? "★" : "☆";
+      btn.style.color = exists ? "blue" : "inherit";
+    }
+    // Update the bookmark panel list using document fragment to batch updates.
+    function updateBookmarkUI() {
+      const container = document.getElementById("bookmark-panel");
+      container.innerHTML = "";
+      const fragment = document.createDocumentFragment();
+      if (bookmarks.length === 0) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.textContent = "No bookmarks yet.";
+        fragment.appendChild(emptyDiv);
+      } else {
+        bookmarks.forEach((bm) => {
+          const item = document.createElement("div");
+          item.textContent = "Page " + (bm.page || "?") + " -   " + bm.snippet;
+          item.addEventListener("click", () => {
+            rendition.display(bm.cfi);
+            toggleBookmarkDropdown(); // hide panel after selection
+          });
+          fragment.appendChild(item);
         });
-    </script>
+      }
+      container.appendChild(fragment);
+    }
+    // Toggle adding/removing a bookmark at the current location.
+    function toggleBookmark() {
+      const location = rendition.currentLocation();
+      if (!location || !location.start || !location.start.cfi) return;
+      const cfi = location.start.cfi;
+      const index = bookmarks.findIndex(bm => bm.cfi === cfi);
+      if (index !== -1) {
+        bookmarks.splice(index, 1);
+      } else {
+        let snippet = "";
+        rendition.getContents().forEach(contents => {
+          const doc = contents.document;
+          if (!snippet && doc && doc.body && doc.body.textContent) {
+            snippet = doc.body.textContent.trim().substring(0, 100) + "...";
+          }
+        });
+        const pageNum = location.start.index || "?";
+        bookmarks.push({ cfi, snippet, page: pageNum });
+      }
+      saveBookmarks();
+      updateBookmarkStar();
+    }
+    // Toggle the bookmark panel visibility
+    function toggleBookmarkDropdown() {
+      const panel = document.getElementById("bookmark-panel");
+      panel.classList.toggle("open");
+    }
+
+    // URL and library handling
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookParam = urlParams.get("book");
+    const lastSavedBook = localStorage.getItem("last-book");
+    let theBookUrl = bookParam ? decodeURIComponent(bookParam) : (lastSavedBook || null);
+    const libraryContainer = document.getElementById("library-container");
+    const readerContainer = document.getElementById("reader-container");
+    if (theBookUrl) {
+      readerContainer.style.display = "block";
+      libraryContainer.style.display = "none";
+    } else {
+      readerContainer.style.display = "none";
+      libraryContainer.style.display = "block";
+    }
+    let libraryVisible = !theBookUrl;
+    function toggleLibrary(forceState) {
+      libraryVisible = typeof forceState === 'boolean' ? forceState : !libraryVisible;
+      libraryContainer.style.display = libraryVisible ? "block" : "none";
+      readerContainer.style.display = libraryVisible ? "none" : "block";
+      closeMenus();
+    }
+    function loadLibrary() {
+      const libraryDiv = document.getElementById("library");
+      libraryDiv.textContent = "Loading books...";
+      fetch("/ebooks/library.json")
+        .then(response => response.json())
+        .then(books => {
+          libraryDiv.innerHTML = "";
+          books.forEach(book => {
+            const bookDiv = document.createElement("div");
+            bookDiv.className = "book";
+            bookDiv.innerHTML = `
+              <img src="${book.cover}" alt="Cover of ${book.title}" />
+              <h3>${book.title}</h3>
+              <p>${book.author}</p>
+              <button onclick="readBook('${book.fileUrl}')">Read</button>
+            `;
+            libraryDiv.appendChild(bookDiv);
+          });
+        })
+        .catch(err => {
+          console.error("Failed to load library.json:", err);
+          libraryDiv.textContent = "Failed to load book list.";
+        });
+    }
+    loadLibrary();
+
+    // Modified readBook to cleanup old events/objects and save current book location before switching
+    function readBook(epubUrl) {
+      if (rendition && currentBookUrl) {
+        const loc = rendition.currentLocation();
+        if (loc && loc.start && loc.start.cfi) {
+          localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
+        }
+      }
+      // Cleanup previous reader events and listeners
+      cleanupReader();
+      localStorage.setItem("last-book", epubUrl);
+      const newSearch = new URLSearchParams(window.location.search);
+      newSearch.set("book", epubUrl);
+      window.history.replaceState({}, "", `?${newSearch.toString()}`);
+      initBook(epubUrl);
+      toggleLibrary(false);
+    }
+
+    // Reader logic
+    let book, rendition;
+    let currentFontSize = parseInt(localStorage.getItem("reader-font-size")) || 100;
+    let currentFlow = localStorage.getItem("reading-mode") || "paginated";
+
+    // Swipe/tap handling for page vs. swipe mode
+    function updateSwipeListeners() {
+      const viewer = document.getElementById("viewer");
+      if (currentFlow === "swipe") {
+        document.getElementById("tap-left").style.pointerEvents = "none";
+        document.getElementById("tap-right").style.pointerEvents = "none";
+        viewer.addEventListener("touchstart", handleTouchStart, false);
+        viewer.addEventListener("touchend", handleTouchEnd, false);
+        document.getElementById("gesture-left").style.pointerEvents = "auto";
+        document.getElementById("gesture-right").style.pointerEvents = "auto";
+        document.getElementById("gesture-left").addEventListener("click", swipePrev);
+        document.getElementById("gesture-right").addEventListener("click", swipeNext);
+      } else {
+        viewer.removeEventListener("touchstart", handleTouchStart, false);
+        viewer.removeEventListener("touchend", handleTouchEnd, false);
+        document.getElementById("gesture-left").removeEventListener("click", swipePrev);
+        document.getElementById("gesture-right").removeEventListener("click", swipeNext);
+        document.getElementById("gesture-left").style.pointerEvents = "none";
+        document.getElementById("gesture-right").style.pointerEvents = "none";
+        document.getElementById("tap-left").style.pointerEvents = "auto";
+        document.getElementById("tap-right").style.pointerEvents = "auto";
+      }
+    }
+    
+    function handleTouchStart(evt) {
+      if (currentFlow !== "swipe") return;
+      const firstTouch = evt.touches[0];
+      xDown = firstTouch.clientX;
+      yDown = firstTouch.clientY;
+    }
+    function handleTouchEnd(evt) {
+      if (currentFlow !== "swipe" || !xDown || !yDown) return;
+      let xUp = evt.changedTouches[0].clientX;
+      let yUp = evt.changedTouches[0].clientY;
+      let xDiff = xDown - xUp;
+      let yDiff = yDown - yUp;
+      if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
+        xDiff > 0 ? swipeNext() : swipePrev();
+      }
+      xDown = null;
+      yDown = null;
+    }
+    
+    function swipeNext() {
+      if (swipeInProgress) return;
+      swipeInProgress = true;
+      const viewer = document.getElementById("viewer");
+      viewer.classList.add("swipe-transition");
+      viewer.style.transform = "translateX(-100%)";
+      setTimeout(() => {
+        rendition.next();
+        viewer.classList.remove("swipe-transition");
+        viewer.style.transform = "";
+        swipeInProgress = false;
+      }, 300);
+    }
+    function swipePrev() {
+      if (swipeInProgress) return;
+      swipeInProgress = true;
+      const viewer = document.getElementById("viewer");
+      viewer.classList.add("swipe-transition");
+      viewer.style.transform = "translateX(100%)";
+      setTimeout(() => {
+        rendition.prev();
+        viewer.classList.remove("swipe-transition");
+        viewer.style.transform = "";
+        swipeInProgress = false;
+      }, 300);
+    }
+
+    // NEW FONT SWITCHER CODE: Updated to handle "OpenDyslexic"
+    function applyFontSwitch() {
+      const storedFont = localStorage.getItem("reader-font") || "-apple-system";
+      document.getElementById("font-switcher").value = storedFont;
+      if (rendition) {
+        if (storedFont === "OpenDyslexic") {
+          const styleElTemplate = document.createElement("style");
+          styleElTemplate.innerHTML = `
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
+              font-weight: bold;
+              font-style: normal;
+            }
+            body { font-family: "OpenDyslexic", sans-serif !important; }
+          `;
+          rendition.getContents().forEach(contents => {
+            const doc = contents.document;
+            let existingStyle = doc.getElementById("OpenDyslexicStyle");
+            if (!existingStyle) {
+              existingStyle = styleElTemplate.cloneNode(true);
+              existingStyle.id = "OpenDyslexicStyle";
+              doc.head.appendChild(existingStyle);
+            }
+          });
+        } else {
+          rendition.themes.override("body", {
+            "font-family": storedFont + ", serif !important"
+          });
+          rendition.getContents().forEach(contents => {
+            const doc = contents.document;
+            let styleEl = doc.getElementById("fontOverrideStyle");
+            if (!styleEl) {
+              styleEl = doc.createElement("style");
+              styleEl.id = "fontOverrideStyle";
+              doc.head.appendChild(styleEl);
+            }
+            styleEl.textContent = "body { font-family: " + storedFont + ", serif !important; }";
+          });
+        }
+      }
+    }
+    document.getElementById("font-switcher").addEventListener("change", function(e) {
+      const selectedFont = e.target.value;
+      localStorage.setItem("reader-font", selectedFont);
+      if (rendition) {
+        if (selectedFont === "OpenDyslexic") {
+          const styleElTemplate = document.createElement("style");
+          styleElTemplate.innerHTML = `
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Regular.otf") format("opentype");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "OpenDyslexic";
+              src: url("/fonts/OpenDyslexic-Bold.otf") format("opentype");
+              font-weight: bold;
+              font-style: normal;
+            }
+            body { font-family: "OpenDyslexic", sans-serif !important; }
+          `;
+          rendition.getContents().forEach((contents) => {
+            const doc = contents.document;
+            let existingStyle = doc.getElementById("OpenDyslexicStyle");
+            if (!existingStyle) {
+              existingStyle = styleElTemplate.cloneNode(true);
+              existingStyle.id = "OpenDyslexicStyle";
+              doc.head.appendChild(existingStyle);
+            }
+          });
+        } else {
+          rendition.themes.override("body", {
+            "font-family": selectedFont + ", serif !important"
+          });
+          rendition.getContents().forEach(contents => {
+            const doc = contents.document;
+            let styleEl = doc.getElementById("fontOverrideStyle");
+            if (!styleEl) {
+              styleEl = doc.createElement("style");
+              styleEl.id = "fontOverrideStyle";
+              doc.head.appendChild(styleEl);
+            }
+            styleEl.textContent = "body { font-family: " + selectedFont + ", serif !important; }";
+          });
+        }
+      }
+    });
+
+    function initBook(chosenUrl) {
+      if (!chosenUrl) return;
+      currentBookUrl = chosenUrl;
+      bookmarks = [];
+      if (rendition) {
+        rendition.destroy();
+        rendition = null;
+      }
+      if (book) {
+        book.destroy();
+        book = null;
+      }
+      book = ePub(chosenUrl);
+      registerReaderEvents();
+      book.ready.then(() => {
+        initRendition(currentFlow);
+        setTimeout(() => book.locations.generate(1600), 100);
+        book.loaded.metadata.then(meta => {
+          document.getElementById("book-title").textContent = meta.title || "Untitled";
+          document.getElementById("book-author").textContent = meta.creator || "";
+        });
+        book.loaded.cover
+          .then(coverUrl => book.archive.createUrl(coverUrl, { base64: true }))
+          .then(coverDataUrl => { document.getElementById("cover").src = coverDataUrl; })
+          .catch(() => console.warn("No cover image found."));
+        book.loaded.navigation.then(nav => {
+          const tocPanel = document.getElementById("toc-panel");
+          tocPanel.innerHTML = "";
+          nav.toc.forEach(chapter => {
+            if (/contents|table of contents/i.test(chapter.label)) return;
+            const link = document.createElement("a");
+            link.textContent = chapter.label;
+            link.href = "#";
+            link.addEventListener("click", e => {
+              e.preventDefault();
+              rendition.display(chapter.href);
+              tocPanel.classList.remove("open");
+            });
+            tocPanel.appendChild(link);
+          });
+          const aboutItem = nav.toc.find(chapter => /about|author/i.test(chapter.label));
+          if (aboutItem) {
+            const spineItem = book.spine.getByHref(aboutItem.href);
+            if (spineItem) {
+              spineItem.load(book.archive).then(doc => {
+                const imgElem = doc.querySelector("img[src$='.jpg'], img[src$='.jpeg'], img[src$='.png']");
+                if (imgElem) {
+                  const src = imgElem.getAttribute("src");
+                  book.archive.createUrl(src, { base64: true }).then(url => {
+                    const contactContainer = document.getElementById("contact-image");
+                    contactContainer.innerHTML = "";
+                    const image = document.createElement("img");
+                    image.src = url;
+                    contactContainer.appendChild(image);
+                  }).catch(err => console.warn("Error creating URL for contact image:", err));
+                }
+              }).catch(err => console.warn("Error loading About/Author item:", err));
+            }
+          }
+        });
+        applyFontSwitch();
+        loadBookmarks();
+      });
+    }
+    function initRendition(flowMode, cfi) {
+      rendition = book.renderTo("viewer", {
+        width: "100%",
+        height: "100%",
+        flow: flowMode === "scrolled-doc" ? "scrolled" : "paginated",
+        snap: (flowMode === "scrolled-doc") ? false : true,
+        spread: "always",
+        direction: "ltr"
+      });
+      registerHooks();
+      const storedCfi = localStorage.getItem("last-location-" + currentBookUrl);
+      rendition.display(cfi || storedCfi || undefined);
+      rendition.on("relocated", location => {
+        if (location && location.start && location.start.cfi) {
+          localStorage.setItem("last-location-" + currentBookUrl, location.start.cfi);
+          updateBookmarkStar();
+        }
+      });
+      rendition.on("rendered", () => {
+        applyThemeStylesFromCurrent();
+        applyFontSwitch();
+        updateBookmarkStar();
+      });
+      updateSwipeListeners();
+      if (flowMode === "scrolled-doc") {
+        document.getElementById("toc-panel").classList.remove("open");
+      }
+    }
+    function registerHooks() {
+      rendition.hooks.content.register(contents => {
+        const doc = contents.document;
+        if (currentFlow === "scrolled-doc") {
+          doc.body.style.margin = "0";
+          doc.body.style.padding = "0";
+          doc.documentElement.style.margin = "0";
+          doc.documentElement.style.padding = "0";
+          doc.body.style.paddingBottom = "30px";
+          document.getElementById("tap-left").style.pointerEvents = "none";
+          document.getElementById("tap-right").style.pointerEvents = "none";
+          const sentinel = doc.createElement("div");
+          sentinel.style.width = "100%";
+          sentinel.style.height = "1px";
+          doc.body.appendChild(sentinel);
+          const observer = new IntersectionObserver(entries => {
+            const continueBar = document.getElementById("continue-bar");
+            entries.forEach(entry => {
+              continueBar.style.display = entry.isIntersecting ? "block" : "none";
+            });
+          }, { root: null, threshold: 0, rootMargin: "0px 0px -30px 0px" });
+          observer.observe(sentinel);
+        } else {
+          document.getElementById("tap-left").style.pointerEvents = "auto";
+          document.getElementById("tap-right").style.pointerEvents = "auto";
+          doc.body.style.paddingTop = "20px";
+          doc.body.style.paddingBottom = "30px";
+        }
+        rendition.themes.fontSize(currentFontSize + "%");
+        document.getElementById("viewer").style.overflow = "hidden";
+        applyThemeStylesFromCurrent();
+      });
+    }
+    // Register named tap event listeners for paginated mode.
+    function registerReaderEvents() {
+      document.getElementById("tap-left").addEventListener("click", tapLeftHandler);
+      document.getElementById("tap-right").addEventListener("click", tapRightHandler);
+    }
+    let openMenuType = null;
+    function toggleMenu(type) {
+      if (openMenuType === type) { closeMenus(); }
+      else {
+        closeMenus();
+        if (type === 'menu') {
+          document.getElementById("expanded-menu").classList.add("open");
+          document.getElementById("menu-backdrop").style.display = "block";
+        } else if (type === 'settings') {
+          document.getElementById("settings-modal").classList.add("open");
+        }
+        openMenuType = type;
+      }
+    }
+    function closeMenus() {
+      document.getElementById("expanded-menu").classList.remove("open");
+      document.getElementById("settings-modal").classList.remove("open");
+      document.getElementById("menu-backdrop").style.display = "none";
+      openMenuType = null;
+    }
+    function applyThemeStylesFromCurrent() {
+      if (!rendition) return;
+      let bg = "#fff", color = "#000";
+      if (document.body.classList.contains("night-mode")) {
+        bg = "#111"; color = "#eee";
+      } else if (document.body.classList.contains("sepia-mode")) {
+        bg = "#f4ecd8"; color = "#000";
+      } else if (document.body.classList.contains("matcha-mode")) {
+        bg = "#C3D8B6"; color = "#000";
+      } else if (document.body.classList.contains("light-mode")) {
+        bg = "#f5f5f5"; color = "#000";
+      }
+      rendition.getContents().forEach(contents => {
+        const doc = contents.document;
+        doc.documentElement.style.background = bg;
+        doc.body.style.background = bg;
+        doc.body.style.color = color;
+      });
+    }
+    // Toolbar button event listeners
+    document.getElementById("menu-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('menu'); });
+    document.getElementById("toc-toggle").addEventListener("click", () => { document.getElementById("toc-panel").classList.toggle("open"); });
+    document.getElementById("settings-toggle").addEventListener("click", () => { closeMenus(); toggleMenu('settings'); });
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      closeMenus();
+      if (document.body.classList.contains("night-mode")) {
+        changeTheme(lastNonNightTheme);
+      } else {
+        lastNonNightTheme = document.getElementById("theme-select").value;
+        changeTheme("night");
+      }
+    });
+    // Bookmark toolbar event listeners
+    document.getElementById("bookmark-toggle").addEventListener("click", () => {
+      toggleBookmark();
+    });
+    document.getElementById("bookmark-dropdown").addEventListener("click", () => {
+      toggleBookmarkDropdown();
+    });
+    document.getElementById("reading-mode").addEventListener("change", e => {
+      const newMode = e.target.value;
+      localStorage.setItem("reading-mode", newMode);
+      currentFlow = newMode;
+      if (!rendition || !book) return;
+      const currentLocation = rendition.location?.start?.cfi || localStorage.getItem("last-location-" + currentBookUrl);
+      rendition.destroy();
+      setTimeout(() => {
+        initRendition(newMode, currentLocation);
+      }, 50);
+    });
+    document.getElementById("theme-select").addEventListener("change", e => { changeTheme(e.target.value); });
+    function changeFontSize(delta) {
+      currentFontSize = Math.max(60, Math.min(200, currentFontSize + delta * 10));
+      localStorage.setItem("reader-font-size", currentFontSize);
+      if (rendition) { rendition.themes.fontSize(currentFontSize + "%"); }
+    }
+    function changeTheme(theme) {
+      document.body.className = "";
+      if (theme === "night") {
+        document.body.classList.add("night-mode");
+      } else if (theme === "sepia") {
+        document.body.classList.add("sepia-mode");
+      } else if (theme === "matcha") {
+        document.body.classList.add("matcha-mode");
+      } else {
+        document.body.classList.add("light-mode");
+      }
+      document.getElementById("theme-toggle").textContent = document.body.classList.contains("night-mode") ? "☀️" : "🌙";
+      localStorage.setItem("reader-theme", theme);
+      document.getElementById("theme-select").value = theme;
+      applyThemeStylesFromCurrent();
+    }
+    document.getElementById("continue-bar").addEventListener("click", () => {
+      if (!rendition || currentFlow !== "scrolled-doc") {
+        if (rendition) rendition.next();
+        return;
+      }
+      const loc = rendition.currentLocation();
+      if (loc && loc.start && typeof loc.start.index !== "undefined") {
+        const currentIndex = loc.start.index;
+        const nextItem = book.spine.get(currentIndex + 1);
+        if (nextItem) { rendition.display(nextItem.href); }
+        else { console.warn("No next chapter found."); }
+      } else { console.warn("Invalid current location:", loc); }
+    });
+    if (theBookUrl) { initBook(theBookUrl); }
+    const savedTheme = localStorage.getItem("reader-theme") || "light";
+    document.getElementById("theme-select").value = savedTheme;
+    changeTheme(savedTheme);
+   // hightlight 
+    // Minimal Highlight Feature
+let highlights = []; // Global highlights array for current book
+
+// Utility to save book-specific highlights
+function saveHighlights() {
+  if (!currentBookUrl) return;
+  localStorage.setItem(`highlights_${currentBookUrl}`, JSON.stringify(highlights));
+}
+
+// Utility to load book-specific highlights
+function loadHighlights() {
+  if (!currentBookUrl) return;
+  const storedHighlights = localStorage.getItem(`highlights_${currentBookUrl}`);
+  highlights = storedHighlights ? JSON.parse(storedHighlights) : [];
+  renderExistingHighlights();
+}
+
+// Render existing highlights when book is loaded or page changes
+function renderExistingHighlights() {
+  if (!rendition) return;
+
+  rendition.getContents().forEach(contents => {
+    const doc = contents.document;
+    highlights.forEach(highlight => {
+      try {
+        const range = rendition.epubCfi.generateRangeFromCfi(highlight.cfi);
+        if (range && range.startContainer) {
+          const highlightSpan = doc.createElement('span');
+          highlightSpan.style.backgroundColor = 'yellow';
+          highlightSpan.classList.add('epub-highlight');
+          
+          // Wrap the range content with the highlight element
+          const extracted = range.extractContents();
+          highlightSpan.appendChild(extracted);
+          range.insertNode(highlightSpan);
+        }
+      } catch (error) {
+        console.warn("Could not render highlight:", error);
+      }
+    });
+  });
+}
+
+// Function to set up highlight mode
+function setupHighlightMode() {
+  // Add highlight button to toolbar
+  const highlightButton = document.createElement('button');
+  highlightButton.textContent = '🖍️';
+  highlightButton.id = 'highlight-toggle';
+  highlightButton.title = 'Highlight Text';
+  
+  let isHighlighting = false;
+
+  highlightButton.addEventListener('click', () => {
+    isHighlighting = !isHighlighting;
+    highlightButton.style.backgroundColor = isHighlighting ? 'lightblue' : '';
+  });
+
+  // Touch-based highlight handling
+  function handleHighlight(contents) {
+    const doc = contents.document;
+    let startRange = null;
+    let startTouch = null;
+
+    function touchStartHandler(e) {
+      if (!isHighlighting) return;
+      startTouch = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+      startRange = doc.caretRangeFromPoint(startTouch.x, startTouch.y);
+      e.preventDefault();
+    }
+
+    function touchMoveHandler(e) {
+      if (!isHighlighting || !startRange) return;
+      const currentTouch = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+      
+      const endRange = doc.caretRangeFromPoint(currentTouch.x, currentTouch.y);
+      if (endRange) {
+        const selection = doc.getSelection();
+        selection.removeAllRanges();
+        
+        const range = doc.createRange();
+        range.setStart(startRange.startContainer, startRange.startOffset);
+        range.setEnd(endRange.startContainer, endRange.startOffset);
+        
+        selection.addRange(range);
+      }
+      e.preventDefault();
+    }
+
+    function touchEndHandler(e) {
+      if (!isHighlighting || !startRange) return;
+      
+      const selection = doc.getSelection();
+      if (!selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        
+        // Generate CFI for the selected range
+        const cfi = rendition.epubCfi.generateCfiFromRange(range);
+        
+        // Create highlight
+        const highlightSpan = doc.createElement('span');
+        highlightSpan.style.backgroundColor = 'yellow';
+        highlightSpan.classList.add('epub-highlight');
+        
+        // Wrap the range content with the highlight element
+        const extracted = range.extractContents();
+        highlightSpan.appendChild(extracted);
+        range.insertNode(highlightSpan);
+        
+        // Store the highlight
+        highlights.push({
+          cfi: cfi,
+          color: 'yellow',
+          text: selection.toString()
+        });
+        
+        // Save highlights
+        saveHighlights();
+        
+        // Clear selection
+        selection.removeAllRanges();
+      }
+      
+      startRange = null;
+      startTouch = null;
+      e.preventDefault();
+    }
+
+    // Add touch event listeners
+    doc.addEventListener('touchstart', touchStartHandler, { passive: false });
+    doc.addEventListener('touchmove', touchMoveHandler, { passive: false });
+    doc.addEventListener('touchend', touchEndHandler, { passive: false });
+  }
+
+  // Set up highlight mode when book is ready
+  book.ready.then(() => {
+    rendition.on('rendered', contents => {
+      handleHighlight(contents);
+    });
+  });
+
+  // Add highlight button to toolbar
+  const toolbar = document.getElementById('toolbar');
+  toolbar.insertBefore(highlightButton, toolbar.lastElementChild);
+}
+
+// Modify the initBook function to set up highlight mode
+function modifiedInitBook(chosenUrl) {
+  if (!chosenUrl) return;
+  currentBookUrl = chosenUrl;
+  highlights = []; // Reset highlights for new book
+  
+  book = ePub(chosenUrl);
+  registerReaderEvents();
+  book.ready.then(() => {
+    initRendition(currentFlow);
+    setTimeout(() => book.locations.generate(1600), 100);
+    
+    // Set up highlight mode
+    setupHighlightMode();
+    
+    book.loaded.metadata.then(meta => {
+      document.getElementById("book-title").textContent = meta.title || "Untitled";
+      document.getElementById("book-author").textContent = meta.creator || "";
+    });
+    
+    // Load and render highlights
+    loadHighlights();
+  });
+}
+
+// Replace the original initBook with this modified version
+initBook = modifiedInitBook;
+
+// Add some CSS to style highlights
+const highlightStyle = document.createElement('style');
+highlightStyle.textContent = `
+  .epub-highlight {
+    background-color: yellow !important;
+    cursor: pointer;
+  }
+  .epub-highlight:hover {
+    background-color: orange !important;
+  }
+`;
+document.head.appendChild(highlightStyle);
+  </script>
 </body>
 </html>
