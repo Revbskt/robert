@@ -5,10 +5,6 @@
   <title>ePub Reader with Highlights</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
 
-  <!-- Essential Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-
   <style>
     /* Global Styles */
     html, body {
@@ -19,866 +15,526 @@
       background: #f5f5f5;
     }
 
-    /* Layout Containers */
-    #reader-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
+    /* Container styles */
+    #app {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
     }
 
-    #library-container {
-      position: relative;
-      min-height: 100vh;
-      background: #f5f5f5;
-      padding: 1rem;
-      box-sizing: border-box;
-    }
-
-    /* Library Grid */
-    #library {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-      margin-top: 1rem;
-    }
-
-    .book {
-      background: #fff;
+    /* Book display */
+    #book-content {
       border: 1px solid #ddd;
-      padding: 0.75rem;
-      width: 140px;
-      text-align: center;
-      box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
-      border-radius: 6px;
+      border-radius: 8px;
+      padding: 20px;
+      background: white;
+      margin-top: 20px;
+      position: relative;
     }
 
-    .book img { 
-      width: 100%; 
-      height: auto; 
-      border-radius: 4px; 
-    }
-
-    .book h3 { 
-      font-size: 0.9rem; 
-      margin: 0.5rem 0 0.25rem; 
-    }
-
-    .book p { 
-      font-size: 0.8rem; 
-      margin: 0 0 0.5rem; 
-      color: #555; 
-    }
-
-    .book button {
-      margin: 4px 0;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 4px;
-      background-color: #007bff;
-      color: white;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .book button:hover { 
-      background-color: #0056b3; 
-    }
-
-    /* Viewer and Toolbar */
-    #toolbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 40px;
-      z-index: 1002;
+    /* Toolbar */
+    .toolbar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 0 10px;
+      padding: 10px;
       background: #eee;
-    }
-
-    #toolbar button {
-      background: transparent;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-    }
-
-    #viewer {
-      position: absolute;
-      top: 40px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      overflow: hidden;
-    }
-
-    /* Slide-out Menu */
-    #menu-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.3);
-      z-index: 1001;
-    }
-
-    #expanded-menu {
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: -100%;
-      width: 80%;
-      max-width: 300px;
-      background: rgba(128,128,128,0.90);
-      color: #fff;
-      z-index: 1010;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      transition: left 0.3s ease;
-    }
-
-    #expanded-menu.open { 
-      left: 0; 
-    }
-
-    #expanded-menu .close-menu {
-      align-self: flex-end;
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: #fff;
-    }
-
-    /* Scrolling and Swiping Support */
-    .reading-zone {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 50%;
-      z-index: 998;
-    }
-
-    #reading-left { left: 0; }
-    #reading-right { right: 0; }
-
-    /* Highlight Styles */
-    .highlight-yellow {
-      background-color: rgba(255, 255, 0, 0.4) !important;
-      box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.6) !important;
-      border-radius: 4px !important;
-      padding: 4px !important;
-      margin: 4px 0 !important;
-      position: relative !important;
-    }
-
-    .highlight-green {
-      background-color: rgba(0, 255, 0, 0.25) !important;
-      box-shadow: 0 0 0 2px rgba(0, 255, 0, 0.4) !important;
-      border-radius: 4px !important;
-      padding: 4px !important;
-      margin: 4px 0 !important;
-      position: relative !important;
-    }
-
-    .highlight-blue {
-      background-color: rgba(0, 200, 255, 0.25) !important;
-      box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.4) !important;
-      border-radius: 4px !important;
-      padding: 4px !important;
-      margin: 4px 0 !important;
-      position: relative !important;
-    }
-
-    .highlight-pink {
-      background-color: rgba(255, 105, 180, 0.25) !important;
-      box-shadow: 0 0 0 2px rgba(255, 105, 180, 0.4) !important;
-      border-radius: 4px !important;
-      padding: 4px !important;
-      margin: 4px 0 !important;
-      position: relative !important;
-    }
-    
-    /* Note indicator */
-    .has-note:after {
-      content: "📝";
-      position: absolute;
-      right: -5px;
-      top: 0;
-      font-size: 14px;
-    }
-    
-    /* Note display */
-    .note-display {
-      display: block;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 8px;
-      margin-top: 4px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      z-index: 100;
-      width: 90%;
-      left: 5%;
-      font-size: 14px;
-    }
-    
-    /* Highlight controls */
-    .highlight-controls {
-      display: none;
-      position: absolute;
-      right: -30px;
-      top: 0;
-      font-size: 16px;
-    }
-    
-    .highlight-controls button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      margin: 2px;
-      padding: 0;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    /* Make highlight interactive */
-    .highlight-yellow:hover .highlight-controls,
-    .highlight-green:hover .highlight-controls,
-    .highlight-blue:hover .highlight-controls,
-    .highlight-pink:hover .highlight-controls {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    /* Note popup styling */
-    .note-popup {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
       border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      z-index: 1020;
-      padding: 15px;
-      width: 85%;
-      max-width: 350px;
+      margin-bottom: 15px;
     }
-    
-    .note-popup textarea {
-      width: 100%;
-      height: 100px;
-      margin: 10px 0;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    
-    .note-popup-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-    
-    .note-popup button {
+
+    .toolbar button {
       padding: 8px 12px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    
-    .note-popup-save {
-      background-color: #007bff;
-      color: white;
+
+    .toolbar button.active {
+      background: #ffcc00;
     }
-    
-    .note-popup-cancel {
-      background-color: #eeeeee;
-    }
-    
-    /* Note display in paragraph */
-    .note-indicator {
-      margin-top: 4px;
-      background: rgba(255,255,255,0.5);
-      padding: 4px 8px;
+
+    /* Highlight styles */
+    .highlight-yellow {
+      background-color: rgba(255, 255, 0, 0.4);
       border-radius: 4px;
-      font-size: 0.9em;
-      font-style: italic;
-      color: #333;
+      padding: 8px;
+      margin: 10px 0;
+      position: relative;
+    }
+    
+    .highlight-green {
+      background-color: rgba(0, 255, 0, 0.25);
+      border-radius: 4px;
+      padding: 8px;
+      margin: 10px 0;
+      position: relative;
+    }
+    
+    .highlight-blue {
+      background-color: rgba(0, 200, 255, 0.25);
+      border-radius: 4px;
+      padding: 8px;
+      margin: 10px 0;
+      position: relative;
+    }
+    
+    .highlight-pink {
+      background-color: rgba(255, 105, 180, 0.25);
+      border-radius: 4px;
+      padding: 8px;
+      margin: 10px 0;
+      position: relative;
+    }
+
+    /* Paragraph styles */
+    p {
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+
+    p.selected {
+      border: 2px dashed #666;
+      border-radius: 4px;
+      padding: 8px;
     }
 
     /* Highlight Menu */
     #highlight-menu {
       position: fixed;
-      display: none;
-      z-index: 1015;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
       background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      padding: 10px;
-      width: 240px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      padding: 20px;
+      z-index: 1000;
+      display: none;
     }
 
-    .highlight-colors {
+    .highlight-menu-title {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .color-options {
       display: flex;
-      gap: 10px;
-      margin-bottom: 8px;
       justify-content: center;
+      gap: 15px;
+      margin-bottom: 15px;
     }
 
     .color-option {
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       cursor: pointer;
     }
-    
-    /* Note textarea */
-    #highlight-note {
+
+    .color-option.selected {
+      border: 3px solid #333;
+    }
+
+    #note-input {
       width: 100%;
-      margin-bottom: 8px;
+      padding: 8px;
+      border: 1px solid #ddd;
       border-radius: 4px;
-      border: 1px solid #ccc;
-      padding: 5px;
-      font-size: 14px;
-      box-sizing: border-box;
-      height: 60px;
+      margin-bottom: 15px;
+      height: 80px;
     }
 
-    #highlight-menu button {
-      padding: 5px 12px;
-      border: none;
-      border-radius: 4px;
-      background-color: #007bff;
-      color: white;
-      margin-right: 5px;
-      cursor: pointer;
-    }
-
-    #highlight-menu button:hover {
-      background-color: #0056b3;
-    }
-    
-    /* Highlight action buttons */
     .highlight-actions {
       display: flex;
       justify-content: space-between;
     }
 
-    /* Highlight List in Menu */
-    #highlights-list {
-      margin-top: 20px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .highlight-item {
-      padding: 8px;
-      margin-bottom: 8px;
-      background: rgba(255,255,255,0.1);
+    .highlight-actions button {
+      padding: 8px 15px;
+      border: none;
       border-radius: 4px;
       cursor: pointer;
-      position: relative;
     }
-    
-    .highlight-note-indicator {
-      font-size: 12px;
-      color: #ddd;
-      margin-top: 4px;
+
+    #apply-highlight {
+      background: #4CAF50;
+      color: white;
+    }
+
+    #cancel-highlight {
+      background: #f5f5f5;
+    }
+
+    /* Note display */
+    .note-display {
+      margin-top: 8px;
+      padding: 8px;
+      background: #f9f9f9;
+      border-left: 3px solid #ffcc00;
       font-style: italic;
     }
 
-    .highlight-item:hover {
-      background: rgba(255,255,255,0.2);
+    /* Note icon */
+    .has-note:after {
+      content: "📝";
+      position: absolute;
+      top: 5px;
+      right: 5px;
+    }
+
+    /* Highlights list */
+    #highlights-list {
+      margin-top: 30px;
+      border-top: 2px solid #eee;
+      padding-top: 20px;
+    }
+
+    .highlight-item {
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .highlight-text {
+      font-style: italic;
+    }
+
+    .highlight-note {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
     }
   </style>
 </head>
 <body>
-  <!-- Library Container -->
-  <div id="library-container">
-    <h1>📚 ePub Reader</h1>
-    <div id="library">Loading books...</div>
-  </div>
-
-  <!-- Reader Container -->
-  <div id="reader-container">
-    <div id="toolbar">
-      <button id="menu-toggle">☰</button>
-      <div>
-        <button id="highlight-toggle">🖌️</button>
-        <button id="reading-mode-toggle">📖</button>
-      </div>
+  <div id="app">
+    <h1>ePub Reader with Highlighting</h1>
+    
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button id="toggle-highlights-list">View Highlights</button>
+      <button id="highlight-mode-toggle">Highlight Mode</button>
     </div>
-
-    <!-- Menu Backdrop and Expanded Menu -->
-    <div id="menu-backdrop"></div>
-    <div id="expanded-menu">
-      <button class="close-menu" onclick="toggleMenu('menu')">×</button>
-      <div id="book-details">
-        <h2 id="book-title">Book Title</h2>
-        <p id="book-author">Author Name</p>
-      </div>
-      <button onclick="toggleLibrary(true)">Back to Library</button>
-      
-      <!-- Highlights Section -->
-      <div>
-        <h3>Highlights</h3>
-        <div id="highlights-list"></div>
-      </div>
+    
+    <!-- Book Content -->
+    <div id="book-content">
+      <h2>Demo Book</h2>
+      <p>This is the first paragraph of the demo book. You can tap on this paragraph when highlight mode is active to highlight it.</p>
+      <p>This is the second paragraph. The highlighting feature works by selecting entire paragraphs, which works well on mobile devices where precise text selection can be difficult.</p>
+      <p>This is the third paragraph. You can choose from multiple highlight colors and all your highlights will be saved between sessions.</p>
+      <p>This is another paragraph. Try the highlight button in the toolbar and then tap on this paragraph.</p>
+      <p>When you activate highlight mode, tapping on any paragraph will select it. A menu will appear with color options.</p>
+      <p>After selecting a color, click the "Highlight" button to apply the highlight to the paragraph.</p>
+      <p>You can view all your highlights by clicking the View Highlights button, and you can see your notes directly attached to the highlighted text.</p>
     </div>
-
-    <!-- Highlight Menu -->
-    <div id="highlight-menu">
-      <div class="highlight-colors">
-        <div class="color-option" style="background-color: #ffff00;" data-color="yellow"></div>
-        <div class="color-option" style="background-color: #00ff00;" data-color="green"></div>
-        <div class="color-option" style="background-color: #00c8ff;" data-color="blue"></div>
-        <div class="color-option" style="background-color: #ff69b4;" data-color="pink"></div>
-      </div>
-      <textarea id="highlight-note" placeholder="Add a note (optional)"></textarea>
-      <div class="highlight-actions">
-        <button id="apply-highlight">Highlight</button>
-        <button id="cancel-highlight">Cancel</button>
+    
+    <!-- Highlights List (Initially Hidden) -->
+    <div id="highlights-list" style="display:none;">
+      <h2>My Highlights and Notes</h2>
+      <div id="highlights-container">
+        <!-- Highlights will be populated here -->
+        <p>No highlights yet. Use highlight mode to create some!</p>
       </div>
     </div>
     
-    <!-- Note Popup for Editing -->
-    <div id="note-popup" class="note-popup">
-      <h3>Edit Note</h3>
-      <textarea id="edit-note-text"></textarea>
-      <div class="note-popup-actions">
-        <button class="note-popup-save" id="save-note">Save</button>
-        <button class="note-popup-cancel" id="cancel-note">Cancel</button>
+    <!-- Highlight Menu -->
+    <div id="highlight-menu">
+      <h3 class="highlight-menu-title">Create Highlight</h3>
+      <div class="color-options">
+        <div class="color-option selected" style="background-color:#ffff00;" data-color="yellow"></div>
+        <div class="color-option" style="background-color:#00ff00;" data-color="green"></div>
+        <div class="color-option" style="background-color:#00c8ff;" data-color="blue"></div>
+        <div class="color-option" style="background-color:#ff69b4;" data-color="pink"></div>
       </div>
-    </div>
-
-    <!-- Viewer Area with Reading Zones -->
-    <div id="viewer">
-      <div id="reading-left" class="reading-zone"></div>
-      <div id="reading-right" class="reading-zone"></div>
+      <label for="note-input">Add a note (optional):</label>
+      <textarea id="note-input" placeholder="Enter your note here..."></textarea>
+      <div class="highlight-actions">
+        <button id="apply-highlight">Save Highlight</button>
+        <button id="cancel-highlight">Cancel</button>
+      </div>
     </div>
   </div>
 
   <script>
     // Global Variables
-    let book, rendition;
-    let currentBookUrl = null;
-    let currentFlow = 'paginated';
-    let xDown = null, yDown = null;
-    const SWIPE_THRESHOLD = 20;
-    let swipeInProgress = false;
     let highlightMode = false;
+    let selectedParagraph = null;
     let selectedColor = "yellow";
-    let selectedText = null;
-    let selectedCfiRange = null;
-    let bookHighlights = {};
-    let originalOverflowY = "hidden"; // Store original scroll setting
-    let currentNote = ""; // For storing notes
-    let activeHighlightElement = null; // Currently active highlight element
-
-    // Library Loading
-    function loadLibrary() {
-      const libraryDiv = document.getElementById("library");
-      // For demo purposes
-      const demoBooks = [
-        {
-          title: "Demo Book 1",
-          author: "Demo Author",
-          cover: "/api/placeholder/140/200",
-          fileUrl: "#demo1"
-        },
-        {
-          title: "Demo Book 2",
-          author: "Another Author",
-          cover: "/api/placeholder/140/200",
-          fileUrl: "#demo2"
+    let highlights = JSON.parse(localStorage.getItem('bookHighlights') || '[]');
+    
+    // DOM Elements
+    const highlightModeToggle = document.getElementById('highlight-mode-toggle');
+    const paragraphs = document.querySelectorAll('#book-content p');
+    const highlightMenu = document.getElementById('highlight-menu');
+    const applyHighlightBtn = document.getElementById('apply-highlight');
+    const cancelHighlightBtn = document.getElementById('cancel-highlight');
+    const colorOptions = document.querySelectorAll('.color-option');
+    const noteInput = document.getElementById('note-input');
+    const toggleHighlightsList = document.getElementById('toggle-highlights-list');
+    const highlightsList = document.getElementById('highlights-list');
+    const highlightsContainer = document.getElementById('highlights-container');
+    
+    // Show toast notification
+    function showToast(message, duration = 3000) {
+      // Remove existing toasts
+      const existingToasts = document.querySelectorAll('.toast');
+      existingToasts.forEach(toast => document.body.removeChild(toast));
+      
+      // Create new toast
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // Auto-remove after duration
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
         }
-      ];
-      
-      libraryDiv.innerHTML = "";
-      demoBooks.forEach(book => {
-        const bookDiv = document.createElement("div");
-        bookDiv.className = "book";
-        bookDiv.innerHTML = `
-          <img src="${book.cover}" alt="Cover of ${book.title}" />
-          <h3>${book.title}</h3>
-          <p>${book.author}</p>
-          <button onclick="simulateBookRead('${book.fileUrl}')">Read</button>
-        `;
-        libraryDiv.appendChild(bookDiv);
-      });
-    }
-    loadLibrary();
-
-    // Simulate book reading for demo
-    function simulateBookRead(bookId) {
-      currentBookUrl = bookId;
-      toggleLibrary(false);
-      
-      // Create a demo book structure
-      const demoContent = `
-        <div style="padding: 20px; font-family: serif;">
-          <style>
-            /* Add iOS-specific styles to help with highlighting */
-            body {
-              -webkit-touch-callout: default; /* iOS Safari */
-              -webkit-user-select: text; /* Safari */
-              -webkit-tap-highlight-color: rgba(0,0,0,0); /* Remove tap highlight */
-            }
-            
-            p {
-              padding: 8px 0;
-              margin: 10px 0;
-              line-height: 1.5;
-              border-radius: 4px;
-              position: relative; /* For positioning controls */
-            }
-            
-            p:active {
-              background-color: rgba(200,200,200,0.3);
-            }
-            
-            /* Better highlight styles for demo */
-            .highlight-yellow {
-              background-color: rgba(255, 255, 0, 0.4) !important;
-              box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.6) !important;
-              border-radius: 4px !important;
-              padding: 4px !important;
-              margin: 4px 0 !important;
-              position: relative !important;
-            }
-
-            .highlight-green {
-              background-color: rgba(0, 255, 0, 0.25) !important;
-              box-shadow: 0 0 0 2px rgba(0, 255, 0, 0.4) !important;
-              border-radius: 4px !important;
-              padding: 4px !important;
-              margin: 4px 0 !important;
-              position: relative !important;
-            }
-
-            .highlight-blue {
-              background-color: rgba(0, 200, 255, 0.25) !important;
-              box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.4) !important;
-              border-radius: 4px !important;
-              padding: 4px !important;
-              margin: 4px 0 !important;
-              position: relative !important;
-            }
-
-            .highlight-pink {
-              background-color: rgba(255, 105, 180, 0.25) !important;
-              box-shadow: 0 0 0 2px rgba(255, 105, 180, 0.4) !important;
-              border-radius: 4px !important;
-              padding: 4px !important;
-              margin: 4px 0 !important;
-              position: relative !important;
-            }
-            
-            /* Note indicator */
-            .has-note:after {
-              content: "📝";
-              position: absolute;
-              right: -5px;
-              top: 0;
-              font-size: 14px;
-            }
-            
-            /* Controls for each highlight */
-            .highlight-controls {
-              display: none;
-              position: absolute;
-              right: -34px;
-              top: 0;
-              font-size: 14px;
-              flex-direction: column;
-            }
-            
-            .highlight-controls button {
-              background: white;
-              border: 1px solid #ddd;
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              margin: 2px 0;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            
-            .highlight-edit {
-              color: #0077ff;
-            }
-            
-            .highlight-delete {
-              color: #ff3333;
-            }
-            
-            /* Show controls on highlight hover */
-            .highlight-yellow:hover .highlight-controls,
-            .highlight-green:hover .highlight-controls,
-            .highlight-blue:hover .highlight-controls,
-            .highlight-pink:hover .highlight-controls {
-              display: flex;
-            }
-            
-            /* Note display inside highlight */
-            .note-display {
-              background: rgba(255,255,255,0.9);
-              border-radius: 4px;
-              margin-top: 5px;
-              padding: 6px 8px;
-              font-size: 0.9em;
-              font-style: italic;
-              color: #555;
-              position: relative;
-            }
-          </style>
-          <h1>Demo Book</h1>
-          <h2>Chapter 1</h2>
-          <p>This is the first paragraph of the demo book. You can tap on this paragraph when highlight mode is active to highlight it.</p>
-          <p>This is the second paragraph. The highlighting feature works by selecting entire paragraphs, which works well on mobile devices where precise text selection can be difficult.</p>
-          <p>This is the third paragraph. You can choose from multiple highlight colors and all your highlights will be saved between sessions.</p>
-          <h2>Chapter 2</h2>
-          <p>This is the first paragraph of Chapter 2. Try the highlight button in the toolbar and then tap on this paragraph.</p>
-          <p>When you activate highlight mode, tapping on any paragraph will select it. A menu will appear with color options.</p>
-          <p>After selecting a color, click the "Highlight" button to apply the highlight to the paragraph.</p>
-          <p>You can view all your highlights by clicking the menu button, and you can click on any highlight to jump to that location in the book.</p>
-        </div>
-      `;
-      
-      // Create a temporary iframe to simulate the book
-      const viewer = document.getElementById("viewer");
-      viewer.innerHTML = "";
-      const iframe = document.createElement("iframe");
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.style.border = "none";
-      viewer.appendChild(iframe);
-      
-      // Set content and initialize highlighting
-      iframe.contentDocument.open();
-      iframe.contentDocument.write(demoContent);
-      iframe.contentDocument.close();
-      
-      // Set up paragraph selection in the iframe
-      setupDemoHighlighting(iframe);
-      
-      // Update book details
-      document.getElementById("book-title").textContent = "Demo Book";
-      document.getElementById("book-author").textContent = "Demo Author";
-      
-      // Load any saved highlights
-      loadHighlights("Demo Book");
+      }, duration);
     }
     
-    // Setup highlighting for demo
-    function setupDemoHighlighting(iframe) {
-      const doc = iframe.contentDocument;
-      const paragraphs = doc.querySelectorAll("p");
-      const viewer = document.getElementById("viewer");
-      const readingZones = document.querySelectorAll(".reading-zone");
+    // Toggle highlight mode
+    highlightModeToggle.addEventListener('click', () => {
+      highlightMode = !highlightMode;
+      highlightModeToggle.classList.toggle('active');
       
-      // Handle highlight toggle
-      const highlightToggle = document.getElementById("highlight-toggle");
-      highlightToggle.addEventListener("click", () => {
-        highlightMode = !highlightMode;
-        highlightToggle.style.backgroundColor = highlightMode ? "#ffcc00" : "transparent";
+      if (highlightMode) {
+        showToast('Highlight mode activated. Tap any paragraph to highlight it.');
+      } else {
+        showToast('Highlight mode deactivated');
         
-        // When highlight mode is active:
-        // 1. Disable all tap zones by hiding them
-        // 2. Force scroll mode for content
-        if (highlightMode) {
-          // Disable reading zones (tap areas for page turning)
-          readingZones.forEach(zone => {
-            zone.style.display = "none";
-          });
-          
-          // Force scroll mode for iframe content
-          iframe.style.overflowY = "scroll";
-          iframe.style.WebkitOverflowScrolling = "touch"; // Enable momentum scrolling on iOS
-          
-          // Prevent default iOS text selection behavior
-          doc.body.style.webkitTouchCallout = "none";
-          doc.body.style.webkitUserSelect = "none";
-          doc.body.style.userSelect = "none";
-        } else {
-          // Re-enable reading zones
-          readingZones.forEach(zone => {
-            zone.style.display = "block";
-          });
-          
-          // Restore original scroll settings
-          iframe.style.overflowY = "hidden";
-          
-          // Restore text selection behavior
-          doc.body.style.webkitTouchCallout = "default";
-          doc.body.style.webkitUserSelect = "text";
-          doc.body.style.userSelect = "text";
+        // Clear any selected paragraph
+        if (selectedParagraph) {
+          selectedParagraph.classList.remove('selected');
+          selectedParagraph = null;
         }
-      });
+      }
+    });
+    
+    // Toggle highlights list
+    toggleHighlightsList.addEventListener('click', () => {
+      const bookContent = document.getElementById('book-content');
       
-      // Setup paragraph selection
-      paragraphs.forEach(p => {
-        // Use touchend instead of click for better iOS compatibility
-        p.addEventListener("touchend", (e) => {
-          if (!highlightMode) return;
-          
-          // Prevent default behavior which can trigger text selection
-          e.preventDefault();
-          
-          // Select the paragraph
-          selectedText = p.textContent;
-          selectedCfiRange = "demo-cfi-" + Math.random().toString(36).substring(2, 10); // Demo CFI
-          
-          // Add visual feedback
-          paragraphs.forEach(para => para.style.border = "none"); // Reset all
-          p.style.border = "2px dashed #666"; // Show selection
-          
-          // Show highlight menu
-          const rect = p.getBoundingClientRect();
-          const highlightMenu = document.getElementById("highlight-menu");
-          
-          // Position menu near paragraph but ensure it's visible on screen
-          const menuWidth = 200; // Approximate width of menu
-          let leftPos = rect.left + (rect.width/2) - (menuWidth/2);
-          
-          // Make sure menu doesn't go off screen
-          if (leftPos < 10) leftPos = 10;
-          if (leftPos + menuWidth > window.innerWidth - 10) 
-            leftPos = window.innerWidth - menuWidth - 10;
-          
-          highlightMenu.style.left = leftPos + "px";
-          highlightMenu.style.top = (rect.bottom + 10) + "px";
-          highlightMenu.style.display = "block";
-          
-          // Save the paragraph reference for highlighting
-          window.selectedParagraph = p;
-        });
+      if (highlightsList.style.display === 'none') {
+        highlightsList.style.display = 'block';
+        bookContent.style.display = 'none';
+        toggleHighlightsList.textContent = 'Back to Book';
+        updateHighlightsList();
+      } else {
+        highlightsList.style.display = 'none';
+        bookContent.style.display = 'block';
+        toggleHighlightsList.textContent = 'View Highlights';
+      }
+    });
+    
+    // Setup paragraph selection
+    paragraphs.forEach((p, index) => {
+      p.addEventListener('click', () => {
+        if (!highlightMode) return;
         
-        // Also handle regular clicks for non-touch devices
-        p.addEventListener("click", (e) => {
-          if (!highlightMode) return;
-          
-          // Select the paragraph
-          selectedText = p.textContent;
-          selectedCfiRange = "demo-cfi-" + Math.random().toString(36).substring(2, 10); // Demo CFI
-          
-          // Add visual feedback
-          paragraphs.forEach(para => para.style.border = "none"); // Reset all
-          p.style.border = "2px dashed #666"; // Show selection
-          
-          // Show highlight menu
-          const rect = p.getBoundingClientRect();
-          const highlightMenu = document.getElementById("highlight-menu");
-          
-          highlightMenu.style.left = (rect.left + rect.width/2 - highlightMenu.offsetWidth/2) + "px";
-          highlightMenu.style.top = (rect.bottom + 10) + "px";
-          highlightMenu.style.display = "block";
-          
-          // Save the paragraph reference for highlighting
-          window.selectedParagraph = p;
-        });
-      });
-      
-      // Setup color selection
-      const colorOptions = document.querySelectorAll(".color-option");
-      colorOptions.forEach(option => {
-        option.addEventListener("click", () => {
-          selectedColor = option.getAttribute("data-color");
-          colorOptions.forEach(opt => opt.style.border = "none");
-          option.style.border = "2px solid #000";
-        });
-      });
-      
-      // Set default selected color
-      document.querySelector('[data-color="yellow"]').style.border = "2px solid #000";
-      
-      // Apply highlight button
-      const applyHighlightBtn = document.getElementById("apply-highlight");
-      applyHighlightBtn.addEventListener("click", () => {
-        if (selectedText && window.selectedParagraph) {
-          // Get the note text
-          const noteInput = document.getElementById("highlight-note");
-          currentNote = noteInput.value.trim();
-          
-          // Apply highlight class to paragraph
-          window.selectedParagraph.className = "highlight-" + selectedColor;
-          if (currentNote) {
-            window.selectedParagraph.classList.add("has-note");
-          }
-          window.selectedParagraph.style.border = "none"; // Remove selection border
-          
-          // Save highlight with note
-          saveHighlight(selectedCfiRange, selectedColor, currentNote);
-          
-          // Close menu and reset note field
-          document.getElementById("highlight-menu").style.display = "none";
-          noteInput.value = "";
-          
-          // Visual feedback for successful highlighting
-          const toast = document.createElement("div");
-          toast.style.position = "fixed";
-          toast.style.bottom = "20px";
-          toast.style.left = "50%";
-          toast.style.transform = "translateX(-50%)";
-          toast.style.background = "rgba(0,0,0,0.7)";
-          toast.style.color = "white";
-          toast.style.padding = "8px 16px";
-          toast.style.borderRadius = "20px";
-          toast.style.zIndex = "9999";
-          toast.textContent = currentNote ? "Highlight and note saved" : "Highlight saved";
-          document.body.appendChild(toast);
-          
-          // Remove toast after 2 seconds
-          setTimeout(() => {
-            if (document.body.contains(toast)) {
-              document.body.removeChild(toast);
-            }
-          }, 2000);
+        // Clear previous selection
+        if (selectedParagraph) {
+          selectedParagraph.classList.remove('selected');
         }
+        
+        // Select this paragraph
+        selectedParagraph = p;
+        p.classList.add('selected');
+        
+        // Show highlight menu
+        highlightMenu.style.display = 'block';
+        
+        // Clear previous note
+        noteInput.value = '';
       });
+    });
+    
+    // Color selection
+    colorOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        // Update selected color
+        selectedColor = option.getAttribute('data-color');
+        
+        // Update UI
+        colorOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+      });
+    });
+    
+    // Apply highlight
+    applyHighlightBtn.addEventListener('click', () => {
+      if (!selectedParagraph) return;
       
-      // Cancel highlight button
-      const cancelHighlightBtn = document.getElementById("cancel-highlight");
-      cancelHighlightBtn.addEventListener("click", () => {
-        if (window.selectedParagraph) {
-          window.selectedParagraph.style.border = "none"; // Remove selection border
+      // Get note text
+      const note = noteInput.value.trim();
+      
+      // Apply highlight class
+      selectedParagraph.className = `highlight-${selectedColor}`;
+      selectedParagraph.classList.remove('selected');
+      
+      // Add note if provided
+      if (note) {
+        selectedParagraph.classList.add('has-note');
+        
+        // Remove any existing note display
+        const existingNote = selectedParagraph.querySelector('.note-display');
+        if (existingNote) {
+          selectedParagraph.removeChild(existingNote);
         }
-        document.getElementById("highlight-menu").style.display = "none";
-      });
+        
+        // Add note display
+        const noteDisplay = document.createElement('div');
+        noteDisplay.className = 'note-display';
+        noteDisplay.textContent = note;
+        selectedParagraph.appendChild(noteDisplay);
+      }
       
-      // Apply saved highlights
-      if (bookHighlights["Demo Book"]) {
-        bookHighlights["Demo Book"].forEach((highlight, index) => {
-          // For demo, apply highlight to a random paragraph
-          const randomIndex = index % paragraphs.length;
-          paragraphs[randomIndex].className = "highlight-" + highlight.color;
+      // Save highlight
+      const highlight = {
+        id: Date.now(),
+        text: selectedParagraph.textContent,
+        color: selectedColor,
+        note: note,
+        paragraphIndex: Array.from(paragraphs).indexOf(selectedParagraph)
+      };
+      
+      highlights.push(highlight);
+      localStorage.setItem('bookHighlights', JSON.stringify(highlights));
+      
+      // Close menu and reset
+      highlightMenu.style.display = 'none';
+      selectedParagraph = null;
+      
+      // Show confirmation
+      showToast(note ? 'Highlight and note saved' : 'Highlight saved');
+    });
+    
+    // Cancel highlight
+    cancelHighlightBtn.addEventListener('click', () => {
+      if (selectedParagraph) {
+        selectedParagraph.classList.remove('selected');
+        selectedParagraph = null;
+      }
+      
+      highlightMenu.style.display = 'none';
+    });
+    
+    // Update highlights list
+    function updateHighlightsList() {
+      if (highlights.length === 0) {
+        highlightsContainer.innerHTML = '<p>No highlights yet. Use highlight mode to create some!</p>';
+        return;
+      }
+      
+      highlightsContainer.innerHTML = '';
+      
+      highlights.forEach(highlight => {
+        const item = document.createElement('div');
+        item.className = `highlight-item highlight-${highlight.color}`;
+        
+        const text = document.createElement('div');
+        text.className = 'highlight-text';
+        text.textContent = highlight.text.substring(0, 100) + (highlight.text.length > 100 ? '...' : '');
+        
+        item.appendChild(text);
+        
+        if (highlight.note) {
+          const noteElem = document.createElement('div');
+          noteElem.className = 'highlight-note';
+          noteElem.textContent = `📝 Note: ${highlight.note}`;
+          item.appendChild(noteElem);
+        }
+        
+        // Add delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.style.position = 'absolute';
+        deleteBtn.style.right = '10px';
+        deleteBtn.style.top = '10px';
+        deleteBtn.style.background = '#ff5252';
+        deleteBtn.style.color = 'white';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '4px';
+        deleteBtn.style.padding = '3px 8px';
+        
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           
-          // Also add a data attribute to link the paragraph to the highlight
-          paragraphs[randomIndex].setAttribute("data-highlight-id", highlight.cfiRange);
+          // Remove from storage
+          highlights = highlights.filter(h => h.id !== highlight.id);
+          localStorage.setItem('bookHighlights', JSON.stringify(highlights));
           
-          // Add note indicator and note display if there's a note
-          if (highlight.note) {
-            paragraphs[randomIndex].classList.add("has-note");
+          // Remove from UI
+          highlightsContainer.removeChild(item);
+          
+          // Remove highlight from paragraph
+          if (highlight.paragraphIndex >= 0 && highlight.paragraphIndex < paragraphs.length) {
+            paragraphs[highlight.paragraphIndex].className = '';
             
-            // Add note content directly inside paragraph
-            const noteDisplay = document.createElement("div");
-            noteDisplay.className = "note-display";
+            // Remove note display
+            const noteDisplay = paragraphs[highlight.paragraphIndex].querySelector('.note-display');
+            if (noteDisplay) {
+              paragraphs[highlight.paragraphIndex].removeChild(noteDisplay);
+            }
+          }
+          
+          // Update empty state if needed
+          if (highlights.length === 0) {
+            highlightsContainer.innerHTML = '<p>No highlights yet. Use highlight mode to create some!</p>';
+          }
+          
+          showToast('Highlight deleted');
+        });
+        
+        item.appendChild(deleteBtn);
+        highlightsContainer.appendChild(item);
+      });
+    }
+    
+    // Load saved highlights on page load
+    function loadSavedHighlights() {
+      highlights.forEach(highlight => {
+        if (highlight.paragraphIndex >= 0 && highlight.paragraphIndex < paragraphs.length) {
+          const p = paragraphs[highlight.paragraphIndex];
+          
+          // Apply highlight class
+          p.className = `highlight-${highlight.color}`;
+          
+          // Add note if exists
+          if (highlight.note) {
+            p.classList.add('has-note');
+            
+            const noteDisplay = document.createElement('div');
+            noteDisplay.className = 'note-display';
             noteDisplay.textContent = highlight.note;
-            paragraphs[randomIndex].appendChil
+            p.appendChild(noteDisplay);
+          }
+        }
+      });
+    }
+    
+    // Initialize
+    loadSavedHighlights();
+  </script>
+</body>
+</html>
