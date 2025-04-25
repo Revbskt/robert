@@ -598,12 +598,18 @@
     }
   }
 
-  waitForEPUBJS(() => {
-    initBook("https://raw.githubusercontent.com/Revbskt/robert/main/ebooks/bts.epub");
+ // ✅ Only load once epub.js is available
+waitForEPUBJS(() => {
+  initBook("https://raw.githubusercontent.com/Revbskt/robert/main/ebooks/bts.epub");
+
+  document.getElementById("prev-button").addEventListener("click", () => {
+    if (rendition) rendition.prev();
   });
 
-    // 🔥 Auto-load your book
-    initBook("https://raw.githubusercontent.com/Revbskt/robert/main/ebooks/bts.epub");
+  document.getElementById("next-button").addEventListener("click", () => {
+    if (rendition) rendition.next();
+  });
+});
 
     document.getElementById("prev-button").addEventListener("click", () => {
       if (rendition) rendition.prev();
