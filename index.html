@@ -589,10 +589,18 @@
   let highlights = JSON.parse(localStorage.getItem("reader-highlights")) || [];
   let currentHighlight = null;
   let theBookUrl = null;
+//event listner 
+  function waitForEPUBJS(callback) {
+    if (typeof window.ePub !== "undefined") {
+      callback();
+    } else {
+      setTimeout(() => waitForEPUBJS(callback), 50);
+    }
+  }
 
-  document.addEventListener("DOMContentLoaded", function() {
-    document.getElementById("font-size-display").textContent = currentFontSize + "%";
-    document.getElementById("loading").style.display = "none";
+  waitForEPUBJS(() => {
+    initBook("https://raw.githubusercontent.com/Revbskt/robert/main/ebooks/bts.epub");
+  });
 
     // 🔥 Auto-load your book
     initBook("https://raw.githubusercontent.com/Revbskt/robert/main/ebooks/bts.epub");
