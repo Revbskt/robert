@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>My ePub Reader and Library</title>
+  <title>ePub Reader</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
 
   <!-- Essential Libraries -->
@@ -10,230 +10,47 @@
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    /* Previous styles remain the same, add these new styles */
-    
-    /* Highlight Mode Styles */
-    #toolbar button.highlight-mode-active {
-      background-color: rgba(255,255,0,0.3);
-      border-radius: 5px;
-    }
+    /* All previous styles remain the same */
 
-    .epub-highlight {
-      transition: background-color 0.3s ease;
-    }
-
-    .epub-highlight.highlight-yellow {
-      background-color: rgba(255,255,0,0.3);
-    }
-
-    .epub-highlight.highlight-green {
-      background-color: rgba(0,255,0,0.3);
-    }
-
-    .epub-highlight.highlight-pink {
-      background-color: rgba(255,192,203,0.3);
-    }
-
-    .epub-highlight.highlight-blue {
-      background-color: rgba(0,0,255,0.3);
-    }
-
-    /* Highlight Color Selector */
-    #highlight-color-menu {
-      display: none;
-      position: fixed;
-      bottom: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 10px;
-      border-radius: 10px;
-      z-index: 1100;
-    }
-
-    #highlight-color-menu .color-option {
-      display: inline-block;
-      width: 30px;
-      height: 30px;
-      margin: 0 5px;
-      border-radius: 50%;
-      cursor: pointer;
-      opacity: 0.7;
-      transition: opacity 0.3s;
-    }
-
-    #highlight-color-menu .color-option:hover {
-      opacity: 1;
-    }
-
-    .color-yellow { background-color: yellow; }
-    .color-green { background-color: green; }
-    .color-pink { background-color: pink; }
-    .color-blue { background-color: blue; }
+    /* Highlight Styles */
+    .highlight-yellow { background-color: rgba(255,255,0,0.3); }
+    .highlight-green { background-color: rgba(0,255,0,0.3); }
+    .highlight-pink { background-color: rgba(255,192,203,0.3); }
+    .highlight-blue { background-color: rgba(0,0,255,0.3); }
   </style>
 </head>
 <body>
-  <!-- Before the last script tag, add this highlight color menu -->
-  <div id="highlight-color-menu">
-    <div class="color-option color-yellow" data-color="yellow"></div>
-    <div class="color-option color-green" data-color="green"></div>
-    <div class="color-option color-pink" data-color="pink"></div>
-    <div class="color-option color-blue" data-color="blue"></div>
-  </div>
-
-  <!-- Modify the toolbar to include highlight mode toggle -->
-  <div id="toolbar">
-    <button id="menu-toggle">☰</button>
-    <button id="reading-mode-toggle">📖</button>
-    <button id="highlight-mode-toggle">🖍️</button>
-  </div>
-
+  <!-- Existing HTML remains the same -->
+  
   <script>
-    // Add these to your existing global variables
+    // Existing script remains the same, with these additions:
+
+    // Highlight Mode Variables
     let isHighlightMode = false;
     let currentHighlightColor = 'yellow';
     let highlights = {};
 
-    // Add these functions to your existing script
-    function setupHighlightMode() {
-      const highlightModeToggle = document.getElementById('highlight-mode-toggle');
-      const highlightColorMenu = document.getElementById('highlight-color-menu');
-      const colorOptions = document.querySelectorAll('#highlight-color-menu .color-option');
-
-      // Toggle highlight mode
-      highlightModeToggle.addEventListener('click', () => {
-        isHighlightMode = !isHighlightMode;
-        highlightModeToggle.classList.toggle('highlight-mode-active', isHighlightMode);
-        
-        if (isHighlightMode) {
-          highlightColorMenu.style.display = 'block';
-        } else {
-          highlightColorMenu.style.display = 'none';
-        }
-      });
-
-      // Color selection
-      colorOptions.forEach(option => {
-        option.addEventListener('click', () => {
-          currentHighlightColor = option.dataset.color;
-          colorOptions.forEach(opt => opt.style.border = 'none');
-          option.style.border = '2px solid white';
-        });
-      });
-
-      // Add event listeners to paragraphs when in highlight mode
-      rendition.on('rendered', () => {
-        if (!isHighlightMode) return;
-
-        rendition.getContents().forEach(content => {
-          const doc = content.document;
-          const paragraphs = doc.querySelectorAll('p');
-          
-          paragraphs.forEach(para => {
-            para.addEventListener('click', handleParagraphHighlight);
-          });
-        });
-      });
+    // Highlight Mode Toggle
+    function toggleHighlightMode() {
+      isHighlightMode = !isHighlightMode;
+      console.log('Highlight mode:', isHighlightMode);
     }
 
-    function handleParagraphHighlight(event) {
+    // Highlight Paragraph
+    function highlightParagraph(paragraph) {
       if (!isHighlightMode) return;
 
-      const paragraph = event.target;
-      const bookKey = currentBookUrl;
-      const paragraphText = paragraph.textContent.trim();
-
+      const currentClass = `highlight-${currentHighlightColor}`;
+      
       // Toggle highlight
-      if (paragraph.classList.contains(`epub-highlight highlight-${currentHighlightColor}`)) {
-        // Remove highlight
-        paragraph.classList.remove(`epub-highlight highlight-${currentHighlightColor}`);
-        
-        // Remove from saved highlights
-        if (highlights[bookKey]) {
-          highlights[bookKey] = highlights[bookKey].filter(h => 
-            h.text !== paragraphText || h.color !== currentHighlightColor
-          );
-        }
+      if (paragraph.classList.contains(currentClass)) {
+        paragraph.classList.remove(currentClass);
       } else {
-        // Add highlight
-        paragraph.classList.add(`epub-highlight highlight-${currentHighlightColor}`);
-        
-        // Save highlight
-        if (!highlights[bookKey]) {
-          highlights[bookKey] = [];
-        }
-        highlights[bookKey].push({
-          text: paragraphText,
-          color: currentHighlightColor,
-          cfi: rendition.currentLocation().start.cfi
-        });
-      }
-
-      // Save highlights to localStorage
-      saveHighlights();
-    }
-
-    function saveHighlights() {
-      localStorage.setItem('epub-highlights', JSON.stringify(highlights));
-    }
-
-    function loadHighlights() {
-      const savedHighlights = localStorage.getItem('epub-highlights');
-      if (savedHighlights) {
-        highlights = JSON.parse(savedHighlights);
+        paragraph.classList.add(currentClass);
       }
     }
 
-    function restoreHighlights() {
-      if (!currentBookUrl) return;
-
-      const bookHighlights = highlights[currentBookUrl] || [];
-      
-      rendition.on('rendered', () => {
-        rendition.getContents().forEach(content => {
-          const doc = content.document;
-          const paragraphs = doc.querySelectorAll('p');
-          
-          paragraphs.forEach(para => {
-            const paraText = para.textContent.trim();
-            
-            bookHighlights.forEach(highlight => {
-              if (highlight.text === paraText) {
-                para.classList.add(`epub-highlight highlight-${highlight.color}`);
-              }
-            });
-          });
-        });
-      });
-    }
-
-    // Modify your existing readBook function to include:
-    function readBook(epubUrl) {
-      currentBookUrl = epubUrl;
-      toggleLibrary(false);
-      
-      if (book) {
-        book.destroy();
-      }
-      
-      book = ePub(epubUrl);
-      book.ready.then(() => {
-        initRendition(currentFlow);
-        
-        // Update book details in menu
-        book.loaded.metadata.then(meta => {
-          document.getElementById("book-title").textContent = meta.title || "Untitled";
-          document.getElementById("book-author").textContent = meta.creator || "";
-        });
-
-        // Load and restore highlights
-        loadHighlights();
-        restoreHighlights();
-      });
-    }
-
-    // Modify your existing initRendition function to include:
+    // Modify initRendition to set up highlight listeners
     function initRendition(flowMode) {
       rendition = book.renderTo("viewer", {
         width: "100%",
@@ -242,17 +59,34 @@
         snap: flowMode !== "scrolled"
       });
 
+      // Add highlight listener
+      rendition.on('rendered', () => {
+        rendition.getContents().forEach(content => {
+          const doc = content.document;
+          const paragraphs = doc.querySelectorAll('p');
+          
+          paragraphs.forEach(para => {
+            para.addEventListener('click', () => highlightParagraph(para));
+          });
+        });
+      });
+
       // Default display
       rendition.display();
 
-      // Setup highlight mode
-      setupHighlightMode();
-
-      // Reading Mode Toggle
+      // Existing reading mode setup
       setupReadingModeEvents();
     }
 
-    // The rest of your previous script remains the same
+    // Add highlight mode toggle to toolbar
+    document.getElementById('toolbar').innerHTML += `
+      <button id="highlight-mode-toggle">🖍️</button>
+    `;
+
+    // Add highlight mode toggle event
+    document.getElementById('highlight-mode-toggle').addEventListener('click', () => {
+      toggleHighlightMode();
+    });
   </script>
 </body>
 </html>
