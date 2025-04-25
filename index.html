@@ -991,127 +991,213 @@
     const savedTheme = localStorage.getItem("reader-theme") || "light";
     document.getElementById("theme-select").value = savedTheme;
     changeTheme(savedTheme);
-   // Highlight Feature with Aggressive iOS Touch Handling
-function handleHighlight(contents) {
-  const doc = contents.document;
-  let startRange = null;
-  let startTouch = null;
-  let isSelecting = false;
+   // iOS-Friendly Highlight Feature
+let highlights = []; // Global highlights array for current book
 
-  function touchStartHandler(e) {
-    // Ensure we're in highlight mode
-    const highlightButton = document.getElementById('highlight-toggle');
-    if (!highlightButton || !highlightButton.style.backgroundColor) return;
-
-    // Stop all default behaviors
-    e.stopPropagation();
-    e.preventDefault();
-
-    // Disable scrolling
-    doc.body.style.overflow = 'hidden';
-    
-    // Mark that we're starting selection
-    isSelecting = true;
-    startTouch = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY
-    };
-
-    // Attempt to get initial range
-    startRange = doc.caretRangeFromPoint(startTouch.x, startTouch.y);
-  }
-
-  function touchMoveHandler(e) {
-    // Only proceed if in highlight mode and selection started
-    if (!isSelecting) return;
-
-    // Stop all default behaviors
-    e.stopPropagation();
-    e.preventDefault();
-
-    if (!startRange) return;
-
-    const currentTouch = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY
-    };
-    
-    const endRange = doc.caretRangeFromPoint(currentTouch.x, currentTouch.y);
-    if (endRange) {
-      const selection = doc.getSelection();
-      selection.removeAllRanges();
-      
-      const range = doc.createRange();
-      range.setStart(startRange.startContainer, startRange.startOffset);
-      range.setEnd(endRange.startContainer, endRange.startOffset);
-      
-      selection.addRange(range);
-    }
-  }
-
-  function touchEndHandler(e) {
-    // Stop all default behaviors
-    e.stopPropagation();
-    e.preventDefault();
-
-    // Re-enable scrolling
-    doc.body.style.overflow = '';
-
-    // Reset selection flag
-    isSelecting = false;
-
-    const selection = doc.getSelection();
-    if (!selection.isCollapsed) {
-      const range = selection.getRangeAt(0);
-      
-      // Generate CFI for the selected range
-      const cfi = rendition.epubCfi.generateCfiFromRange(range);
-      
-      // Create highlight
-      const highlightSpan = doc.createElement('span');
-      highlightSpan.style.backgroundColor = 'yellow';
-      highlightSpan.classList.add('epub-highlight');
-      
-      // Wrap the range content with the highlight element
-      const extracted = range.extractContents();
-      highlightSpan.appendChild(extracted);
-      range.insertNode(highlightSpan);
-      
-      // Store the highlight
-      highlights.push({
-        cfi: cfi,
-        color: 'yellow',
-        text: selection.toString()
-      });
-      
-      // Save highlights
-      saveHighlights();
-      
-      // Clear selection
-      selection.removeAllRanges();
-    }
-
-    startRange = null;
-  }
-
-  // Modify document body to prevent default touch behaviors
-  doc.body.style.webkitUserSelect = 'text';
-  doc.body.style.userSelect = 'text';
-  doc.body.style.touchAction = 'none';
-
-  // Add touch event listeners
-  doc.addEventListener('touchstart', touchStartHandler, { passive: false });
-  doc.addEventListener('touchmove', touchMoveHandler, { passive: false });
-  doc.addEventListener('touchend', touchEndHandler, { passive: false });
-
-  // Prevent default scrolling on the entire document
-  contents.document.addEventListener('scroll', (e) => {
-    if (isSelecting) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }, { passive: false });
+// Utility to save book-specific highlights
+function saveHighlights() {
+  if (!currentBookUrl) return;
+  localStorage.setItem(`highlights_${currentBookUrl}`, JSON.stringify(highlights));
 }
+
+// Utility to load book-specific highlights
+function loadHighlights() {
+  if (!currentBookUrl) return;
+  const storedHighlights = localStorage.getItem(`highlights_${currentBookUrl}`);
+  highlights = storedHighlights ? JSON.parse(storedHighlights) : [];
+  renderExistingHighlights();
+}
+
+// Render existing highlights when book is loaded or page changes
+function renderExistingHighlights() {
+  if (!rendition) return;
+
+  rendition.getContents().forEach(contents => {
+    const doc = contents.document;
+    highlights.forEach(highlight => {
+      try {
+        const range = rendition.epubCfi.generateRangeFromCfi(highlight.cfi);
+        if (range && range.startContainer) {
+          const highlightSpan = doc.createElement('span');
+          highlightSpan.style.backgroundColor = 'yellow';
+          highlightSpan.classList.add('epub-highlight');
+          
+          // Wrap the range content with the highlight element
+          const extracted = range.extractContents();
+          highlightSpan.appendChild(extracted);
+          range.insertNode(highlightSpan);
+        }
+      } catch (error) {
+        console.warn("Could not render highlight:", error);
+      }
+    });
+  });
+}
+
+// Create highlight button
+function createHighlightButton() {
+  // Check if button already exists
+  if (document.getElementById('highlight-toggle')) return;
+
+  // Add highlight button to toolbar
+  const highlightButton = document.createElement('button');
+  highlightButton.textContent = '🖍️';
+  highlightButton.id = 'highlight-toggle';
+  highlightButton.title = 'Highlight Text';
+  
+  let isHighlighting = false;
+
+  highlightButton.addEventListener('click', () => {
+    isHighlighting = !isHighlighting;
+    highlightButton.style.backgroundColor = isHighlighting ? 'lightblue' : '';
+    
+    // Switch to scroll mode when highlighting
+    if (isHighlighting) {
+      // Store current mode
+      highlightButton.setAttribute('data-original-mode', currentFlow);
+      
+      // Change to scroll mode
+      const readingModeSelect = document.getElementById('reading-mode');
+      readingModeSelect.value = 'scrolled-doc';
+      currentFlow = 'scrolled-doc';
+      
+      // Reinitialize rendition
+      if (rendition && book) {
+        const currentLocation = rendition.location?.start?.cfi || 
+          localStorage.getItem("last-location-" + currentBookUrl);
+        rendition.destroy();
+        
+        setTimeout(() => {
+          initRendition('scrolled-doc', currentLocation);
+        }, 50);
+      }
+    } else {
+      // Restore original mode
+      const originalMode = highlightButton.getAttribute('data-original-mode') || 'paginated';
+      const readingModeSelect = document.getElementById('reading-mode');
+      readingModeSelect.value = originalMode;
+      currentFlow = originalMode;
+      
+      // Reinitialize rendition
+      if (rendition && book) {
+        const currentLocation = rendition.location?.start?.cfi || 
+          localStorage.getItem("last-location-" + currentBookUrl);
+        rendition.destroy();
+        
+        setTimeout(() => {
+          initRendition(originalMode, currentLocation);
+        }, 50);
+      }
+    }
+  });
+
+  // Setup highlight handling when book is rendered
+  function setupHighlightHandler(contents) {
+    const doc = contents.document;
+    
+    // Add global event listener for text selection
+    doc.addEventListener('selectionchange', () => {
+      // Only process if highlighting is active
+      const highlightButton = document.getElementById('highlight-toggle');
+      if (!highlightButton || !highlightButton.style.backgroundColor) return;
+      
+      const selection = doc.getSelection();
+      if (!selection.isCollapsed) {
+        try {
+          const range = selection.getRangeAt(0);
+          
+          // Generate CFI for the selected range
+          const cfi = rendition.epubCfi.generateCfiFromRange(range);
+          
+          // Create highlight
+          const highlightSpan = doc.createElement('span');
+          highlightSpan.style.backgroundColor = 'yellow';
+          highlightSpan.classList.add('epub-highlight');
+          
+          // Wrap the range content with the highlight element
+          const extracted = range.extractContents();
+          highlightSpan.appendChild(extracted);
+          range.insertNode(highlightSpan);
+          
+          // Store the highlight
+          highlights.push({
+            cfi: cfi,
+            color: 'yellow',
+            text: selection.toString()
+          });
+          
+          // Save highlights
+          saveHighlights();
+          
+          // Clear selection
+          selection.removeAllRanges();
+        } catch (error) {
+          console.error('Error creating highlight:', error);
+        }
+      }
+    });
+  }
+
+  // Add highlight button to toolbar
+  const toolbar = document.getElementById('toolbar');
+  toolbar.insertBefore(highlightButton, toolbar.lastElementChild);
+
+  // Setup highlight handling when book is rendered
+  if (book && rendition) {
+    rendition.on('rendered', contents => {
+      setupHighlightHandler(contents);
+    });
+  }
+}
+
+// Modify the initBook function to set up highlight mode
+function modifiedInitBook(chosenUrl) {
+  if (!chosenUrl) return;
+  currentBookUrl = chosenUrl;
+  highlights = []; // Reset highlights for new book
+  
+  book = ePub(chosenUrl);
+  registerReaderEvents();
+  book.ready.then(() => {
+    initRendition(currentFlow);
+    setTimeout(() => book.locations.generate(1600), 100);
+    
+    // Create highlight button
+    createHighlightButton();
+    
+    book.loaded.metadata.then(meta => {
+      document.getElementById("book-title").textContent = meta.title || "Untitled";
+      document.getElementById("book-author").textContent = meta.creator || "";
+    });
+    
+    // Load and render highlights
+    loadHighlights();
+  });
+}
+
+// Create highlight button when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  // Create highlight button for existing book (if any)
+  if (theBookUrl) {
+    createHighlightButton();
+  }
+});
+
+// Replace the original initBook with this modified version
+initBook = modifiedInitBook;
+
+// Add some CSS to style highlights
+const highlightStyle = document.createElement('style');
+highlightStyle.textContent = `
+  .epub-highlight {
+    background-color: yellow !important;
+    cursor: pointer;
+  }
+  .epub-highlight:hover {
+    background-color: orange !important;
+  }
+`;
+document.head.appendChild(highlightStyle);
   </script>
 </body>
 </html>
