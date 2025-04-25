@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>My ePub Reader and Library</title>
+  <title>ePub Reader Template</title>
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no" />
 
-  <!-- JSZip and epub.js for the reader -->
+  <!-- Essential Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    /* ===== Global UI Font Setup ===== */
+    /* Global Styles */
     html, body {
       margin: 0;
       padding: 0;
@@ -18,35 +18,24 @@
       font-family: sans-serif;
       background: #f5f5f5;
     }
-    /* ===== Theme Classes for the Body ===== */
-    body.light-mode { background: #f5f5f5; }
-    body.light-mode #toolbar { background: #eee; }
-    body.sepia-mode { background: #f4ecd8; }
-    body.sepia-mode #toolbar { background: #e7dbc3; }
-    body.matcha-mode { background: #C3D8B6; }
-    body.matcha-mode #toolbar { background: #B0CFA3; }
-    body.night-mode { background: #111 !important; }
-    body.night-mode #toolbar { background: #222 !important; }
-    body.night-mode #continue-bar { background: #111 !important; color: #eee !important; }
-    /* ===== Layout for Library and Reader Containers ===== */
+
+    /* Layout Containers */
     #reader-container {
-      display: none;
       position: relative;
       width: 100%;
       height: 100%;
       overflow: hidden;
     }
+
     #library-container {
-      display: none;
       position: relative;
       min-height: 100vh;
       background: #f5f5f5;
       padding: 1rem;
       box-sizing: border-box;
     }
-    h1 { text-align: center; margin: 0 0 1rem; }
-    /* ===== Library Grid Styling ===== */
-    #library-controls { text-align: center; margin-bottom: 1rem; }
+
+    /* Library Grid */
     #library {
       display: flex;
       flex-wrap: wrap;
@@ -54,6 +43,7 @@
       justify-content: center;
       margin-top: 1rem;
     }
+
     .book {
       background: #fff;
       border: 1px solid #ddd;
@@ -63,9 +53,24 @@
       box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
       border-radius: 6px;
     }
-    .book img { width: 100%; height: auto; border-radius: 4px; }
-    .book h3 { font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
-    .book p { font-size: 0.8rem; margin: 0 0 0.5rem; color: #555; }
+
+    .book img { 
+      width: 100%; 
+      height: auto; 
+      border-radius: 4px; 
+    }
+
+    .book h3 { 
+      font-size: 0.9rem; 
+      margin: 0.5rem 0 0.25rem; 
+    }
+
+    .book p { 
+      font-size: 0.8rem; 
+      margin: 0 0 0.5rem; 
+      color: #555; 
+    }
+
     .book button {
       margin: 4px 0;
       padding: 6px 12px;
@@ -77,8 +82,12 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .book button:hover { background-color: #0056b3; }
-    /* ===== Reader Toolbar (UI) ===== */
+
+    .book button:hover { 
+      background-color: #0056b3; 
+    }
+
+    /* Viewer and Toolbar */
     #toolbar {
       position: fixed;
       top: 0;
@@ -87,297 +96,29 @@
       height: 40px;
       z-index: 1002;
       display: flex;
-      justify-content: space-evenly;
+      justify-content: space-between;
       align-items: center;
       padding: 0 10px;
+      background: #eee;
     }
+
     #toolbar button {
-      width: 40px;
-      height: 40px;
       background: transparent;
       border: none;
       font-size: 24px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.8;
-      pointer-events: auto;
     }
-    #toolbar button:hover { opacity: 1; }
-    /* ===== Bookmark Panel (dropdown like the TOC) ===== */
-    #bookmark-panel {
-      position: fixed;
-      top: 40px;
-      left: 0;
-      right: 0;
-      height: 70vh;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.85);
-      border-bottom: 1px solid #444;
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateY(-100%);
-    }
-    #bookmark-panel.open { transform: translateY(0); }
-    #bookmark-panel div {
-      display: block;
-      padding: 6px 10px;
-      text-decoration: none;
-      color: #fff;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-    }
-    #bookmark-panel div:hover { background: rgba(255,255,255,0.1); }
-    /* ===== Highlight Panel ===== */
-    #highlight-panel {
-      position: fixed;
-      top: 40px;
-      left: 0;
-      right: 0;
-      height: 70vh;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.85);
-      border-bottom: 1px solid #444;
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateY(-100%);
-    }
-    #highlight-panel.open {
-      transform: translateY(0);
-    }
-    
-    /* Highlight Item Styles */
-    .highlight-item {
-      display: flex;
-      padding: 10px;
-      border-bottom: 1px solid #444;
-      color: #fff;
-      cursor: pointer;
-    }
-    .highlight-item:hover {
-      background: rgba(255,255,255,0.1);
-    }
-    .highlight-text {
-      flex: 1;
-      padding-right: 10px;
-    }
-    .highlight-actions {
-      display: flex;
-      align-items: center;
-    }
-    .color-btn {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 1px solid #fff;
-      margin-right: 5px;
-      cursor: pointer;
-    }
-    .delete-btn {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    
-    /* Magnifier Highlight Styles */
-    .magnifier-container {
-      position: fixed;
-      pointer-events: none;
-      z-index: 1500;
-      display: none;
-      background-color: white;
-      border-radius: 50%;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      border: 2px solid #007bff;
-      overflow: hidden;
-      width: 200px;
-      height: 200px;
-    }
-    
-    .magnifier-content {
+
+    #viewer {
       position: absolute;
-      transform-origin: 0 0;
-      white-space: nowrap;
-    }
-    
-    /* Magnifier Control Panel */
-    #magnifier-panel {
-      position: fixed;
       top: 40px;
       left: 0;
       right: 0;
-      height: 70vh;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.85);
-      border-bottom: 1px solid #444;
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateY(-100%);
-    }
-    
-    #magnifier-panel.open {
-      transform: translateY(0);
-    }
-    
-    .magnifier-item {
-      display: flex;
-      padding: 10px;
-      border-bottom: 1px solid #444;
-      color: #fff;
-      cursor: pointer;
-    }
-    
-    .magnifier-item:hover {
-      background: rgba(255,255,255,0.1);
-    }
-    
-    .magnifier-text {
-      flex: 1;
-      padding-right: 10px;
-    }
-    
-    .magnifier-note {
-      color: #aaa;
-      font-style: italic;
-      font-size: 0.9em;
-      margin-top: 5px;
-    }
-    
-    .magnifier-actions {
-      display: flex;
-      align-items: center;
-    }
-    
-    .magnifier-delete-btn {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    
-    .add-note-btn {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-      margin-right: 10px;
-    }
-    
-    /* Paragraph Highlight Overlay and Instructions */
-    #paragraph-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.2);
-      z-index: 1200;
-      display: none;
+      overflow: hidden;
     }
-    
-    #paragraph-instruction {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 15px 25px;
-      border-radius: 10px;
-      text-align: center;
-      z-index: 1201;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Magnifier overlay for selection mode */
-    #magnifier-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.2);
-      z-index: 1200;
-      display: none;
-    }
-    
-    #magnifier-instruction {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 15px 25px;
-      border-radius: 10px;
-      text-align: center;
-      z-index: 1201;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Note input modal */
-    #note-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.9);
-      padding: 20px;
-      border-radius: 10px;
-      z-index: 1600;
-      width: 80%;
-      max-width: 400px;
-      display: none;
-    }
-    
-    #note-modal h3 {
-      color: white;
-      margin-top: 0;
-    }
-    
-    #note-input {
-      width: 100%;
-      height: 100px;
-      margin: 10px 0;
-      padding: 10px;
-      box-sizing: border-box;
-      border-radius: 5px;
-      border: 1px solid #555;
-      background: #222;
-      color: white;
-      resize: none;
-    }
-    
-    #note-modal-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    
-    #note-modal-buttons button {
-      padding: 8px 15px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    
-    #save-note-btn {
-      background: #007bff;
-      color: white;
-    }
-    
-    #cancel-note-btn {
-      background: #444;
-      color: white;
-    }
-    
-    /* ===== Slide-out Menu Backdrop & Panel ===== */
+
+    /* Slide-out Menu */
     #menu-backdrop {
       display: none;
       position: fixed;
@@ -385,6 +126,7 @@
       background: rgba(0, 0, 0, 0.3);
       z-index: 1001;
     }
+
     #expanded-menu {
       position: fixed;
       top: 0;
@@ -398,420 +140,231 @@
       display: flex;
       flex-direction: column;
       padding: 20px;
-      overflow-y: auto;
       transition: left 0.3s ease;
     }
-    #expanded-menu.open { left: 0; }
+
+    #expanded-menu.open { 
+      left: 0; 
+    }
+
     #expanded-menu .close-menu {
       align-self: flex-end;
       background: none;
       border: none;
       font-size: 24px;
       cursor: pointer;
-      margin-bottom: 20px;
       color: #fff;
-      transition: transform 0.2s ease;
     }
-    #expanded-menu .close-menu:hover { transform: scale(1.1); }
-    #expanded-menu .menu-button {
-      margin: 4px auto;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 4px;
-      background-color: #007bff;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    #expanded-menu .menu-button:hover { background-color: #0056b3; }
-    /* ===== Book Card in Menu ===== */
-    #book-card { margin: 0 auto 20px; max-width: 240px; text-align: center; }
-    #book-card img { width: 100%; max-height: 320px; object-fit: contain; border-radius: 4px; margin-bottom: 10px; }
-    #book-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
-    #book-author { font-size: 16px; color: #fff; }
-    #contact-image { margin-top: 10px; }
-    #contact-image img { display: block; margin: 0 auto; max-width: 80%; height: auto; border-radius: 4px; }
-    /* ===== Table of Contents Panel ===== */
-    #toc-panel {
-      position: fixed;
-      top: 40px;
-      left: 0;
-      right: 0;
-      height: 70vh;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.85);
-      border-bottom: 1px solid #444;
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      transform: translateY(-100%);
-    }
-    #toc-panel.open { transform: translateY(0); }
-    #toc-panel a { display: block; padding: 6px 10px; text-decoration: none; color: #fff; }
-    #toc-panel a:hover { background: rgba(255,255,255,0.1); }
-    /* ===== ePub Viewer Area & Zones ===== */
-    #viewer {
-      position: absolute;
-      top: 40px;
-      left: 0;
-      right: 0;
-      bottom: 30px;
-      touch-action: pan-x;
-      overflow: hidden;
-    }
-    /* Tap zones for paginated mode */
-    #tap-left, #tap-right {
+
+    /* Scrolling and Swiping Support */
+    .reading-zone {
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 33.3333%;
+      width: 50%;
       z-index: 998;
     }
-    #tap-left { left: 0; }
-    #tap-right { right: 0; }
-    /* Gesture zones for additional tap support in swipe mode */
-    #gesture-left, #gesture-right {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 40%;
-      z-index: 999;
-      pointer-events: none;
-    }
-    #gesture-left { left: 0; }
-    #gesture-right { right: 0; }
-    /* ===== Swipe Transition Styles ===== */
-    #viewer.swipe-transition {
-      transition: transform 0.3s ease;
-    }
-    /* ===== Progress Bar + Continue Bar ===== */
-    #progress-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      height: 3px;
-      background: #007bff;
-      width: 0%;
-      z-index: 1000;
-    }
-    #continue-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #d3d3d3;
-      color: #000;
-      text-align: center;
-      padding: 5px 0;
-      font-size: 18px;
-      line-height: 1.2;
-      cursor: pointer;
-      z-index: 1001;
-      transition: background 0.3s;
-      display: none;
-    }
-    #continue-bar:hover { background: #c0c0c0; }
-    /* ===== Settings Modal ("Aa") ===== */
-    #settings-modal {
-      opacity: 0;
-      visibility: hidden;
-      transform: translate(-50%, -50%) scale(0.95);
-      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      background: rgba(0,0,0,0.9);
-      color: #fff;
-      width: 90%;
-      max-width: 360px;
-      padding: 20px;
-      z-index: 2000;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      font-size: 16px;
-      display: flex;
-      flex-direction: column;
-    }
-    #settings-modal.open {
-      opacity: 1;
-      visibility: visible;
-      transform: translate(-50%, -50%) scale(1);
-    }
-    #settings-modal h3 { margin: 0 0 1rem; font-size: 18px; text-align: center; }
-    /* --- NEW FONT SWITCHER CONTROLS (with OpenDyslexic option) --- */
-    #settings-modal label { margin-bottom: 0.3rem; }
-    #settings-modal select,
-    #settings-modal button {
-      font-size: 16px;
-      padding: 8px;
-      margin-bottom: 16px;
-      background: #222;
-      border: 1px solid #444;
-      color: #fff;
-      border-radius: 4px;
-    }
-    #settings-modal .font-size-buttons { display: flex; justify-content: space-between; }
-    #settings-modal .close-settings {
-      position: absolute;
-      top: 8px;
-      right: 12px;
-      font-size: 24px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      color: #fff;
-      transition: transform 0.2s ease;
-    }
-    #settings-modal .close-settings:hover { transform: scale(1.1); }
+
+    #reading-left { left: 0; }
+    #reading-right { right: 0; }
   </style>
 </head>
-<body class="light-mode">
-  <!-- LIBRARY CONTAINER -->
+<body>
+  <!-- Library Container -->
   <div id="library-container">
-    <h1>📚 Beta Epub Reader 📚</h1>
-    <div id="library-controls">
-      <button onclick="toggleLibrary(false)">Back to Reader</button>
-    </div>
+    <h1>📚 ePub Reader</h1>
     <div id="library">Loading books...</div>
   </div>
 
-  <!-- READER CONTAINER -->
+  <!-- Reader Container -->
   <div id="reader-container">
     <div id="toolbar">
-      <button id="menu-toggle" title="Main Menu">☰</button>
-      <button id="toc-toggle" title="Table of Contents">📖</button>
-      <button id="bookmark-toggle" title="Toggle Bookmark">☆</button>
-      <button id="bookmark-dropdown" title="Bookmarks">🔖</button>
-      <button id="highlight-toggle" title="Highlight Text">🖌️</button>  
-      <button id="highlight-list" title="View Highlights">📝</button>
-      <button id="paragraph-toggle" title="Paragraph Highlight">¶</button>
-      <button id="magnifier-toggle" title="Magnification Highlight">🔍</button>
-      <button id="magnifier-list" title="View Magnifications">📋</button>
-      <button id="settings-toggle" title="Read Settings">Aa</button>
-      <button id="theme-toggle" title="Toggle Night Mode">🌙</button>
+      <button id="menu-toggle">☰</button>
+      <button id="reading-mode-toggle">📖</button>
     </div>
 
-    <!-- Bookmark Panel Dropdown -->
-    <div id="bookmark-panel"></div>
-    
-    <!-- Highlight Panel -->
-    <div id="highlight-panel"></div>
-    
-    <!-- Magnifier Panel -->
-    <div id="magnifier-panel"></div>
-    
-    <!-- Paragraph Overlay for Selection Mode -->
-    <div id="paragraph-overlay">
-      <div id="paragraph-instruction">Tap on the first word of a paragraph to highlight it</div>
-    </div>
-    
-    <!-- Magnifier Overlay for Selection Mode -->
-    <div id="magnifier-overlay">
-      <div id="magnifier-instruction">Select text to magnify</div>
-    </div>
-    
-    <!-- Magnifier Container -->
-    <div class="magnifier-container">
-      <div class="magnifier-content"></div>
-    </div>
-    
-    <!-- Note Modal -->
-    <div id="note-modal">
-      <h3>Add Note</h3>
-      <textarea id="note-input" placeholder="Enter your note here..."></textarea>
-      <div id="note-modal-buttons">
-        <button id="cancel-note-btn">Cancel</button>
-        <button id="save-note-btn">Save</button>
-      </div>
-    </div>
-
+    <!-- Menu Backdrop and Expanded Menu -->
     <div id="menu-backdrop"></div>
     <div id="expanded-menu">
       <button class="close-menu" onclick="toggleMenu('menu')">×</button>
-      <div id="book-card">
-        <img id="cover" alt="Book Cover" />
-        <div id="book-title"></div>
-        <div id="book-author"></div>
-        <div id="contact-image"></div>
+      <div id="book-details">
+        <h2 id="book-title">Book Title</h2>
+        <p id="book-author">Author Name</p>
       </div>
-      <button class="menu-button" onclick="toggleLibrary(true)">Library</button>
+      <button onclick="toggleLibrary(true)">Back to Library</button>
     </div>
 
-    <div id="toc-panel"></div>
-
-    <div id="settings-modal">
-      <button class="close-settings" onclick="toggleMenu('settings')">×</button>
-      <h3>Reading Settings</h3>
-      <!-- UPDATED FONT SWITCHER: Added OpenDyslexic option -->
-      <label for="font-switcher">Font</label>
-      <select id="font-switcher">
-        <option value="-apple-system">San Francisco (System)</option>
-        <option value="Helvetica Neue">Helvetica Neue</option>
-        <option value="Arial">Arial</option>
-        <option value="Courier New">Courier New</option>
-        <option value="Georgia">Georgia</option>
-        <option value="OpenDyslexic">OpenDyslexic</option>
-      </select>
-      <div class="font-size-buttons">
-        <button onclick="changeFontSize(-1)">A-</button>
-        <button onclick="changeFontSize(1)">A+</button>
-      </div>
-      <label for="reading-mode">Reading Mode</label>
-      <select id="reading-mode">
-        <option value="paginated">Page</option>
-        <option value="scrolled-doc">Scroll</option>
-        <option value="swipe">Swipe</option>
-      </select>
-      <label for="theme-select">Color Theme</label>
-      <select id="theme-select">
-        <option value="light">Light</option>
-        <option value="sepia">Sepia</option>
-        <option value="night">Night</option>
-        <option value="matcha">Matcha Green</option>
-      </select>
-    </div>
-
+    <!-- Viewer Area with Reading Zones -->
     <div id="viewer">
-      <div id="tap-left"></div>
-      <div id="tap-right"></div>
-      <!-- Gesture zones are enabled only in swipe mode -->
-      <div id="gesture-left"></div>
-      <div id="gesture-right"></div>
+      <div id="reading-left" class="reading-zone"></div>
+      <div id="reading-right" class="reading-zone"></div>
     </div>
-
-    <div id="progress-bar"></div>
-    <div id="continue-bar">Continue</div>
   </div>
 
   <script>
-    // Global variables for theme, book, bookmarks, and swipe control
-    let lastNonNightTheme = "light";
-    let currentBookUrl = "";
-    let bookmarks = []; // bookmarks for the current book
-    let highlights = []; // highlights for the current book
-    let magnifications = []; // magnifications for the current book
-    let currentMagnifierSelection = null; // To store current selection for magnifier
-    
-    // State variables for different modes
-    let paragraphMode = false; // For paragraph highlight mode
-    let magnifierMode = false; // For magnifier mode
-
-    // Global swipe detection variables
-    let xDown = null;
-    let yDown = null;
-    const SWIPE_THRESHOLD = 20;  // Configurable swipe detection threshold (in pixels)
+    // Global Variables
+    let book, rendition;
+    let currentBookUrl = null;
+    let currentFlow = 'paginated';
+    let xDown = null, yDown = null;
+    const SWIPE_THRESHOLD = 20;
     let swipeInProgress = false;
-    
-    // Magnifier state
-    let magnifierFirstSelection = null;
-    let magnifierSecondSelection = null;
-    let currentNoteIndex = -1;
 
-    // Named tap handlers (for cleanup purposes)
-    function tapLeftHandler() {
-      if (currentFlow === "paginated" && rendition) rendition.prev();
-    }
-    function tapRightHandler() {
-      if (currentFlow === "paginated" && rendition) rendition.next();
-    }
-
-    // Cleanup function to remove event listeners and avoid memory leaks.
-    function cleanupReader() {
-      const viewer = document.getElementById("viewer");
-      if (viewer) {
-        viewer.removeEventListener("touchstart", handleTouchStart, false);
-        viewer.removeEventListener("touchend", handleTouchEnd, false);
-      }
-      const gestureLeft = document.getElementById("gesture-left");
-      const gestureRight = document.getElementById("gesture-right");
-      if (gestureLeft) {
-        gestureLeft.removeEventListener("click", swipePrev);
-      }
-      if (gestureRight) {
-        gestureRight.removeEventListener("click", swipeNext);
-      }
-      const tapLeft = document.getElementById("tap-left");
-      const tapRight = document.getElementById("tap-right");
-      if (tapLeft) {
-        tapLeft.removeEventListener("click", tapLeftHandler);
-      }
-      if (tapRight) {
-        tapRight.removeEventListener("click", tapRightHandler);
-      }
-      
-      // Add cleanup for highlight mode
-      disableHighlightMode();
-      
-      // Add cleanup for magnifier mode
-      disableMagnifierMode();
-      
-      // Add cleanup for paragraph mode
-      disableParagraphMode();
-    }
-
-    // Helpers for bookmark storage
-    function getBookmarkKey() {
-      return "bookmarks_" + currentBookUrl;
-    }
-    function loadBookmarks() {
-      const stored = localStorage.getItem(getBookmarkKey());
-      bookmarks = stored ? JSON.parse(stored) : [];
-      updateBookmarkUI();
-    }
-    function saveBookmarks() {
-      localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarks));
-      updateBookmarkUI();
-    }
-    // Update the star button color (blue if current location bookmarked)
-    function updateBookmarkStar() {
-      const btn = document.getElementById("bookmark-toggle");
-      const cfi = rendition && rendition.currentLocation() && rendition.currentLocation().start && rendition.currentLocation().start.cfi;
-      if (!cfi) { btn.textContent = "☆"; return; }
-      const exists = bookmarks.some(bm => bm.cfi === cfi);
-      btn.textContent = exists ? "★" : "☆";
-      btn.style.color = exists ? "blue" : "inherit";
-    }
-    // Update the bookmark panel list using document fragment to batch updates.
-    function updateBookmarkUI() {
-      const container = document.getElementById("bookmark-panel");
-      container.innerHTML = "";
-      const fragment = document.createDocumentFragment();
-      if (bookmarks.length === 0) {
-        const emptyDiv = document.createElement("div");
-        emptyDiv.textContent = "No bookmarks yet.";
-        fragment.appendChild(emptyDiv);
-      } else {
-        bookmarks.forEach((bm) => {
-          const item = document.createElement("div");
-          item.textContent = "Page " + (bm.page || "?") + " -   " + bm.snippet;
-          item.addEventListener("click", () => {
-            rendition.display(bm.cfi);
-            toggleBookmarkDropdown(); // hide panel after selection
+    // Library Loading
+    function loadLibrary() {
+      const libraryDiv = document.getElementById("library");
+      fetch("/ebooks/library.json")
+        .then(response => response.json())
+        .then(books => {
+          libraryDiv.innerHTML = "";
+          books.forEach(book => {
+            const bookDiv = document.createElement("div");
+            bookDiv.className = "book";
+            bookDiv.innerHTML = `
+              <img src="${book.cover}" alt="Cover of ${book.title}" />
+              <h3>${book.title}</h3>
+              <p>${book.author}</p>
+              <button onclick="readBook('${book.fileUrl}')">Read</button>
+            `;
+            libraryDiv.appendChild(bookDiv);
           });
-          fragment.appendChild(item);
+        })
+        .catch(err => {
+          console.error("Failed to load library.json:", err);
+          libraryDiv.textContent = "Failed to load book list.";
         });
-      }
-      container.appendChild(fragment);
     }
-    // Toggle adding/removing a bookmark at the current location.
-    function toggleBookmark() {
-      const location = rendition.currentLocation();
-      if (!location || !location.start || !location.start.cfi) return;
-      const cfi = location.start.cfi;
-      const index = bookmarks.findIndex(bm => bm.cfi === cfi);
-      if (index !== -1) {
-        bookmarks.splice(index, 1);
+    loadLibrary();
+
+    // Toggle Library and Reader Views
+    function toggleLibrary(forceLibrary) {
+      const libraryContainer = document.getElementById("library-container");
+      const readerContainer = document.getElementById("reader-container");
+      
+      if (forceLibrary) {
+        libraryContainer.style.display = "block";
+        readerContainer.style.display = "none";
       } else {
-        let snippet = "";
-        rendition.getContents().forEach(contents => {
-          const doc = contents.document;
-          if (!snippet && doc && doc.body && doc.body.textContent) {
-            snippet = doc.body.textContent.trim().substring(0, 100) + "...";
-          }
-        });
-        const pageNum = location.start.index || "?";
-        bookmarks.push({ cfi, snippet, page: pageNum });
+        libraryContainer.style.display = "none";
+        readerContainer.style.display = "block";
       }
-      saveBookmarks();
-      updateBookmarkStar();
+      closeMenus();
     }
+
+    // Read Book Function
+    function readBook(epubUrl) {
+      currentBookUrl = epubUrl;
+      toggleLibrary(false);
+      
+      if (book) {
+        book.destroy();
+      }
+      
+      book = ePub(epubUrl);
+      book.ready.then(() => {
+        initRendition(currentFlow);
+        
+        // Update book details in menu
+        book.loaded.metadata.then(meta => {
+          document.getElementById("book-title").textContent = meta.title || "Untitled";
+          document.getElementById("book-author").textContent = meta.creator || "";
+        });
+      });
+    }
+
+    // Initialize Rendition with Flow Mode
+    function initRendition(flowMode) {
+      rendition = book.renderTo("viewer", {
+        width: "100%",
+        height: "100%",
+        flow: flowMode === "scrolled" ? "scrolled" : "paginated",
+        snap: flowMode !== "scrolled"
+      });
+
+      // Default display
+      rendition.display();
+
+      // Reading Mode Toggle
+      setupReadingModeEvents();
+    }
+
+    // Reading Mode and Interaction Setup
+    function setupReadingModeEvents() {
+      const readingModeToggle = document.getElementById("reading-mode-toggle");
+      const readingLeft = document.getElementById("reading-left");
+      const readingRight = document.getElementById("reading-right");
+
+      // Toggle between paginated and scrolled modes
+      readingModeToggle.addEventListener("click", () => {
+        currentFlow = currentFlow === 'paginated' ? 'scrolled' : 'paginated';
+        if (book) {
+          rendition.destroy();
+          initRendition(currentFlow);
+        }
+      });
+
+      // Paginated mode navigation
+      if (currentFlow === 'paginated') {
+        readingLeft.addEventListener("click", () => {
+          if (rendition) rendition.prev();
+        });
+        readingRight.addEventListener("click", () => {
+          if (rendition) rendition.next();
+        });
+      }
+
+      // Swipe handling
+      document.getElementById("viewer").addEventListener("touchstart", handleTouchStart, false);
+      document.getElementById("viewer").addEventListener("touchend", handleTouchEnd, false);
+    }
+
+    // Touch and Swipe Handlers
+    function handleTouchStart(evt) {
+      const firstTouch = evt.touches[0];
+      xDown = firstTouch.clientX;
+      yDown = firstTouch.clientY;
+    }
+
+    function handleTouchEnd(evt) {
+      if (!xDown || !yDown) return;
+
+      let xUp = evt.changedTouches[0].clientX;
+      let yUp = evt.changedTouches[0].clientY;
+      let xDiff = xDown - xUp;
+      let yDiff = yDown - yUp;
+
+      if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
+        if (rendition) {
+          xDiff > 0 ? rendition.next() : rendition.prev();
+        }
+      }
+
+      xDown = null;
+      yDown = null;
+    }
+
+    // Menu and Interaction Utilities
+    function toggleMenu(type) {
+      const expandedMenu = document.getElementById("expanded-menu");
+      const menuBackdrop = document.getElementById("menu-backdrop");
+
+      if (type === 'menu') {
+        expandedMenu.classList.toggle("open");
+        menuBackdrop.style.display = expandedMenu.classList.contains("open") ? "block" : "none";
+      }
+    }
+
+    function closeMenus() {
+      const expandedMenu = document.getElementById("expanded-menu");
+      const menuBackdrop = document.getElementById("menu-backdrop");
+      
+      expandedMenu.classList.remove("open");
+      menuBackdrop.style.display = "none";
+    }
+
+    // Menu Toggle Event
+    document.getElementById("menu-toggle").addEventListener("click", () => toggleMenu('menu'));
+    document.getElementById("menu-backdrop").addEventListener("click", closeMenus);
+  </script>
+</body>
+</html>
