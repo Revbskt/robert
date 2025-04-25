@@ -639,6 +639,109 @@
   </div>
 
   <script>
+    <script>
+// Add this at the beginning of your script section
+window.addEventListener('error', function(e) {
+  console.error('Global error:', e.message);
+  document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999">Error: ' + e.message + '</div>';
+});
+
+// Replace the loadLibrary function with this version
+function loadLibrary() {
+  const libraryDiv = document.getElementById("library");
+  libraryDiv.innerHTML = "Attempting to load books...";
+  
+  // First, try to fetch from the server
+  fetch("/ebooks/library.json")
+    .then(response => response.json())
+    .then(books => {
+      displayBooks(books);
+    })
+    .catch(err => {
+      console.error("Failed to load library.json:", err);
+      
+      // Fallback: Show an upload option and sample books
+      libraryDiv.innerHTML = `
+        <div style="text-align:center;margin:20px;">
+          <p>Could not load the book library. You can:</p>
+          <p><input type="file" id="epub-upload" accept=".epub" /> 
+          <button onclick="handleFileUpload()">Upload ePub</button></p>
+          <p>Or try one of these sample books:</p>
+          <div class="book">
+            <h3>Sample Book</h3>
+            <p>Sample Author</p>
+            <button onclick="readBook('https://s3.amazonaws.com/moby-dick/moby-dick.epub')">Read Moby Dick</button>
+          </div>
+        </div>
+      `;
+    });
+}
+
+// Add this function to handle file uploads
+function handleFileUpload() {
+  const fileInput = document.getElementById('epub-upload');
+  const file = fileInput.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const arrayBuffer = e.target.result;
+      readBook(arrayBuffer);
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    showToast('Please select an ePub file first');
+  }
+}
+
+// Modify the readBook function to handle ArrayBuffer input
+function readBook(epubUrl) {
+  if (rendition && currentBookUrl) {
+    const loc = rendition.currentLocation();
+    if (loc && loc.start && loc.start.cfi) {
+      localStorage.setItem("last-location-" + currentBookUrl, loc.start.cfi);
+    }
+  }
+  // Cleanup previous reader events and listeners
+  cleanupReader();
+  
+  // Only update URL and localStorage if it's a string URL (not an ArrayBuffer)
+  if (typeof epubUrl === 'string') {
+    localStorage.setItem("last-book", epubUrl);
+    const newSearch = new URLSearchParams(window.location.search);
+    newSearch.set("book", epubUrl);
+    window.history.replaceState({}, "", `?${newSearch.toString()}`);
+  }
+  
+  initBook(epubUrl);
+  toggleLibrary(false);
+}
+
+// Add this at the end of your script
+// Force the library to be visible if we're seeing a blank screen
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    // If both containers are hidden, show the library
+    if (readerContainer.style.display === 'none' && libraryContainer.style.display === 'none') {
+      console.log('Both containers hidden, showing library');
+      libraryContainer.style.display = 'block';
+    }
+    
+    // Add a status display
+    const status = document.createElement('div');
+    status.style.position = 'fixed';
+    status.style.bottom = '10px';
+    status.style.right = '10px';
+    status.style.background = 'rgba(0,0,0,0.7)';
+    status.style.color = 'white';
+    status.style.padding = '5px 10px';
+    status.style.borderRadius = '5px';
+    status.style.fontSize = '12px';
+    status.style.zIndex = '9999';
+    status.textContent = 'Reader initialized: ' + (!!book ? 'Yes' : 'No');
+    document.body.appendChild(status);
+  }, 1000);
+});
+</script>
     // Global variables for theme, book, bookmarks, and swipe control
     let lastNonNightTheme = "light";
     let currentBookUrl = "";
