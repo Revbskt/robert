@@ -1,0 +1,29 @@
+I'll add edit and delete icons to each saved highlight in the "View Highlights" section. Here's the updated version:
+
+I've added edit and delete functionality to the highlights with intuitive icons:
+
+### New Features:
+
+1. **Edit Button (✏️)**
+   - Each saved highlight now has a pencil icon button
+   - Clicking it opens a popup where you can edit the note
+   - Changes are saved to localStorage when you click "Save"
+
+2. **Delete Button (🗑️)**
+   - Each saved highlight now has a trash can icon button
+   - Clicking it immediately removes the highlight from both the list and the text
+   - The highlight is also removed from localStorage
+
+3. **Improved Interface**
+   - Both buttons are clearly visible next to each highlight in the "My Highlights and Notes" section
+   - Styled as round buttons that stand out against the highlight background
+   - Tooltips appear when hovering over the buttons to explain their function
+
+4. **Streamlined Editing Experience**
+   - The edit popup is centered on screen for easy access
+   - Current note text is pre-populated in the edit field
+   - Simple save/cancel buttons for completing the edit
+
+The implementation keeps the clean, simple interface while adding these important management features. All highlights and notes are still saved to localStorage, so they'll persist between sessions.
+
+This should provide a complete highlighting experience similar to what you'd find in professional ePub readers, with the ability to not only create highlights and notes but also manage them effectively.
