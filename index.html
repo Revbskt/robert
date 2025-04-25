@@ -309,6 +309,7 @@
     let selectedText = null;
     let selectedCfiRange = null;
     let bookHighlights = {};
+    let originalOverflowY = "hidden"; // Store original scroll setting
 
     // Library Loading
     function loadLibrary() {
@@ -352,6 +353,25 @@
       // Create a demo book structure
       const demoContent = `
         <div style="padding: 20px; font-family: serif;">
+          <style>
+            /* Add iOS-specific styles to help with highlighting */
+            body {
+              -webkit-touch-callout: default; /* iOS Safari */
+              -webkit-user-select: text; /* Safari */
+              -webkit-tap-highlight-color: rgba(0,0,0,0); /* Remove tap highlight */
+            }
+            
+            p {
+              padding: 8px 0;
+              margin: 10px 0;
+              line-height: 1.5;
+              border-radius: 4px;
+            }
+            
+            p:active {
+              background-color: rgba(200,200,200,0.3);
+            }
+          </style>
           <h1>Demo Book</h1>
           <h2>Chapter 1</h2>
           <p>This is the first paragraph of the demo book. You can tap on this paragraph when highlight mode is active to highlight it.</p>
@@ -394,22 +414,97 @@
     function setupDemoHighlighting(iframe) {
       const doc = iframe.contentDocument;
       const paragraphs = doc.querySelectorAll("p");
+      const viewer = document.getElementById("viewer");
+      const readingZones = document.querySelectorAll(".reading-zone");
       
       // Handle highlight toggle
       const highlightToggle = document.getElementById("highlight-toggle");
       highlightToggle.addEventListener("click", () => {
         highlightMode = !highlightMode;
         highlightToggle.style.backgroundColor = highlightMode ? "#ffcc00" : "transparent";
+        
+        // When highlight mode is active:
+        // 1. Disable all tap zones by hiding them
+        // 2. Force scroll mode for content
+        if (highlightMode) {
+          // Disable reading zones (tap areas for page turning)
+          readingZones.forEach(zone => {
+            zone.style.display = "none";
+          });
+          
+          // Force scroll mode for iframe content
+          iframe.style.overflowY = "scroll";
+          iframe.style.WebkitOverflowScrolling = "touch"; // Enable momentum scrolling on iOS
+          
+          // Prevent default iOS text selection behavior
+          doc.body.style.webkitTouchCallout = "none";
+          doc.body.style.webkitUserSelect = "none";
+          doc.body.style.userSelect = "none";
+        } else {
+          // Re-enable reading zones
+          readingZones.forEach(zone => {
+            zone.style.display = "block";
+          });
+          
+          // Restore original scroll settings
+          iframe.style.overflowY = "hidden";
+          
+          // Restore text selection behavior
+          doc.body.style.webkitTouchCallout = "default";
+          doc.body.style.webkitUserSelect = "text";
+          doc.body.style.userSelect = "text";
+        }
       });
       
       // Setup paragraph selection
       paragraphs.forEach(p => {
+        // Use touchend instead of click for better iOS compatibility
+        p.addEventListener("touchend", (e) => {
+          if (!highlightMode) return;
+          
+          // Prevent default behavior which can trigger text selection
+          e.preventDefault();
+          
+          // Select the paragraph
+          selectedText = p.textContent;
+          selectedCfiRange = "demo-cfi-" + Math.random().toString(36).substring(2, 10); // Demo CFI
+          
+          // Add visual feedback
+          paragraphs.forEach(para => para.style.border = "none"); // Reset all
+          p.style.border = "2px dashed #666"; // Show selection
+          
+          // Show highlight menu
+          const rect = p.getBoundingClientRect();
+          const highlightMenu = document.getElementById("highlight-menu");
+          
+          // Position menu near paragraph but ensure it's visible on screen
+          const menuWidth = 200; // Approximate width of menu
+          let leftPos = rect.left + (rect.width/2) - (menuWidth/2);
+          
+          // Make sure menu doesn't go off screen
+          if (leftPos < 10) leftPos = 10;
+          if (leftPos + menuWidth > window.innerWidth - 10) 
+            leftPos = window.innerWidth - menuWidth - 10;
+          
+          highlightMenu.style.left = leftPos + "px";
+          highlightMenu.style.top = (rect.bottom + 10) + "px";
+          highlightMenu.style.display = "block";
+          
+          // Save the paragraph reference for highlighting
+          window.selectedParagraph = p;
+        });
+        
+        // Also handle regular clicks for non-touch devices
         p.addEventListener("click", (e) => {
           if (!highlightMode) return;
           
           // Select the paragraph
           selectedText = p.textContent;
           selectedCfiRange = "demo-cfi-" + Math.random().toString(36).substring(2, 10); // Demo CFI
+          
+          // Add visual feedback
+          paragraphs.forEach(para => para.style.border = "none"); // Reset all
+          p.style.border = "2px dashed #666"; // Show selection
           
           // Show highlight menu
           const rect = p.getBoundingClientRect();
@@ -443,18 +538,43 @@
         if (selectedText && window.selectedParagraph) {
           // Apply highlight class to paragraph
           window.selectedParagraph.className = "highlight-" + selectedColor;
+          window.selectedParagraph.style.border = "none"; // Remove selection border
           
           // Save highlight
           saveHighlight(selectedCfiRange, selectedColor);
           
           // Close menu
           document.getElementById("highlight-menu").style.display = "none";
+          
+          // Visual feedback for successful highlighting
+          const toast = document.createElement("div");
+          toast.style.position = "fixed";
+          toast.style.bottom = "20px";
+          toast.style.left = "50%";
+          toast.style.transform = "translateX(-50%)";
+          toast.style.background = "rgba(0,0,0,0.7)";
+          toast.style.color = "white";
+          toast.style.padding = "8px 16px";
+          toast.style.borderRadius = "20px";
+          toast.style.zIndex = "9999";
+          toast.textContent = "Highlight saved";
+          document.body.appendChild(toast);
+          
+          // Remove toast after 2 seconds
+          setTimeout(() => {
+            if (document.body.contains(toast)) {
+              document.body.removeChild(toast);
+            }
+          }, 2000);
         }
       });
       
       // Cancel highlight button
       const cancelHighlightBtn = document.getElementById("cancel-highlight");
       cancelHighlightBtn.addEventListener("click", () => {
+        if (window.selectedParagraph) {
+          window.selectedParagraph.style.border = "none"; // Remove selection border
+        }
         document.getElementById("highlight-menu").style.display = "none";
       });
       
@@ -464,7 +584,17 @@
           // For demo, apply highlight to a random paragraph
           const randomIndex = index % paragraphs.length;
           paragraphs[randomIndex].className = "highlight-" + highlight.color;
+          
+          // Also add a data attribute to link the paragraph to the highlight
+          paragraphs[randomIndex].setAttribute("data-highlight-id", highlight.cfiRange);
         });
+      }
+      
+      // Initialize the reading mode
+      if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
+        // Set default to hidden overflow (paginated mode)
+        iframe.style.overflowY = "hidden";
+        iframe.contentDocument.body.style.overflow = "hidden";
       }
     }
 
