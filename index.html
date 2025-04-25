@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,6 +40,7 @@
       padding: 0 10px; z-index: 1002;
     }
     #toolbar button { background: transparent; border: none; font-size: 24px; cursor: pointer; }
+    #toolbar select { margin: 0 5px; }
     #viewer {
       position: absolute; top: 40px; left: 0; right: 0; bottom: 0; overflow: hidden;
     }
@@ -58,8 +60,16 @@
     .reading-zone { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 998; }
     #reading-left { left: 0; } #reading-right { right: 0; }
 
+    /* Continue bar */
+    #continue-bar {
+      position: fixed; bottom: 40px; left: 0; right: 0;
+      background: #d3d3d3; color: #000; text-align: center;
+      padding: 5px 0; font-size: 18px; cursor: pointer; z-index: 1001;
+      display: none; transition: background .3s;
+    }
+    #continue-bar:hover { background: #c0c0c0; }
+
     /* ===== Highlight UI CSS ===== */
-    /* toolbar reused for highlights */
     .highlight-toolbar {
       position: fixed; bottom: 0; left: 0; right: 0; height: 40px;
       background: #eee; display: flex; justify-content: space-between;
@@ -129,26 +139,64 @@
 
   <!-- Reader Container -->
   <div id="reader-container">
+    <!-- Full top toolbar -->
     <div id="toolbar">
-      <button id="menu-toggle">☰</button>
-      <button id="reading-mode-toggle">📖</button>
+      <button id="menu-toggle" title="Menu">☰</button>
+      <button id="toc-toggle" title="Table of Contents">📑</button>
+      <button id="settings-toggle" title="Settings">⚙️</button>
+      <button id="bookmark-toggle" title="Bookmark">☆</button>
+      <button id="bookmark-dropdown" title="My Bookmarks">▾</button>
+      <select id="reading-mode" title="Reading Mode">
+        <option value="paginated">Paginated</option>
+        <option value="scrolled-doc">Scroll</option>
+        <option value="swipe">Swipe</option>
+      </select>
+      <select id="font-switcher" title="Font">
+        <option value="-apple-system">System</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+      </select>
+      <select id="theme-select" title="Theme">
+        <option value="light">Light</option>
+        <option value="sepia">Sepia</option>
+        <option value="matcha">Matcha</option>
+        <option value="night">Night</option>
+      </select>
+      <button id="theme-toggle" title="Toggle Day/Night">🌙</button>
     </div>
+
     <div id="menu-backdrop"></div>
+
     <div id="expanded-menu">
       <button class="close-menu" onclick="toggleMenu('menu')">×</button>
-      <div id="book-details">
-        <h2 id="book-title">Book Title</h2>
-        <p id="book-author">Author Name</p>
+      <div id="book-card">
+        <img id="cover" alt="Cover">
+        <div id="book-title">Book Title</div>
+        <div id="book-author">Author</div>
       </div>
-      <button onclick="toggleLibrary(true)">Back to Library</button>
+      <button class="menu-button" onclick="toggleLibrary(true)">Back to Library</button>
     </div>
+
+    <div id="toc-panel"></div>
+    <div id="settings-modal">
+      <button class="close-settings" onclick="closeMenus()">×</button>
+      <h3>Settings</h3>
+      <div class="font-size-buttons">
+        <button onclick="changeFontSize(1)">A+</button>
+        <button onclick="changeFontSize(-1)">A–</button>
+      </div>
+    </div>
+
+    <div id="bookmark-panel"></div>
+    <div id="continue-bar">Continue</div>
+    <div id="contact-image"></div>
+
     <div id="viewer">
       <div id="reading-left" class="reading-zone"></div>
       <div id="reading-right" class="reading-zone"></div>
     </div>
   </div>
 
-  <!-- —— Highlighting UI —— -->
+  <!-- Highlighting UI (bottom toolbar + views) -->
   <div class="highlight-toolbar">
     <button id="view-highlights-btn">View Highlights</button>
     <button id="highlight-toggle">Highlight Mode</button>
@@ -173,7 +221,7 @@
       <div class="color-option" data-color="pink"  style="background:#ff69b4;"></div>
     </div>
     <label for="note-input">Add a note (optional):</label>
-    <textarea id="note-input" placeholder="Enter your note here..."></textarea>
+    <textarea id="note-input"></textarea>
     <div class="menu-buttons">
       <button id="save-highlight">Save Highlight</button>
       <button id="cancel-highlight">Cancel</button>
@@ -182,7 +230,7 @@
 
   <div id="edit-note-popup">
     <h3>Edit Note</h3>
-    <textarea id="edit-note-input" placeholder="Edit your note..."></textarea>
+    <textarea id="edit-note-input"></textarea>
     <div class="menu-buttons">
       <button id="save-edit">Save</button>
       <button id="cancel-edit">Cancel</button>
@@ -198,7 +246,6 @@
     let xDown = null, yDown = null;
     const SWIPE_THRESHOLD = 20;
 
-    // Load library.json
     function loadLibrary() {
       fetch('/ebooks/library.json')
         .then(r => r.json())
@@ -242,31 +289,36 @@
     function initRendition(flow) {
       rendition = book.renderTo('viewer', {
         width: '100%', height: '100%',
-        flow: flow === 'scrolled' ? 'scrolled' : 'paginated',
-        snap: flow !== 'scrolled'
+        flow: flow === 'scrolled-doc' ? 'scrolled' : 'paginated',
+        snap: flow !== 'scrolled-doc'
       });
       rendition.display();
       setupInteractions();
     }
 
     function setupInteractions() {
-      document.getElementById('reading-mode-toggle')
-        .onclick = () => {
-          currentFlow = currentFlow==='paginated'?'scrolled':'paginated';
-          rendition.destroy();
-          initRendition(currentFlow);
-        };
+      document.getElementById('reading-mode').onchange = e => {
+        const newFlow = e.target.value;
+        currentFlow = newFlow;
+        // toggle scroll-mode class
+        if (currentFlow === 'scrolled-doc') document.body.classList.add('scroll-mode');
+        else document.body.classList.remove('scroll-mode');
+
+        rendition.destroy();
+        initRendition(currentFlow);
+      };
 
       const v = document.getElementById('viewer');
       v.addEventListener('touchstart', e => {
         xDown = e.touches[0].clientX; yDown = e.touches[0].clientY;
       }, false);
       v.addEventListener('touchend', e => {
-        if (!xDown||!yDown) return;
+        if (!xDown || !yDown) return;
         let xUp = e.changedTouches[0].clientX, yUp = e.changedTouches[0].clientY;
         let xDiff = xDown - xUp, yDiff = yDown - yUp;
-        if (Math.abs(xDiff)>Math.abs(yDiff)&&Math.abs(xDiff)>SWIPE_THRESHOLD)
-          xDiff>0?rendition.next():rendition.prev();
+        if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > SWIPE_THRESHOLD) {
+          xDiff > 0 ? rendition.next() : rendition.prev();
+        }
         xDown = yDown = null;
       }, false);
     }
@@ -275,24 +327,26 @@
       const menu = document.getElementById('expanded-menu');
       const bd   = document.getElementById('menu-backdrop');
       menu.classList.toggle('open');
-      bd.style.display = menu.classList.contains('open')?'block':'none';
+      bd.style.display = menu.classList.contains('open') ? 'block' : 'none';
     }
     function closeMenus() {
       document.getElementById('expanded-menu').classList.remove('open');
       document.getElementById('menu-backdrop').style.display = 'none';
+      document.getElementById('settings-modal').classList.remove('open');
     }
 
     document.getElementById('menu-toggle').onclick = () => toggleMenu('menu');
-    document.getElementById('menu-backdrop').onclick = closeMenus;
-
+    document.getElementById('toc-toggle').onclick = () => document.getElementById('toc-panel').classList.toggle('open');
+    document.getElementById('settings-toggle').onclick = () => document.getElementById('settings-modal').classList.toggle('open');
+    document.getElementById('bookmark-toggle').onclick = toggleBookmark;
+    document.getElementById('bookmark-dropdown').onclick = toggleBookmarkDropdown;
 
     // ===== Highlighting Module =====
 
     let highlightMode = false;
     let selectedParagraph = null;
     let selectedColor = 'yellow';
-    let highlights = [];
-    let currentEditingHighlight = null;
+    let highlights = []; let currentEditingHighlight = null;
 
     const paragraphs = document.querySelectorAll('.page-content p');
     const viewHighlightsBtn = document.getElementById('view-highlights-btn');
@@ -374,10 +428,10 @@
       selectedParagraph.classList.add('highlight-'+selectedColor);
       selectedParagraph.classList.remove('selected');
       highlights.push({
-        id: Date.now(), paragraphIndex: idx,
-        text: selectedParagraph.textContent,
-        color: selectedColor, note,
-        timestamp: new Date().toISOString()
+        id:Date.now(), paragraphIndex:idx,
+        text:selectedParagraph.textContent,
+        color:selectedColor, note,
+        timestamp:new Date().toISOString()
       });
       saveHighlights();
       highlightMenuElem.style.display = 'none';
@@ -427,48 +481,39 @@
         return;
       }
       noHighlightsMessage.style.display = 'none';
-      const sorted = [...highlights].sort((a,b)=>a.paragraphIndex-b.paragraphIndex);
-      sorted.forEach(h=> {
+      highlights.sort((a,b)=>a.paragraphIndex-b.paragraphIndex).forEach(h=>{
         const item = document.createElement('div');
         item.className = 'highlight-item';
-        item.style.borderLeft = '4px solid ' + {
-          yellow:'#ffff00',green:'#00ff00',blue:'#00bfff',pink:'#ff69b4'
-        }[h.color];
+        item.style.borderLeft = '4px solid ' + {yellow:'#ffff00',green:'#00ff00',blue:'#00bfff',pink:'#ff69b4'}[h.color];
         const txt = document.createElement('div');
         txt.className = 'highlight-text'; txt.textContent = h.text;
         item.appendChild(txt);
-        if (h.note) {
+        if(h.note){
           const n = document.createElement('div');
           n.className = 'highlight-note'; n.textContent = h.note;
           item.appendChild(n);
         }
-        const act = document.createElement('div');
-        act.className = 'highlight-actions';
-        const eBtn = document.createElement('button');
-        eBtn.className='action-btn'; eBtn.innerHTML='✏️'; eBtn.title='Edit';
-        eBtn.onclick = ()=> {
-          currentEditingHighlight = h.id;
-          editNoteInput.value = h.note||'';
-          editNotePopup.style.display = 'block';
+        const act = document.createElement('div'); act.className='highlight-actions';
+        const e = document.createElement('button');
+        e.className='action-btn'; e.innerHTML='✏️'; e.onclick=()=>{
+          currentEditingHighlight=h.id; editNoteInput.value=h.note||'';
+          editNotePopup.style.display='block';
         };
-        const dBtn = document.createElement('button');
-        dBtn.className='action-btn'; dBtn.innerHTML='🗑️'; dBtn.title='Delete';
-        dBtn.onclick = ()=> {
-          highlights = highlights.filter(x=>x.id!==h.id);
+        const d = document.createElement('button');
+        d.className='action-btn'; d.innerHTML='🗑️'; d.onclick=()=>{
+          highlights=highlights.filter(x=>x.id!==h.id);
           saveHighlights();
           document.querySelector(`.page-content p[data-index="${h.paragraphIndex}"]`)
                   .classList.remove('highlight-'+h.color);
-          updateHighlightsList();
-          showToast('Highlight deleted');
+          updateHighlightsList(); showToast('Highlight deleted');
         };
-        act.appendChild(eBtn); act.appendChild(dBtn);
-        item.appendChild(act);
-        highlightsContainer.appendChild(item);
+        act.appendChild(e); act.appendChild(d);
+        item.appendChild(act); highlightsContainer.appendChild(item);
       });
     }
 
-    // On load
     loadHighlights();
   </script>
 </body>
 </html>
+```
