@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple ePub Reader with Highlighting</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: #eee;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #4285f4;
+      color: white;
+    }
+
+    button:hover {
+      background-color: #3367d6;
+    }
+
+    button.active {
+      background-color: #ffcc00;
+      color: black;
+    }
+
+    .page-content p {
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+
+    p.selected {
+      border: 2px dashed #666;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    /* Highlight styles */
+    .highlight-yellow {
+      background-color: rgba(255, 255, 0, 0.3);
+      padding: 5px;
+      border-radius: 4px;
+    }
+
+    .highlight-green {
+      background-color: rgba(0, 255, 0, 0.2);
+      padding: 5px;
+      border-radius: 4px;
+    }
+
+    .highlight-blue {
+      background-color: rgba(0, 191, 255, 0.2);
+      padding: 5px;
+      border-radius: 4px;
+    }
+
+    .highlight-pink {
+      background-color: rgba(255, 105, 180, 0.2);
+      padding: 5px;
+      border-radius: 4px;
+    }
+
+    /* Highlight menu */
+    #highlight-menu {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      z-index: 1000;
+      width: 300px;
+    }
+
+    .color-options {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    .color-option {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .color-option.selected {
+      border: 3px solid #333;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      margin: 10px 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+    }
+
+    .menu-buttons {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Highlights list */
+    #highlights-view {
+      display: none;
+    }
+
+    .highlight-item {
+      background-color: #f9f9f9;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .highlight-text {
+      font-style: italic;
+    }
+
+    .highlight-note {
+      margin-top: 10px;
+      padding: 8px;
+      background-color: #f0f0f0;
+      border-left: 3px solid #ccc;
+      font-size: 14px;
+    }
+
+    .highlight-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .action-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .edit-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .delete-btn {
+      background-color: #ff4444;
+      color: white;
+    }
+
+    /* Edit note popup */
+    #edit-note-popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      z-index: 1000;
+      width: 300px;
+    }
+
+    /* Visual feedback */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ePub Reader with Highlighting</h1>
+    
+    <!-- Main View -->
+    <div id="book-view">
+      <div class="toolbar">
+        <button id="view-highlights-btn">View Highlights</button>
+        <button id="highlight-toggle">Highlight Mode</button>
+      </div>
+      
+      <div class="page-content">
+        <h2>Sample Chapter</h2>
+        <p data-index="0">This is the first paragraph of the book. You can tap on this paragraph when highlight mode is active to highlight it.</p>
+        <p data-index="1">This is the second paragraph. The highlighting feature works by selecting entire paragraphs, which works well on mobile devices where precise text selection can be difficult.</p>
+        <p data-index="2">This is the third paragraph. You can choose from multiple highlight colors and all your highlights will be saved between sessions.</p>
+        <p data-index="3">This is another paragraph. Try the highlight button in the toolbar and then tap on this paragraph.</p>
+        <p data-index="4">When you activate highlight mode, tapping on any paragraph will select it. A menu will appear with color options.</p>
+        <p data-index="5">After selecting a color, click the "Save Highlight" button to apply the highlight to the paragraph and close the menu.</p>
+        <p data-index="6">You can view all your highlights by clicking the View Highlights button at the top of the screen.</p>
+      </div>
+    </div>
+    
+    <!-- Highlights View -->
+    <div id="highlights-view">
+      <div class="toolbar">
+        <button id="back-to-book-btn">Back to Book</button>
+      </div>
+      
+      <h2>My Highlights and Notes</h2>
+      <div id="highlights-container">
+        <!-- Highlights will be populated here -->
+        <p id="no-highlights-message">No highlights yet. Use highlight mode to create some!</p>
+      </div>
+    </div>
+    
+    <!-- Highlight Menu -->
+    <div id="highlight-menu">
+      <h3>Create Highlight</h3>
+      <div class="color-options">
+        <div class="color-option selected" style="background-color:#ffff00;" data-color="yellow"></div>
+        <div class="color-option" style="background-color:#00ff00;" data-color="green"></div>
+        <div class="color-option" style="background-color:#00bfff;" data-color="blue"></div>
+        <div class="color-option" style="background-color:#ff69b4;" data-color="pink"></div>
+      </div>
+      <label for="note-input">Add a note (optional):</label>
+      <textarea id="note-input" placeholder="Enter your note here..."></textarea>
+      <div class="menu-buttons">
+        <button id="save-highlight">Save Highlight</button>
+        <button id="cancel-highlight">Cancel</button>
+      </div>
+    </div>
+    
+    <!-- Edit Note Popup -->
+    <div id="edit-note-popup">
+      <h3>Edit Note</h3>
+      <textarea id="edit-note-input" placeholder="Edit your note..."></textarea>
+      <div class="menu-buttons">
+        <button id="save-edit">Save</button>
+        <button id="cancel-edit">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const bookView = document.getElementById('book-view');
+    const highlightsView = document.getElementById('highlights-view');
+    const viewHighlightsBtn = document.getElementById('view-highlights-btn');
+    const backToBookBtn = document.getElementById('back-to-book-btn');
+    const highlightToggle = document.getElementById('highlight-toggle');
+    const paragraphs = document.querySelectorAll('.page-content p');
+    const highlightMenu = document.getElementById('highlight-menu');
+    const saveHighlightBtn = document.getElementById('save-highlight');
+    const cancelHighlightBtn = document.getElementById('cancel-highlight');
+    const noteInput = document.getElementById('note-input');
+    const colorOptions = document.querySelectorAll('.color-option');
+    const highlightsContainer = document.getElementById('highlights-container');
+    const noHighlightsMessage = document.getElementById('no-highlights-message');
+    const editNotePopup = document.getElementById('edit-note-popup');
+    const editNoteInput = document.getElementById('edit-note-input');
+    const saveEditBtn = document.getElementById('save-edit');
+    const cancelEditBtn = document.getElementById('cancel-edit');
+    
+    // Global Variables
+    let highlightMode = false;
+    let selectedParagraph = null;
+    let selectedColor = 'yellow';
+    let highlights = [];
+    let currentEditingHighlight = null;
+    
+    // Load highlights from localStorage
+    function loadHighlights() {
+      const savedHighlights = localStorage.getItem('bookHighlights');
+      if (savedHighlights) {
+        try {
+          highlights = JSON.parse(savedHighlights);
+          console.log('Loaded ' + highlights.length + ' highlights');
+          
+          // Apply highlights to paragraphs
+          highlights.forEach(highlight => {
+            const paragraphIndex = highlight.paragraphIndex;
+            if (paragraphIndex >= 0 && paragraphIndex < paragraphs.length) {
+              paragraphs[paragraphIndex].className = 'highlight-' + highlight.color;
+            }
+          });
+        } catch (e) {
+          console.error('Error loading highlights:', e);
+          highlights = [];
+        }
+      }
+    }
+    
+    // Save highlights to localStorage
+    function saveHighlights() {
+      localStorage.setItem('bookHighlights', JSON.stringify(highlights));
+    }
+    
+    // Show toast notification
+    function showToast(message, duration = 2000) {
+      // Remove existing toasts
+      const existingToasts = document.querySelectorAll('.toast');
+      existingToasts.forEach(toast => {
+        document.body.removeChild(toast);
+      });
+      
+      // Create new toast
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // Remove after duration
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, duration);
+    }
+    
+    // Toggle highlight mode
+    highlightToggle.addEventListener('click', () => {
+      highlightMode = !highlightMode;
+      highlightToggle.classList.toggle('active');
+      
+      if (highlightMode) {
+        showToast('Highlight mode activated. Tap any paragraph to highlight it.');
+      } else {
+        showToast('Highlight mode deactivated');
+        
+        // Clear selection if any
+        if (selectedParagraph) {
+          selectedParagraph.classList.remove('selected');
+          selectedParagraph = null;
+        }
+      }
+    });
+    
+    // View highlights
+    viewHighlightsBtn.addEventListener('click', () => {
+      bookView.style.display = 'none';
+      highlightsView.style.display = 'block';
+      updateHighlightsList();
+    });
+    
+    // Back to book
+    backToBookBtn.addEventListener('click', () => {
+      highlightsView.style.display = 'none';
+      bookView.style.display = 'block';
+    });
+    
+    // Setup paragraph selection
+    paragraphs.forEach(p => {
+      p.addEventListener('click', () => {
+        if (!highlightMode) return;
+        
+        // Clear previous selection
+        if (selectedParagraph) {
+          selectedParagraph.classList.remove('selected');
+        }
+        
+        // Select current paragraph
+        selectedParagraph = p;
+        p.classList.add('selected');
+        
+        // Show highlight menu
+        highlightMenu.style.display = 'block';
+        
+        // Clear previous note
+        noteInput.value = '';
+      });
+    });
+    
+    // Color selection
+    colorOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        selectedColor = option.getAttribute('data-color');
+        
+        // Update UI
+        colorOptions.forEach(opt => {
+          opt.classList.remove('selected');
+        });
+        option.classList.add('selected');
+      });
+    });
+    
+    // Save highlight
+    saveHighlightBtn.addEventListener('click', () => {
+      if (!selectedParagraph) return;
+      
+      // Get paragraph index
+      const paragraphIndex = parseInt(selectedParagraph.getAttribute('data-index'));
+      
+      // Get note text
+      const note = noteInput.value.trim();
+      
+      // Apply highlight
+      selectedParagraph.className = 'highlight-' + selectedColor;
+      selectedParagraph.classList.remove('selected');
+      
+      // Create highlight object
+      const highlight = {
+        id: Date.now(),
+        paragraphIndex: paragraphIndex,
+        text: selectedParagraph.textContent,
+        color: selectedColor,
+        note: note,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Add to highlights array
+      highlights.push(highlight);
+      
+      // Save to localStorage
+      saveHighlights();
+      
+      // Close menu
+      highlightMenu.style.display = 'none';
+      selectedParagraph = null;
+      
+      // Show confirmation
+      showToast(note ? 'Highlight and note saved' : 'Highlight saved');
+    });
+    
+    // Cancel highlight
+    cancelHighlightBtn.addEventListener('click', () => {
+      if (selectedParagraph) {
+        selectedParagraph.classList.remove('selected');
+        selectedParagraph = null;
+      }
+      
+      highlightMenu.style.display = 'none';
+    });
+    
+    // Save edited note
+    saveEditBtn.addEventListener('click', () => {
+      if (!currentEditingHighlight) return;
+      
+      // Update note
+      const updatedNote = editNoteInput.value.trim();
+      
+      // Find and update the highlight
+      const highlightIndex = highlights.findIndex(h => h.id === currentEditingHighlight);
+      if (highlightIndex !== -1) {
+        highlights[highlightIndex].note = updatedNote;
+        
+        // Save to localStorage
+        saveHighlights();
+        
+        // Close popup
+        editNotePopup.style.display = 'none';
+        currentEditingHighlight = null;
+        
+        // Update highlights list
+        updateHighlightsList();
+        
+        // Show confirmation
+        showToast('Note updated');
+      }
+    });
+    
+    // Cancel edit
+    cancelEditBtn.addEventListener('click', () => {
+      editNotePopup.style.display = 'none';
+      currentEditingHighlight = null;
+    });
+    
+    // Update highlights list
+    function updateHighlightsList() {
+      // Show/hide no highlights message
+      if (highlights.length === 0) {
+        noHighlightsMessage.style.display = 'block';
+        return;
+      } else {
+        noHighlightsMessage.style.display = 'none';
+      }
+      
+      // Clear previous highlights
+      const existingItems = document.querySelectorAll('.highlight-item');
+      existingItems.forEach(item => {
+        highlightsContainer.removeChild(item);
+      });
+      
+      // Sort highlights by paragraph index
+      const sortedHighlights = [...highlights].sort((a, b) => a.paragraphIndex - b.paragraphIndex);
+      
+      // Add each highlight to the container
+      sortedHighlights.forEach(highlight => {
+        const item = document.createElement('div');
+        item.className = 'highlight-item';
+        item.style.borderLeft = '4px solid ' + getColorCode(highlight.color);
+        
+        const text = document.createElement('div');
+        text.className = 'highlight-text';
+        text.textContent = highlight.text;
+        item.appendChild(text);
+        
+        // Add note if present
+        if (highlight.note) {
+          const noteElem = document.createElement('div');
+          noteElem.className = 'highlight-note';
+          noteElem.textContent = highlight.note;
+          item.appendChild(noteElem);
+        }
+        
+        // Add action buttons
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'highlight-actions';
+        
+        // Add edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'action-btn edit-btn';
+        editBtn.innerHTML = '✏️';
+        editBtn.title = 'Edit Note';
+        editBtn.addEventListener('click', () => {
+          // Set current editing highlight
+          currentEditingHighlight = highlight.id;
+          
+          // Set current note in the input
+          editNoteInput.value = highlight.note || '';
+          
+          // Show edit popup
+          editNotePopup.style.display = 'block';
+        });
+        
+        // Add delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-btn delete-btn';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Delete Highlight';
+        deleteBtn.addEventListener('click', () => {
+          // Remove from array
+          highlights = highlights.filter(h => h.id !== highlight.id);
+          
+          // Remove highlight from paragraph
+          if (highlight.paragraphIndex >= 0 && highlight.paragraphIndex < paragraphs.length) {
+            paragraphs[highlight.paragraphIndex].className = '';
+          }
+          
+          // Save to localStorage
+          saveHighlights();
+          
+          // Remove from UI
+          highlightsContainer.removeChild(item);
+          
+          // Show empty message if needed
+          if (highlights.length === 0) {
+            noHighlightsMessage.style.display = 'block';
+          }
+          
+          showToast('Highlight deleted');
+        });
+        
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+        item.appendChild(actionsDiv);
+        
+        highlightsContainer.appendChild(item);
+      });
+    }
+    
+    // Helper function to get color code from name
+    function getColorCode(colorName) {
+      const colors = {
+        yellow: '#ffff00',
+        green: '#00ff00',
+        blue: '#00bfff',
+        pink: '#ff69b4'
+      };
+      return colors[colorName] || '#ffff00';
+    }
+    
+    // Initialize
+    loadHighlights();
+  </script>
+</body>
+</html>
