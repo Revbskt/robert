@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>E-Reader with Highlighting and Pagination</title>
+  <title>E-Reader with Highlighting</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -213,7 +213,7 @@
 
     /* Library View */
     #library-view {
-      display: none;
+      display: block;
     }
 
     .book-card {
@@ -302,11 +302,50 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    
+    /* Debug panel styles */
+    #debug-panel {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 20px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      color: #333;
+    }
+    
+    #debug-panel h3 {
+      margin-top: 0;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+    }
+    
+    .error {
+      color: #e53935;
+      font-weight: bold;
+    }
+    
+    .warning {
+      color: #f57c00;
+    }
+    
+    .success {
+      color: #43a047;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>E-Reader with Highlighting</h1>
+    
+    <!-- Debug Panel -->
+    <div id="debug-panel">
+      <h3>Debug Information</h3>
+      <div id="debug-output">Initializing e-reader...</div>
+    </div>
     
     <!-- Library View -->
     <div id="library-view">
@@ -390,6 +429,17 @@
   </div>
 
   <script>
+    // Debug function
+    function debugLog(message, type = 'info') {
+      const debugOutput = document.getElementById('debug-output');
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.className = type;
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      debugOutput.appendChild(logEntry);
+      console.log(`[${type}] ${message}`);
+    }
+    
     // DOM Elements
     const libraryView = document.getElementById('library-view');
     const bookView = document.getElementById('book-view');
@@ -434,27 +484,63 @@
     
     // Initialize the app
     window.addEventListener('DOMContentLoaded', () => {
-      loadLibrary();
+      debugLog('DOM fully loaded and parsed');
+      try {
+        // Check if running locally vs on a server
+        const isLocalFile = window.location.protocol === 'file:';
+        if (isLocalFile) {
+          debugLog('Running from a local file. Some features may not work due to browser security restrictions.', 'warning');
+          // Use sample data when running locally
+          useSampleData();
+        } else {
+          loadLibrary();
+        }
+      } catch (error) {
+        debugLog(`Initialization error: ${error.message}`, 'error');
+      }
     });
+    
+    // Use sample data for testing
+    function useSampleData() {
+      debugLog('Using sample library data for testing');
+      library = [
+        {
+          id: 'sample1',
+          title: 'Sample Book',
+          author: 'Demo Author',
+          description: 'This is a sample book for testing purposes.',
+          coverUrl: '',
+          contentUrl: '' // We'll use hardcoded content
+        }
+      ];
+      
+      debugLog('Sample library loaded with 1 book');
+      displayLibrary();
+    }
     
     // Load library data
     function loadLibrary() {
-      fetch('/ebooks/library.json')
+      const libraryUrl = '/ebooks/library.json';
+      debugLog(`Fetching library data from: ${libraryUrl}`);
+      
+      fetch(libraryUrl)
         .then(response => {
           if (!response.ok) {
+            debugLog(`HTTP error! status: ${response.status}`, 'error');
             throw new Error(`HTTP error! status: ${response.status}`);
           }
+          debugLog('Library data fetched successfully');
           return response.json();
         })
         .then(data => {
           library = data;
+          debugLog(`Library loaded with ${library.length} books`);
           displayLibrary();
         })
         .catch(error => {
-          console.error('Error loading library:', error);
-          libraryLoading.style.display = 'none';
-          noBooksMessage.textContent = 'Error loading library. Please try again later.';
-          noBooksMessage.style.display = 'block';
+          debugLog(`Error loading library: ${error.message}`, 'error');
+          debugLog('Trying fallback method with sample data');
+          useSampleData();
         });
     }
     
@@ -463,6 +549,7 @@
       libraryLoading.style.display = 'none';
       
       if (library.length === 0) {
+        debugLog('No books found in library', 'warning');
         noBooksMessage.style.display = 'block';
         return;
       }
@@ -472,6 +559,8 @@
       existingBooks.forEach(book => {
         booksContainer.removeChild(book);
       });
+      
+      debugLog(`Displaying ${library.length} books in the library`);
       
       // Add each book to the container
       library.forEach(book => {
@@ -515,6 +604,7 @@
         
         // Add click event to open the book
         bookCard.addEventListener('click', () => {
+          debugLog(`Book selected: ${book.title}`);
           openBook(book);
         });
         
@@ -527,19 +617,66 @@
       currentBook = book;
       currentPage = 0;
       
+      debugLog(`Opening book: ${book.title}`);
+      
       // Load book content
       contentLoading.style.display = 'block';
       pageContent.innerHTML = '';
       
+      // Check if running locally
+      const isLocalFile = window.location.protocol === 'file:';
+      
+      if (isLocalFile || !book.contentUrl) {
+        debugLog('Using sample content for book');
+        // Use sample content for testing
+        currentBookContent = [
+          "This is the first paragraph of the sample book. You can tap on this paragraph when highlight mode is active to highlight it.",
+          "This is the second paragraph. The highlighting feature works by selecting entire paragraphs, which works well on mobile devices where precise text selection can be difficult.",
+          "This is the third paragraph. You can choose from multiple highlight colors and all your highlights will be saved between sessions.",
+          "This is another paragraph. Try the highlight button in the toolbar and then tap on this paragraph.",
+          "When you activate highlight mode, tapping on any paragraph will select it. A menu will appear with color options.",
+          "After selecting a color, click the 'Save Highlight' button to apply the highlight to the paragraph and close the menu.",
+          "You can view all your highlights by clicking the View Highlights button at the top of the screen.",
+          "This is the eighth paragraph to demonstrate pagination. You should see the 'Next Page' button become active.",
+          "This is the ninth paragraph. Continue reading to explore more content.",
+          "This is the tenth paragraph, showing how pagination works in the e-reader."
+        ];
+        
+        // Load highlights for this book
+        loadHighlights(book.id);
+        
+        // Update the UI
+        bookTitleElem.textContent = book.title;
+        bookAuthorElem.textContent = book.author;
+        
+        // Display the first page
+        displayPage();
+        
+        // Switch to book view
+        libraryView.style.display = 'none';
+        bookView.style.display = 'block';
+        highlightsView.style.display = 'none';
+        
+        return;
+      }
+      
       fetch(book.contentUrl)
         .then(response => {
           if (!response.ok) {
+            debugLog(`HTTP error loading book content! status: ${response.status}`, 'error');
             throw new Error(`HTTP error! status: ${response.status}`);
           }
+          debugLog('Book content fetched successfully');
           return response.json();
         })
         .then(data => {
+          if (!data.content || !Array.isArray(data.content)) {
+            debugLog('Invalid book content format', 'error');
+            throw new Error('Invalid book content format. Expected an array of paragraphs.');
+          }
+          
           currentBookContent = data.content;
+          debugLog(`Book content loaded with ${currentBookContent.length} paragraphs`);
           
           // Load highlights for this book
           loadHighlights(book.id);
@@ -557,9 +694,32 @@
           highlightsView.style.display = 'none';
         })
         .catch(error => {
-          console.error('Error loading book content:', error);
-          showToast('Error loading book content. Please try again later.');
-          contentLoading.style.display = 'none';
+          debugLog(`Error loading book content: ${error.message}`, 'error');
+          showToast('Error loading book content. Using sample content instead.');
+          
+          // Use sample content as fallback
+          currentBookContent = [
+            "This is a fallback paragraph since the book content couldn't be loaded.",
+            "The e-reader is still functional with this sample content.",
+            "You can still test the highlighting features.",
+            "Try navigating between pages using the buttons below.",
+            "You can also try the highlight feature by clicking the highlight button."
+          ];
+          
+          // Load highlights for this book
+          loadHighlights(book.id);
+          
+          // Update the UI
+          bookTitleElem.textContent = book.title;
+          bookAuthorElem.textContent = book.author;
+          
+          // Display the first page
+          displayPage();
+          
+          // Switch to book view
+          libraryView.style.display = 'none';
+          bookView.style.display = 'block';
+          highlightsView.style.display = 'none';
         });
     }
     
@@ -573,6 +733,8 @@
       // Calculate start and end indices for the current page
       const startIdx = currentPage * paragraphsPerPage;
       const endIdx = Math.min(startIdx + paragraphsPerPage, currentBookContent.length);
+      
+      debugLog(`Displaying page ${currentPage + 1} with paragraphs ${startIdx} to ${endIdx - 1}`);
       
       // Display page number
       const totalPages = Math.ceil(currentBookContent.length / paragraphsPerPage);
@@ -630,19 +792,25 @@
             highlights[bookId] = [];
           }
           
-          console.log(`Loaded ${highlights[bookId].length} highlights for book ${bookId}`);
+          debugLog(`Loaded ${highlights[bookId].length} highlights for book ${bookId}`);
         } catch (e) {
-          console.error('Error loading highlights:', e);
+          debugLog(`Error parsing saved highlights: ${e.message}`, 'error');
           highlights = { [bookId]: [] };
         }
       } else {
+        debugLog('No saved highlights found');
         highlights = { [bookId]: [] };
       }
     }
     
     // Save highlights to localStorage
     function saveHighlights() {
-      localStorage.setItem('bookHighlights', JSON.stringify(highlights));
+      try {
+        localStorage.setItem('bookHighlights', JSON.stringify(highlights));
+        debugLog('Highlights saved to localStorage');
+      } catch (e) {
+        debugLog(`Error saving highlights: ${e.message}`, 'error');
+      }
     }
     
     // Show toast notification
@@ -659,6 +827,8 @@
       toast.textContent = message;
       document.body.appendChild(toast);
       
+      debugLog(`Toast message: ${message}`);
+      
       // Remove after duration
       setTimeout(() => {
         if (document.body.contains(toast)) {
@@ -671,6 +841,8 @@
     highlightToggle.addEventListener('click', () => {
       highlightMode = !highlightMode;
       highlightToggle.classList.toggle('active');
+      
+      debugLog(`Highlight mode ${highlightMode ? 'activated' : 'deactivated'}`);
       
       if (highlightMode) {
         showToast('Highlight mode activated. Tap any paragraph to highlight it.');
@@ -689,6 +861,7 @@
     viewHighlightsBtn.addEventListener('click', () => {
       bookView.style.display = 'none';
       highlightsView.style.display = 'block';
+      debugLog('Switched to highlights view');
       updateHighlightsList();
     });
     
@@ -696,12 +869,14 @@
     backToBookBtn.addEventListener('click', () => {
       highlightsView.style.display = 'none';
       bookView.style.display = 'block';
+      debugLog('Returned to book view');
     });
     
     // Back to library
     backToLibraryBtn.addEventListener('click', () => {
       bookView.style.display = 'none';
       libraryView.style.display = 'block';
+      debugLog('Returned to library view');
     });
     
     // Color selection
@@ -714,12 +889,17 @@
           opt.classList.remove('selected');
         });
         option.classList.add('selected');
+        
+        debugLog(`Selected highlight color: ${selectedColor}`);
       });
     });
     
     // Save highlight
     saveHighlightBtn.addEventListener('click', () => {
-      if (!selectedParagraph || !currentBook) return;
+      if (!selectedParagraph || !currentBook) {
+        debugLog('Cannot save highlight: No paragraph selected or no book open', 'warning');
+        return;
+      }
       
       // Get paragraph index
       const paragraphIndex = parseInt(selectedParagraph.getAttribute('data-index'));
@@ -740,6 +920,8 @@
         note: note,
         timestamp: new Date().toISOString()
       };
+      
+      debugLog(`Created highlight for paragraph ${paragraphIndex} with color ${selectedColor}`);
       
       // Add to highlights array
       highlights[currentBook.id].push(highlight);
@@ -763,14 +945,20 @@
       }
       
       highlightMenu.style.display = 'none';
+      debugLog('Highlight canceled');
     });
     
     // Save edited note
     saveEditBtn.addEventListener('click', () => {
-      if (!currentEditingHighlight || !currentBook) return;
+      if (!currentEditingHighlight || !currentBook) {
+        debugLog('Cannot save edit: No highlight being edited or no book open', 'warning');
+        return;
+      }
       
       // Update note
       const updatedNote = editNoteInput.value.trim();
+      
+      debugLog(`Updating note for highlight ${currentEditingHighlight}`);
       
       // Find and update the highlight
       const highlightIndex = highlights[currentBook.id].findIndex(h => h.id === currentEditingHighlight);
@@ -789,6 +977,8 @@
         
         // Show confirmation
         showToast('Note updated');
+      } else {
+        debugLog(`Could not find highlight with ID ${currentEditingHighlight} to update`, 'error');
       }
     });
     
@@ -796,11 +986,17 @@
     cancelEditBtn.addEventListener('click', () => {
       editNotePopup.style.display = 'none';
       currentEditingHighlight = null;
+      debugLog('Edit canceled');
     });
     
     // Update highlights list
     function updateHighlightsList() {
-      if (!currentBook) return;
+      if (!currentBook) {
+        debugLog('Cannot update highlights list: No book is open', 'warning');
+        return;
+      }
+      
+      debugLog(`Updating highlights list for book ${currentBook.id}`);
       
       // Clear previous highlights
       const existingItems = document.querySelectorAll('.highlight-item');
@@ -811,6 +1007,7 @@
       // Show/hide no highlights message
       const bookHighlights = highlights[currentBook.id] || [];
       if (bookHighlights.length === 0) {
+        debugLog('No highlights found for this book');
         noHighlightsMessage.style.display = 'block';
         return;
       } else {
@@ -819,6 +1016,8 @@
       
       // Sort highlights by paragraph index
       const sortedHighlights = [...bookHighlights].sort((a, b) => a.paragraphIndex - b.paragraphIndex);
+      
+      debugLog(`Displaying ${sortedHighlights.length} highlights`);
       
       // Add each highlight to the container
       sortedHighlights.forEach(highlight => {
@@ -852,6 +1051,8 @@
           // Set current editing highlight
           currentEditingHighlight = highlight.id;
           
+          debugLog(`Editing note for highlight ${highlight.id}`);
+          
           // Set current note in the input
           editNoteInput.value = highlight.note || '';
           
@@ -865,6 +1066,8 @@
         deleteBtn.innerHTML = '🗑️';
         deleteBtn.title = 'Delete Highlight';
         deleteBtn.addEventListener('click', () => {
+          debugLog(`Deleting highlight ${highlight.id}`);
+          
           // Remove from array
           highlights[currentBook.id] = highlights[currentBook.id].filter(h => h.id !== highlight.id);
           
@@ -917,6 +1120,7 @@
     prevPageBtn.addEventListener('click', () => {
       if (currentPage > 0) {
         currentPage--;
+        debugLog(`Navigating to previous page (page ${currentPage + 1})`);
         displayPage();
         window.scrollTo(0, 0);
       }
@@ -926,6 +1130,7 @@
       const totalPages = Math.ceil(currentBookContent.length / paragraphsPerPage);
       if (currentPage < totalPages - 1) {
         currentPage++;
+        debugLog(`Navigating to next page (page ${currentPage + 1})`);
         displayPage();
         window.scrollTo(0, 0);
       }
@@ -938,11 +1143,13 @@
       
       // Left arrow key for previous page
       if (event.key === 'ArrowLeft' && !prevPageBtn.disabled) {
+        debugLog('Left arrow key pressed - going to previous page');
         prevPageBtn.click();
       }
       
       // Right arrow key for next page
       if (event.key === 'ArrowRight' && !nextPageBtn.disabled) {
+        debugLog('Right arrow key pressed - going to next page');
         nextPageBtn.click();
       }
     });
