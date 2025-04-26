@@ -445,21 +445,19 @@
       // Initialize epub.js book
       book = ePub(epubUrl);
       
-      // Set up the rendition
+      // Generate locations for percentage calculation
+      // This is important for scroll mode percentage display
       book.ready.then(() => {
-        rendition = book.renderTo('viewer', {
-          width: '100%',
-          height: '100%',
-          flow: 'paginated',
-          spread: 'auto'
-        });
+        // Generate locations with higher resolution for better percentage calculation
+        return book.locations.generate(1600); // Higher density of locations
+      }).then(() => {
+        // Now set up rendition in the setupRendition function
+        // which now includes the scroll mode configuration
+        setupRendition();
         
         // Load last position or start from beginning
         const lastCfi = localStorage.getItem(`position-${currentBookUrl}`);
         rendition.display(lastCfi || undefined);
-        
-        // Set up event listeners
-        setupRendition();
         
         // Switch to reader view
         libraryContainer.style.display = 'none';
@@ -472,15 +470,23 @@
 
     // Set up rendition event listeners
     function setupRendition() {
+      // Set the initial flow mode to scrolled instead of paginated
+      // This will make highlighting easier since content won't be split across pages
+      rendition = book.renderTo('viewer', {
+        width: '100%',
+        height: '100%',
+        flow: 'scrolled', // Changed from 'paginated' to 'scrolled'
+        spread: 'none'    // No spreads in scroll mode
+      });
+      
       // Track location
       rendition.on('relocated', location => {
         const cfi = location.start.cfi;
         localStorage.setItem(`position-${currentBookUrl}`, cfi);
         
-        // Update page info
-        const currentPage = location.start.displayed.page;
-        const totalPages = location.start.displayed.total;
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        // Update page info - in scroll mode, show percentage instead of pages
+        const percentage = Math.floor(book.locations.percentageFromCfi(cfi) * 100);
+        pageInfo.textContent = `${percentage}% complete`;
       });
       
       // Apply highlights when content is rendered
@@ -488,12 +494,28 @@
         applyHighlights();
       });
       
-      // Navigation via tap zones
-      tapLeft.addEventListener('click', () => {
+      // Toggle tap zones visibility based on highlight mode
+      function updateTapZonesVisibility() {
+        if (highlightMode) {
+          // Hide tap zones completely when in highlight mode
+          tapLeft.style.display = 'none';
+          tapRight.style.display = 'none';
+        } else {
+          // Show tap zones when not in highlight mode
+          tapLeft.style.display = 'block';
+          tapRight.style.display = 'block';
+        }
+      }
+      
+      // Initialize tap zones visibility
+      updateTapZonesVisibility();
+      
+      // Navigation via tap zones - completely disabled in highlight mode
+      tapLeft.addEventListener('click', (event) => {
         rendition.prev();
       });
       
-      tapRight.addEventListener('click', () => {
+      tapRight.addEventListener('click', (event) => {
         rendition.next();
       });
       
@@ -510,6 +532,9 @@
       document.addEventListener('keydown', event => {
         if (readerContainer.style.display === 'none') return;
         
+        // Don't process arrow keys in highlight mode
+        if (highlightMode) return;
+        
         if (event.key === 'ArrowLeft') {
           rendition.prev();
         } else if (event.key === 'ArrowRight') {
@@ -525,6 +550,10 @@
         // Add click handlers for highlight mode
         doc.addEventListener('click', event => {
           if (!highlightMode) return;
+          
+          // Stop event propagation
+          event.stopPropagation();
+          event.preventDefault();
           
           // Find the paragraph that was clicked
           let target = event.target;
@@ -544,11 +573,42 @@
             
             // Show highlight menu
             highlightMenu.style.display = 'block';
+            
+            // Position the menu near the selected text but not covering it
+            const rect = selectedElement.getBoundingClientRect();
+            const menuHeight = highlightMenu.offsetHeight;
+            
+            // Position menu above or below the selection depending on space
+            if (rect.top > menuHeight + 20) {
+              // Enough space above
+              highlightMenu.style.top = (rect.top - menuHeight - 10) + 'px';
+            } else {
+              // Position below
+              highlightMenu.style.top = (rect.bottom + 10) + 'px';
+            }
+            
+            // Center horizontally
+            highlightMenu.style.left = (rect.left + rect.width/2) + 'px';
+            highlightMenu.style.transform = 'translateX(-50%)';
+          }
+        });
+        
+        // Prevent default text selection behavior which can interfere with highlighting
+        doc.addEventListener('mousedown', event => {
+          if (highlightMode) {
+            // Don't prevent default completely as we need selection
+            // But stop propagation
+            event.stopPropagation();
           }
         });
         
         // Apply current theme
         applyTheme(doc);
+      });
+      
+      // Update visibility whenever highlight mode changes
+      highlightToggle.addEventListener('click', () => {
+        updateTapZonesVisibility();
       });
     }
 
@@ -602,8 +662,22 @@
             const highlight = highlights[cfi];
             
             try {
-              // Get the element from CFI
-              const element = contents.element(cfi);
+              // Get the element from CFI - improved error handling
+              let element;
+              try {
+                element = contents.element(cfi);
+              } catch (error) {
+                console.warn('Initial element lookup failed:', error);
+                // Try a simpler CFI
+                const simplifiedCfi = cfi.split('!')[0] + '!';
+                try {
+                  element = contents.element(simplifiedCfi);
+                  console.log('Found element with simplified CFI');
+                } catch (innerError) {
+                  console.warn('Simplified CFI also failed:', innerError);
+                  element = null;
+                }
+              }
               
               if (element) {
                 console.log('Found element for highlight:', element.tagName);
@@ -611,31 +685,51 @@
                 element.style.backgroundColor = getColorForHighlight(highlight.color);
                 element.style.padding = '4px';
                 element.style.borderRadius = '4px';
+                
+                // Add a data attribute for easier identification
+                element.setAttribute('data-highlighted', 'true');
+                element.setAttribute('data-highlight-color', highlight.color);
               } else {
                 console.warn('Element not found for CFI:', cfi);
-              }
-            } catch (rangeError) {
-              console.warn('Error getting element from CFI:', rangeError);
-              
-              // Fallback to range method
-              try {
-                const range = rendition.getRange(cfi);
                 
-                if (range) {
-                  console.log('Using range fallback for highlight');
-                  // Create a span to wrap the highlighted content
-                  const highlightElement = doc.createElement('span');
-                  highlightElement.setAttribute('data-epubcfi', cfi);
-                  highlightElement.style.backgroundColor = getColorForHighlight(highlight.color);
-                  highlightElement.style.padding = '2px';
-                  highlightElement.style.borderRadius = '2px';
+                // Try alternative methods
+                try {
+                  // Try using the range method as fallback
+                  const range = contents.range(cfi);
                   
-                  // Apply the highlight
-                  range.surroundContents(highlightElement);
+                  if (range) {
+                    console.log('Using range method for highlight');
+                    // Create a span to wrap the highlighted content
+                    const highlightElement = doc.createElement('span');
+                    highlightElement.setAttribute('data-epubcfi', cfi);
+                    highlightElement.setAttribute('data-highlighted', 'true');
+                    highlightElement.setAttribute('data-highlight-color', highlight.color);
+                    highlightElement.style.backgroundColor = getColorForHighlight(highlight.color);
+                    highlightElement.style.padding = '2px';
+                    highlightElement.style.borderRadius = '2px';
+                    
+                    // Try to apply the highlight
+                    try {
+                      range.surroundContents(highlightElement);
+                    } catch (surroundError) {
+                      console.warn('Error with surroundContents:', surroundError);
+                      
+                      // If surroundContents fails, try an alternative approach
+                      // Just mark the common ancestor with a background color
+                      const ancestor = range.commonAncestorContainer;
+                      if (ancestor && ancestor.nodeType === Node.ELEMENT_NODE) {
+                        ancestor.style.backgroundColor = getColorForHighlight(highlight.color);
+                        ancestor.setAttribute('data-highlighted', 'true');
+                        console.log('Applied highlight to common ancestor');
+                      }
+                    }
+                  }
+                } catch (rangeError) {
+                  console.warn('Range method also failed:', rangeError);
                 }
-              } catch (surroundError) {
-                console.warn('Error applying range highlight:', surroundError);
               }
+            } catch (error) {
+              console.error('Complete failure applying highlight:', error);
             }
           } catch (error) {
             console.warn('Error processing highlight:', error);
@@ -651,6 +745,27 @@
       
       if (highlightMode) {
         showToast('Highlight mode activated. Click on text to highlight.');
+        
+        // When entering highlight mode, ensure we're in scroll mode
+        if (rendition && rendition.flow !== 'scrolled') {
+          // Save current position
+          const currentCfi = rendition.currentLocation().start.cfi;
+          
+          // Reload with scroll mode
+          rendition.flow('scrolled');
+          rendition.spread('none');
+          
+          // Restore position
+          rendition.display(currentCfi);
+          
+          showToast('Switched to scroll mode for better highlighting');
+        }
+        
+        // Hide tap zones
+        if (tapLeft && tapRight) {
+          tapLeft.style.display = 'none';
+          tapRight.style.display = 'none';
+        }
       } else {
         showToast('Highlight mode deactivated');
         
@@ -662,6 +777,12 @@
         
         // Hide menu
         highlightMenu.style.display = 'none';
+        
+        // Show tap zones again
+        if (tapLeft && tapRight) {
+          tapLeft.style.display = 'block';
+          tapRight.style.display = 'block';
+        }
       }
     });
 
@@ -683,14 +804,34 @@
       try {
         // Generate CFI for the selected element
         const contents = rendition.getContents()[0];
-        const cfi = contents.cfiFromElement(selectedElement);
+        let cfi;
         
-        console.log('Generated CFI:', cfi);
+        try {
+          cfi = contents.cfiFromElement(selectedElement);
+          console.log('Generated CFI:', cfi);
+        } catch (cfiError) {
+          console.error('Error generating CFI:', cfiError);
+          
+          // Fallback: use a data attribute to mark this element
+          const uniqueId = 'highlight-' + Date.now();
+          selectedElement.setAttribute('id', uniqueId);
+          
+          // Try again with the ID
+          try {
+            cfi = contents.cfiFromElement(selectedElement);
+            console.log('Generated CFI after adding ID:', cfi);
+          } catch (secondCfiError) {
+            console.error('Still failed to generate CFI:', secondCfiError);
+            showToast('Could not highlight this element');
+            return;
+          }
+        }
         
         // Store highlight info
         highlights[cfi] = {
           color: selectedColor,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          text: selectedElement.textContent?.substring(0, 50) || '' // Store some of the text for debugging
         };
         
         // Save to localStorage
@@ -701,6 +842,10 @@
         selectedElement.style.border = 'none';
         selectedElement.style.padding = '4px';
         selectedElement.style.borderRadius = '4px';
+        
+        // Add data attributes
+        selectedElement.setAttribute('data-highlighted', 'true');
+        selectedElement.setAttribute('data-highlight-color', selectedColor);
         
         // Reset state
         selectedElement = null;
