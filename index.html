@@ -190,9 +190,6 @@
     #highlight-menu {
       display: none;
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       background: var(--card-bg);
       padding: 16px;
       border-radius: 8px;
@@ -232,21 +229,10 @@
     }
 
     /* Highlighting Styles */
-    .highlight-yellow {
-      background-color: var(--highlight-yellow);
-    }
-
-    .highlight-green {
-      background-color: var(--highlight-green);
-    }
-
-    .highlight-blue {
-      background-color: var(--highlight-blue);
-    }
-
-    .highlight-pink {
-      background-color: var(--highlight-pink);
-    }
+    .highlight-yellow { background-color: var(--highlight-yellow); }
+    .highlight-green { background-color: var(--highlight-green); }
+    .highlight-blue { background-color: var(--highlight-blue); }
+    .highlight-pink { background-color: var(--highlight-pink); }
 
     /* Toast Notifications */
     .toast {
@@ -332,602 +318,435 @@
     </div>
   </div>
 
-  <script>
-    // DOM Elements
-    const libraryContainer = document.getElementById('library-container');
-    const readerContainer = document.getElementById('reader-container');
-    const library = document.getElementById('library');
-    const viewerElement = document.getElementById('viewer');
-    const backToLibraryBtn = document.getElementById('back-to-library-btn');
-    const toggleReaderBtn = document.getElementById('toggle-reader-btn');
-    const highlightToggle = document.getElementById('highlight-toggle');
-    const themeToggle = document.getElementById('theme-toggle');
-    const prevBtn = document.getElementById('prev-btn');
-    const nextBtn = document.getElementById('next-btn');
-    const pageInfo = document.getElementById('page-info');
-    let tapLeft = document.getElementById('tap-left');
-    let tapRight = document.getElementById('tap-right');
-    const highlightMenu = document.getElementById('highlight-menu');
-    const saveHighlightBtn = document.getElementById('save-highlight');
-    const cancelHighlightBtn = document.getElementById('cancel-highlight');
-    const colorOptions = document.querySelectorAll('.color-option');
-    const libraryLoading = document.getElementById('library-loading');
+<script>
+  // DOM Elements
+const libraryContainer = document.getElementById('library-container');
+const readerContainer = document.getElementById('reader-container');
+const library = document.getElementById('library');
+const viewerElement = document.getElementById('viewer');
+const backToLibraryBtn = document.getElementById('back-to-library-btn');
+const toggleReaderBtn = document.getElementById('toggle-reader-btn');
+const highlightToggle = document.getElementById('highlight-toggle');
+const themeToggle = document.getElementById('theme-toggle');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const pageInfo = document.getElementById('page-info');
+let tapLeft = document.getElementById('tap-left');
+let tapRight = document.getElementById('tap-right');
+const highlightMenu = document.getElementById('highlight-menu');
+const saveHighlightBtn = document.getElementById('save-highlight');
+const cancelHighlightBtn = document.getElementById('cancel-highlight');
+const colorOptions = document.querySelectorAll('.color-option');
+const libraryLoading = document.getElementById('library-loading');
 
-    // Global variables
-    let book, rendition;
-    let currentBookUrl = '';
-    let highlightMode = false;
-    let selectedElement = null;
-    let selectedColor = 'yellow';
-    let highlights = {};
-    let isDarkMode = false;
+// Global variables
+let book, rendition;
+let currentBookUrl = '';
+let highlightMode = false;
+let selectedElement = null;
+let selectedColor = 'yellow';
+let highlights = {};
+let isDarkMode = false;
 
-    // Initialize app
-    document.addEventListener('DOMContentLoaded', () => {
-      loadLibrary();
-      
-      // Check for last read book
-      const lastBook = localStorage.getItem('last-book');
-      if (lastBook) {
-        toggleReaderBtn.style.display = 'block';
-        toggleReaderBtn.addEventListener('click', () => {
-          readBook(lastBook);
-        });
-      }
+// Initialize app
+document.addEventListener('DOMContentLoaded', () => {
+  loadLibrary();
+  
+  const lastBook = localStorage.getItem('last-book');
+  if (lastBook) {
+    toggleReaderBtn.style.display = 'block';
+    toggleReaderBtn.addEventListener('click', () => {
+      readBook(lastBook);
     });
+  }
+});
 
-    // Load library from JSON
-    function loadLibrary() {
-      library.innerHTML = '<div class="spinner" id="library-loading"></div>';
-      
-      fetch('/ebooks/library.json')
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(books => {
-          displayLibrary(books);
-        })
-        .catch(error => {
-          console.error('Error loading library:', error);
-          library.innerHTML = '<p>Failed to load library. Please try again later.</p>';
-        });
-    }
-
-    // Display library books
-    function displayLibrary(books) {
-      library.innerHTML = '';
-      
-      if (!books || books.length === 0) {
-        library.innerHTML = '<p>No books found in the library.</p>';
-        return;
+// Load library from JSON
+function loadLibrary() {
+  library.innerHTML = '<div class="spinner" id="library-loading"></div>';
+  
+  fetch('/ebooks/library.json')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      
-      books.forEach(book => {
-        const bookElement = document.createElement('div');
-        bookElement.className = 'book';
-        bookElement.innerHTML = `
-          <img src="${book.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZGRkIj48cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjIwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI4IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZmlsbD0iIzU1NSI+8J+TjTwvdGV4dD48L3N2Zz4='}" alt="${book.title}">
-          <div class="book-info">
-            <div class="book-title">${book.title}</div>
-            <div class="book-author">${book.author || 'Unknown Author'}</div>
-          </div>
-        `;
-        
-        bookElement.addEventListener('click', () => {
-          readBook(book.fileUrl);
-        });
-        
-        library.appendChild(bookElement);
-      });
-    }
-
-    // Open and read a book - SIMPLIFIED to load faster
-    function readBook(epubUrl) {
-      currentBookUrl = epubUrl;
-      localStorage.setItem('last-book', epubUrl);
-      
-      // Clean up previous instance
-      if (book) {
-        book.destroy();
-      }
-      if (rendition) {
-        rendition.off('relocated');
-        rendition.off('rendered');
-        rendition = null;
-      }
-      
-      // Load highlights for this book
-      loadHighlights();
-      
-      // Initialize epub.js book
-      book = ePub(epubUrl);
-      
-      // Skip location generation for faster loading
-      book.ready.then(() => {
-        // Set up the rendition
-        rendition = book.renderTo('viewer', {
-          width: '100%',
-          height: '100%',
-          flow: 'paginated',
-          spread: 'auto'
-        });
-        
-        // Load last position or start from beginning
-        const lastCfi = localStorage.getItem(`position-${currentBookUrl}`);
-        rendition.display(lastCfi || undefined);
-        
-        // Set up event listeners
-        setupRendition();
-        
-        // Switch to reader view
-        libraryContainer.style.display = 'none';
-        readerContainer.style.display = 'flex';
-      }).catch(error => {
-        console.error('Error loading book:', error);
-        showToast('Error loading book. Please try again.');
-      });
-    }
-
-    // Set up rendition event listeners
-    function setupRendition() {
-      // Track location
-      rendition.on('relocated', location => {
-        const cfi = location.start.cfi;
-        localStorage.setItem(`position-${currentBookUrl}`, cfi);
-        
-        // Update page info
-        if (rendition.flow === 'paginated' && location.start.displayed) {
-          const currentPage = location.start.displayed.page;
-          const totalPages = location.start.displayed.total;
-          pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-        } else {
-          // Simplified percentage in scroll mode
-          pageInfo.textContent = 'Reading...';
-        }
-      });
-      
-      // Apply highlights when content is rendered
-      rendition.on('rendered', (section) => {
-        applyHighlights();
-      });
-      
-      // Set up tap zones
-      setupTapZones();
-      
-      // Navigation via buttons
-      prevBtn.addEventListener('click', () => {
-        rendition.prev();
-      });
-      
-      nextBtn.addEventListener('click', () => {
-        rendition.next();
-      });
-      
-      // Keyboard navigation
-      document.addEventListener('keydown', event => {
-        if (readerContainer.style.display === 'none') return;
-        
-        // Don't process arrow keys in highlight mode
-        if (highlightMode) return;
-        
-        if (event.key === 'ArrowLeft') {
-          rendition.prev();
-        } else if (event.key === 'ArrowRight') {
-          rendition.next();
-        }
-      });
-      
-      // Configure content hooks
-      rendition.hooks.content.register(contents => {
-        // Get the document
-        const doc = contents.document;
-        
-        // Add click handlers for highlight mode
-        doc.addEventListener('click', event => {
-          if (!highlightMode) return;
-          
-          // Find the paragraph that was clicked
-          let target = event.target;
-          while (target && target.tagName !== 'P' && target.tagName !== 'DIV' && target !== doc.body) {
-            target = target.parentNode;
-          }
-          
-          if (target && (target.tagName === 'P' || target.tagName === 'DIV') && target !== doc.body) {
-            // Clear previous selection
-            if (selectedElement) {
-              selectedElement.style.border = 'none';
-            }
-            
-            // Mark the selected element
-            selectedElement = target;
-            selectedElement.style.border = '2px dashed #666';
-            
-            // Show highlight menu
-            highlightMenu.style.display = 'block';
-            
-            // Position the menu near the selected text but not covering it
-            const rect = selectedElement.getBoundingClientRect();
-            const menuHeight = highlightMenu.offsetHeight;
-            
-            // Position menu above or below the selection depending on space
-            if (rect.top > menuHeight + 20) {
-              // Enough space above
-              highlightMenu.style.top = (rect.top - menuHeight - 10) + 'px';
-            } else {
-              // Position below
-              highlightMenu.style.top = (rect.bottom + 10) + 'px';
-            }
-            
-            // Center horizontally
-            highlightMenu.style.left = (rect.left + rect.width/2) + 'px';
-            highlightMenu.style.transform = 'translateX(-50%)';
-          }
-        });
-        
-        // Apply current theme
-        applyTheme(doc);
-      });
-    }
-
-    // Setup tap zones - NEW FUNCTION that creates them properly
-    function setupTapZones() {
-      // Remove any existing tap zones first
-      if (tapLeft && tapLeft.parentNode) {
-        tapLeft.parentNode.removeChild(tapLeft);
-      }
-      if (tapRight && tapRight.parentNode) {
-        tapRight.parentNode.removeChild(tapRight);
-      }
-      
-      // Don't create tap zones in highlight mode
-      if (highlightMode) {
-        return;
-      }
-      
-      // Create new tap zones
-      tapLeft = document.createElement('div');
-      tapLeft.id = 'tap-left';
-      tapLeft.style.cssText = 'position: absolute; top: 0; left: 0; height: 100%; width: 30%; z-index: 100;';
-      
-      tapRight = document.createElement('div');
-      tapRight.id = 'tap-right';
-      tapRight.style.cssText = 'position: absolute; top: 0; right: 0; height: 100%; width: 30%; z-index: 100;';
-      
-      // Add to the viewer
-      viewerElement.appendChild(tapLeft);
-      viewerElement.appendChild(tapRight);
-      
-      // Add event listeners
-      tapLeft.addEventListener('click', () => {
-        if (!highlightMode) {
-          rendition.prev();
-        }
-      });
-      
-      tapRight.addEventListener('click', () => {
-        if (!highlightMode) {
-          rendition.next();
-        }
-      });
-    }
-
-    // Load highlights from localStorage
-    function loadHighlights() {
-      const key = `highlights-${currentBookUrl}`;
-      const saved = localStorage.getItem(key);
-      
-      if (saved) {
-        try {
-          highlights = JSON.parse(saved);
-        } catch (error) {
-          console.error('Error parsing highlights:', error);
-          highlights = {};
-        }
-      } else {
-        highlights = {};
-      }
-    }
-
-    // Save highlights to localStorage
-    function saveHighlights() {
-      const key = `highlights-${currentBookUrl}`;
-      localStorage.setItem(key, JSON.stringify(highlights));
-    }
-
-    // Apply highlights to rendered content
-    function applyHighlights() {
-      if (!rendition || !highlights) return;
-      
-      console.log('Applying highlights...');
-      
-      // Get all current contents (iframes)
-      rendition.getContents().forEach(contents => {
-        const doc = contents.document;
-        const cfiBase = contents.cfiBase;
-        
-        console.log('Processing content with base:', cfiBase);
-        console.log('Available highlights:', Object.keys(highlights).length);
-        
-        // Apply each highlight
-        Object.keys(highlights).forEach(cfi => {
-          try {
-            // Check if this highlight belongs to this section
-            if (cfiBase && !cfi.includes(cfiBase)) {
-              console.log('CFI does not match base:', cfi);
-              return;
-            }
-            
-            console.log('Applying highlight for CFI:', cfi);
-            const highlight = highlights[cfi];
-            
-            try {
-              // Get the element from CFI
-              let element;
-              try {
-                element = contents.element(cfi);
-              } catch (error) {
-                console.warn('Initial element lookup failed:', error);
-                // Try a simpler CFI
-                const simplifiedCfi = cfi.split('!')[0] + '!';
-                try {
-                  element = contents.element(simplifiedCfi);
-                  console.log('Found element with simplified CFI');
-                } catch (innerError) {
-                  console.warn('Simplified CFI also failed:', innerError);
-                  element = null;
-                }
-              }
-              
-              if (element) {
-                console.log('Found element for highlight:', element.tagName);
-                // Apply highlight directly
-                element.style.backgroundColor = getColorForHighlight(highlight.color);
-                element.style.padding = '4px';
-                element.style.borderRadius = '4px';
-                
-                // Add a data attribute for easier identification
-                element.setAttribute('data-highlighted', 'true');
-                element.setAttribute('data-highlight-color', highlight.color);
-              } else {
-                console.warn('Element not found for CFI:', cfi);
-                
-                // Try alternative methods
-                try {
-                  // Try using the range method as fallback
-                  const range = contents.range(cfi);
-                  
-                  if (range) {
-                    console.log('Using range method for highlight');
-                    // Create a span to wrap the highlighted content
-                    const highlightElement = doc.createElement('span');
-                    highlightElement.setAttribute('data-epubcfi', cfi);
-                    highlightElement.setAttribute('data-highlighted', 'true');
-                    highlightElement.setAttribute('data-highlight-color', highlight.color);
-                    highlightElement.style.backgroundColor = getColorForHighlight(highlight.color);
-                    highlightElement.style.padding = '2px';
-                    highlightElement.style.borderRadius = '2px';
-                    
-                    // Try to apply the highlight
-                    try {
-                      range.surroundContents(highlightElement);
-                    } catch (surroundError) {
-                      console.warn('Error with surroundContents:', surroundError);
-                      
-                      // If surroundContents fails, try an alternative approach
-                      // Just mark the common ancestor with a background color
-                      const ancestor = range.commonAncestorContainer;
-                      if (ancestor && ancestor.nodeType === Node.ELEMENT_NODE) {
-                        ancestor.style.backgroundColor = getColorForHighlight(highlight.color);
-                        ancestor.setAttribute('data-highlighted', 'true');
-                        console.log('Applied highlight to common ancestor');
-                      }
-                    }
-                  }
-                } catch (rangeError) {
-                  console.warn('Range method also failed:', rangeError);
-                }
-              }
-            } catch (error) {
-              console.error('Complete failure applying highlight:', error);
-            }
-          } catch (error) {
-            console.warn('Error processing highlight:', error);
-          }
-        });
-      });
-    }
-
-    // Toggle highlight mode - COMPLETELY REWRITTEN
-    highlightToggle.addEventListener('click', () => {
-      highlightMode = !highlightMode;
-      highlightToggle.classList.toggle('active');
-      
-      if (highlightMode) {
-        // PHYSICALLY REMOVE tap zones completely when entering highlight mode
-        if (tapLeft && tapLeft.parentNode) {
-          tapLeft.parentNode.removeChild(tapLeft);
-          tapLeft = null;
-        }
-        if (tapRight && tapRight.parentNode) {
-          tapRight.parentNode.removeChild(tapRight);
-          tapRight = null;
-        }
-        
-        showToast('Highlight mode activated. Click on text to highlight.');
-        
-        // Switch to scroll mode for easier highlighting
-        if (rendition) {
-          const currentCfi = rendition.currentLocation().start.cfi;
-          rendition.flow('scrolled');
-          rendition.display(currentCfi);
-        }
-      } else {
-        showToast('Highlight mode deactivated');
-        
-        // Clear selection if any
-        if (selectedElement) {
-          selectedElement.style.border = 'none';
-          selectedElement = null;
-        }
-        
-        // Hide menu
-        highlightMenu.style.display = 'none';
-        
-        // Create new tap zones
-        setupTapZones();
-        
-        // Switch back to paginated mode
-        if (rendition) {
-          const currentCfi = rendition.currentLocation().start.cfi;
-          rendition.flow('paginated');
-          rendition.spread('auto');
-          rendition.display(currentCfi);
-        }
-      }
+      return response.json();
+    })
+    .then(books => {
+      displayLibrary(books);
+    })
+    .catch(error => {
+      console.error('Error loading library:', error);
+      library.innerHTML = '<p>Failed to load library. Please try again later.</p>';
     });
+}
 
-    // Color selection
-    colorOptions.forEach(option => {
-      option.addEventListener('click', () => {
-        selectedColor = option.getAttribute('data-color');
-        
-        // Update UI
-        colorOptions.forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-      });
-    });
-
-    // Save highlight
-    saveHighlightBtn.addEventListener('click', () => {
-      if (!selectedElement || !rendition) return;
-      
-      try {
-        // Generate CFI for the selected element
-        const contents = rendition.getContents()[0];
-        let cfi;
-        
-        try {
-          cfi = contents.cfiFromElement(selectedElement);
-          console.log('Generated CFI:', cfi);
-        } catch (cfiError) {
-          console.error('Error generating CFI:', cfiError);
-          
-          // Fallback: use a data attribute to mark this element
-          const uniqueId = 'highlight-' + Date.now();
-          selectedElement.setAttribute('id', uniqueId);
-          
-          // Try again with the ID
-          try {
-            cfi = contents.cfiFromElement(selectedElement);
-            console.log('Generated CFI after adding ID:', cfi);
-          } catch (secondCfiError) {
-            console.error('Still failed to generate CFI:', secondCfiError);
-            showToast('Could not highlight this element');
-            return;
-          }
-        }
-        
-        // Store highlight info
-        highlights[cfi] = {
-          color: selectedColor,
-          timestamp: new Date().toISOString(),
-          text: selectedElement.textContent?.substring(0, 50) || '' // Store some of the text for debugging
-        };
-        
-        // Save to localStorage
-        saveHighlights();
-        
-        // Apply the highlight directly
-        selectedElement.style.backgroundColor = getColorForHighlight(selectedColor);
-        selectedElement.style.border = 'none';
-        selectedElement.style.padding = '4px';
-        selectedElement.style.borderRadius = '4px';
-        
-        // Add data attributes
-        selectedElement.setAttribute('data-highlighted', 'true');
-        selectedElement.setAttribute('data-highlight-color', selectedColor);
-        
-        // Reset state
-        selectedElement = null;
-        highlightMenu.style.display = 'none';
-        
-        showToast('Highlight saved');
-      } catch (error) {
-        console.error('Error saving highlight:', error);
-        showToast('Failed to save highlight');
-      }
+// Display library books
+function displayLibrary(books) {
+  library.innerHTML = '';
+  
+  if (!books || books.length === 0) {
+    library.innerHTML = '<p>No books found in the library.</p>';
+    return;
+  }
+  
+  books.forEach(book => {
+    const bookElement = document.createElement('div');
+    bookElement.className = 'book';
+    bookElement.innerHTML = `
+      <img src="${book.cover || 'data:image/svg+xml;base64,...'}" alt="${book.title}">
+      <div class="book-info">
+        <div class="book-title">${book.title}</div>
+        <div class="book-author">${book.author || 'Unknown Author'}</div>
+      </div>
+    `;
+    
+    bookElement.addEventListener('click', () => {
+      readBook(book.fileUrl);
     });
     
-    // Helper function to get color values
-    function getColorForHighlight(color) {
-      switch(color) {
-        case 'yellow': return 'rgba(255, 255, 0, 0.3)';
-        case 'green': return 'rgba(0, 255, 0, 0.2)';
-        case 'blue': return 'rgba(0, 191, 255, 0.2)';
-        case 'pink': return 'rgba(255, 105, 180, 0.2)';
-        default: return 'rgba(255, 255, 0, 0.3)';
-      }
-    }
+    library.appendChild(bookElement);
+  });
+}
 
-    // Cancel highlight
-    cancelHighlightBtn.addEventListener('click', () => {
-      if (selectedElement) {
-        selectedElement.style.border = 'none';
-        selectedElement = null;
-      }
-      
-      highlightMenu.style.display = 'none';
+// Open and read a book
+function readBook(epubUrl) {
+  currentBookUrl = epubUrl;
+  localStorage.setItem('last-book', epubUrl);
+
+  // Switch view to reader and show spinner
+  libraryContainer.style.display = 'none';
+  readerContainer.style.display = 'flex';
+  viewerElement.innerHTML = '<div class="spinner"></div>';
+
+  if (book) {
+    book.destroy();
+  }
+  if (rendition) {
+    rendition.off('relocated');
+    rendition.off('rendered');
+    rendition = null;
+  }
+
+  loadHighlights();
+
+  book = ePub(epubUrl);
+
+  book.ready.then(() => {
+    rendition = book.renderTo('viewer', {
+      width: '100%',
+      height: '100%',
+      flow: 'paginated',
+      spread: 'auto'
     });
 
-    // Toggle dark/light theme
-    themeToggle.addEventListener('click', () => {
-      isDarkMode = !isDarkMode;
-      document.body.classList.toggle('dark-mode', isDarkMode);
-      themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
-      
-      // Apply theme to content
-      if (rendition) {
-        rendition.getContents().forEach(contents => {
-          applyTheme(contents.document);
-        });
+    const lastCfi = localStorage.getItem(`position-${currentBookUrl}`);
+    rendition.display(lastCfi || undefined);
+
+    setupRendition();
+  }).catch(error => {
+    console.error('Error loading book:', error);
+    showToast('Error loading book. Please try again.');
+  });
+}
+  // Set up rendition event listeners
+function setupRendition() {
+  rendition.on('relocated', location => {
+    const cfi = location.start.cfi;
+    localStorage.setItem(`position-${currentBookUrl}`, cfi);
+
+    if (rendition.flow === 'paginated' && location.start.displayed) {
+      const currentPage = location.start.displayed.page;
+      const totalPages = location.start.displayed.total;
+      pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    } else {
+      pageInfo.textContent = 'Reading...';
+    }
+  });
+
+  rendition.on('rendered', (section) => {
+    applyHighlights();
+  });
+
+  setupTapZones();
+
+  prevBtn.addEventListener('click', () => {
+    rendition.prev();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    rendition.next();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (readerContainer.style.display === 'none') return;
+    if (highlightMode) return;
+
+    if (event.key === 'ArrowLeft') {
+      rendition.prev();
+    } else if (event.key === 'ArrowRight') {
+      rendition.next();
+    }
+  });
+
+  rendition.hooks.content.register(contents => {
+    const doc = contents.document;
+
+    doc.addEventListener('click', event => {
+      if (!highlightMode) return;
+
+      let target = event.target;
+
+      while (target && !['P', 'DIV', 'SPAN', 'SECTION', 'ARTICLE'].includes(target.tagName) && target !== doc.body) {
+        target = target.parentNode;
+      }
+
+      if (target && target !== doc.body) {
+        if (selectedElement) {
+          selectedElement.style.border = 'none';
+        }
+
+        selectedElement = target;
+        selectedElement.style.border = '2px dashed #666';
+
+        const iframeRect = viewerElement.getBoundingClientRect();
+        const rect = target.getBoundingClientRect();
+        const menuHeight = highlightMenu.offsetHeight;
+
+        const absoluteTop = iframeRect.top + rect.top;
+        const absoluteLeft = iframeRect.left + rect.left + rect.width / 2;
+
+        if (rect.top > menuHeight + 20) {
+          highlightMenu.style.top = (absoluteTop - menuHeight - 10) + 'px';
+        } else {
+          highlightMenu.style.top = (absoluteTop + rect.height + 10) + 'px';
+        }
+        highlightMenu.style.left = absoluteLeft + 'px';
+        highlightMenu.style.transform = 'translateX(-50%)';
+        highlightMenu.style.display = 'block';
       }
     });
 
-    // Apply theme to content
-    function applyTheme(doc) {
-      if (isDarkMode) {
-        doc.body.style.backgroundColor = '#1a1a1a';
-        doc.body.style.color = '#e0e0e0';
-      } else {
-        doc.body.style.backgroundColor = '#fff';
-        doc.body.style.color = '#333';
+    applyTheme(doc);
+  });
+}
+
+// Tap zones
+function setupTapZones() {
+  if (tapLeft && tapLeft.parentNode) tapLeft.remove();
+  if (tapRight && tapRight.parentNode) tapRight.remove();
+
+  if (highlightMode) return;
+
+  tapLeft = document.createElement('div');
+  tapLeft.id = 'tap-left';
+  tapLeft.style.cssText = 'position: absolute; top: 0; left: 0; height: 100%; width: 30%; z-index: 100;';
+  
+  tapRight = document.createElement('div');
+  tapRight.id = 'tap-right';
+  tapRight.style.cssText = 'position: absolute; top: 0; right: 0; height: 100%; width: 30%; z-index: 100;';
+
+  viewerElement.appendChild(tapLeft);
+  viewerElement.appendChild(tapRight);
+
+  tapLeft.addEventListener('click', () => {
+    if (!highlightMode) rendition.prev();
+  });
+  tapRight.addEventListener('click', () => {
+    if (!highlightMode) rendition.next();
+  });
+}
+
+// Highlight mode toggle
+highlightToggle.addEventListener('click', () => {
+  highlightMode = !highlightMode;
+  highlightToggle.classList.toggle('active');
+
+  if (highlightMode) {
+    if (tapLeft) tapLeft.remove();
+    if (tapRight) tapRight.remove();
+    showToast('Highlight mode activated. Click text to highlight.');
+    if (rendition) {
+      const cfi = rendition.currentLocation().start.cfi;
+      rendition.flow('scrolled');
+      rendition.display(cfi);
+    }
+  } else {
+    if (selectedElement) {
+      selectedElement.style.border = 'none';
+      selectedElement = null;
+    }
+    highlightMenu.style.display = 'none';
+    setupTapZones();
+    showToast('Highlight mode deactivated');
+    if (rendition) {
+      const cfi = rendition.currentLocation().start.cfi;
+      rendition.flow('paginated');
+      rendition.spread('auto');
+      rendition.display(cfi);
+    }
+  }
+});
+
+// Load and save highlights
+function loadHighlights() {
+  const key = `highlights-${currentBookUrl}`;
+  const saved = localStorage.getItem(key);
+  if (saved) {
+    try {
+      highlights = JSON.parse(saved);
+    } catch {
+      highlights = {};
+    }
+  } else {
+    highlights = {};
+  }
+}
+
+function saveHighlights() {
+  const key = `highlights-${currentBookUrl}`;
+  localStorage.setItem(key, JSON.stringify(highlights));
+}
+
+function applyHighlights() {
+  if (!rendition || !highlights) return;
+
+  rendition.getContents().forEach(contents => {
+    const doc = contents.document;
+    const cfiBase = contents.cfiBase;
+
+    Object.keys(highlights).forEach(cfi => {
+      if (cfiBase && !cfi.includes(cfiBase)) return;
+
+      try {
+        let element = contents.element(cfi);
+        if (element) {
+          element.style.backgroundColor = getColorForHighlight(highlights[cfi].color);
+          element.style.padding = '4px';
+          element.style.borderRadius = '4px';
+          element.setAttribute('data-highlighted', 'true');
+          element.setAttribute('data-highlight-color', highlights[cfi].color);
+        }
+      } catch (e) {
+        console.warn('Highlight apply failed:', e);
       }
-    }
-
-    // Back to library
-    backToLibraryBtn.addEventListener('click', () => {
-      readerContainer.style.display = 'none';
-      libraryContainer.style.display = 'block';
     });
+  });
+}
 
-    // Show toast notification
-    function showToast(message, duration = 2000) {
-      // Remove existing toasts
-      const existingToasts = document.querySelectorAll('.toast');
-      existingToasts.forEach(toast => toast.remove());
-      
-      // Create new toast
-      const toast = document.createElement('div');
-      toast.className = 'toast';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      
-      // Remove after duration
-      setTimeout(() => toast.remove(), duration);
+// Color picker
+colorOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    selectedColor = option.getAttribute('data-color');
+    colorOptions.forEach(opt => opt.classList.remove('selected'));
+    option.classList.add('selected');
+  });
+});
+
+// Save highlight
+saveHighlightBtn.addEventListener('click', () => {
+  if (!selectedElement || !rendition) return;
+
+  try {
+    const contents = rendition.getContents()[0];
+    let cfi;
+    try {
+      cfi = contents.cfiFromElement(selectedElement);
+    } catch {
+      const uniqueId = 'highlight-' + Date.now();
+      selectedElement.setAttribute('id', uniqueId);
+      cfi = contents.cfiFromElement(selectedElement);
     }
-  </script>
+
+    if (!cfi) {
+      showToast('Could not save highlight.');
+      return;
+    }
+
+    highlights[cfi] = {
+      color: selectedColor,
+      timestamp: new Date().toISOString(),
+      text: selectedElement.textContent?.substring(0, 50) || ''
+    };
+
+    saveHighlights();
+
+    selectedElement.style.backgroundColor = getColorForHighlight(selectedColor);
+    selectedElement.style.border = 'none';
+    selectedElement.style.padding = '4px';
+    selectedElement.style.borderRadius = '4px';
+    selectedElement.setAttribute('data-highlighted', 'true');
+    selectedElement.setAttribute('data-highlight-color', selectedColor);
+
+    selectedElement = null;
+    highlightMenu.style.display = 'none';
+    showToast('Highlight saved');
+  } catch (error) {
+    console.error('Error saving highlight:', error);
+    showToast('Failed to save highlight');
+  }
+});
+
+// Cancel highlight
+cancelHighlightBtn.addEventListener('click', () => {
+  if (selectedElement) {
+    selectedElement.style.border = 'none';
+    selectedElement = null;
+  }
+  highlightMenu.style.display = 'none';
+});
+
+// Get highlight color
+function getColorForHighlight(color) {
+  switch (color) {
+    case 'yellow': return 'rgba(255, 255, 0, 0.3)';
+    case 'green': return 'rgba(0, 255, 0, 0.2)';
+    case 'blue': return 'rgba(0, 191, 255, 0.2)';
+    case 'pink': return 'rgba(255, 105, 180, 0.2)';
+    default: return 'rgba(255, 255, 0, 0.3)';
+  }
+}
+
+// Theme toggle
+themeToggle.addEventListener('click', () => {
+  isDarkMode = !isDarkMode;
+  document.body.classList.toggle('dark-mode', isDarkMode);
+  themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+  if (rendition) {
+    rendition.getContents().forEach(contents => {
+      applyTheme(contents.document);
+    });
+  }
+});
+
+function applyTheme(doc) {
+  if (isDarkMode) {
+    doc.body.style.backgroundColor = '#1a1a1a';
+    doc.body.style.color = '#e0e0e0';
+  } else {
+    doc.body.style.backgroundColor = '#fff';
+    doc.body.style.color = '#333';
+  }
+}
+
+// Back to library
+backToLibraryBtn.addEventListener('click', () => {
+  readerContainer.style.display = 'none';
+  libraryContainer.style.display = 'block';
+});
+
+// Toast helper
+function showToast(message, duration = 2000) {
+  const existingToasts = document.querySelectorAll('.toast');
+  existingToasts.forEach(toast => toast.remove());
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => toast.remove(), duration);
+}
+</script>
 </body>
 </html>
