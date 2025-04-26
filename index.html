@@ -319,7 +319,7 @@
   </div>
 
 <script>
-  // DOM Elements
+// DOM Elements
 const libraryContainer = document.getElementById('library-container');
 const readerContainer = document.getElementById('reader-container');
 const library = document.getElementById('library');
@@ -331,24 +331,15 @@ const themeToggle = document.getElementById('theme-toggle');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const pageInfo = document.getElementById('page-info');
-let tapLeft = document.getElementById('tap-left');
-let tapRight = document.getElementById('tap-right');
-const highlightMenu = document.getElementById('highlight-menu');
-const saveHighlightBtn = document.getElementById('save-highlight');
-const cancelHighlightBtn = document.getElementById('cancel-highlight');
 const colorOptions = document.querySelectorAll('.color-option');
-const libraryLoading = document.getElementById('library-loading');
 
-// Global variables
 let book, rendition;
 let currentBookUrl = '';
 let highlightMode = false;
-let selectedElement = null;
 let selectedColor = 'yellow';
-let highlights = {};
 let isDarkMode = false;
 
-// Initialize app
+// Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   loadLibrary();
   
@@ -361,40 +352,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Load library from JSON
+// Load Library
 function loadLibrary() {
-  library.innerHTML = '<div class="spinner" id="library-loading"></div>';
-  
   fetch('/ebooks/library.json')
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(books => {
-      displayLibrary(books);
-    })
+    .then(response => response.json())
+    .then(displayLibrary)
     .catch(error => {
       console.error('Error loading library:', error);
-      library.innerHTML = '<p>Failed to load library. Please try again later.</p>';
+      library.innerHTML = '<p>Failed to load library.</p>';
     });
 }
 
-// Display library books
 function displayLibrary(books) {
   library.innerHTML = '';
-  
-  if (!books || books.length === 0) {
-    library.innerHTML = '<p>No books found in the library.</p>';
-    return;
-  }
   
   books.forEach(book => {
     const bookElement = document.createElement('div');
     bookElement.className = 'book';
     bookElement.innerHTML = `
-      <img src="${book.cover || 'data:image/svg+xml;base64,...'}" alt="${book.title}">
+      <img src="${book.cover || ''}" alt="${book.title}">
       <div class="book-info">
         <div class="book-title">${book.title}</div>
         <div class="book-author">${book.author || 'Unknown Author'}</div>
@@ -409,29 +385,19 @@ function displayLibrary(books) {
   });
 }
 
-// Open and read a book
+// Read Book
 function readBook(epubUrl) {
   currentBookUrl = epubUrl;
   localStorage.setItem('last-book', epubUrl);
 
-  // Switch view to reader and show spinner
   libraryContainer.style.display = 'none';
   readerContainer.style.display = 'flex';
   viewerElement.innerHTML = '<div class="spinner"></div>';
 
-  if (book) {
-    book.destroy();
-  }
-  if (rendition) {
-    rendition.off('relocated');
-    rendition.off('rendered');
-    rendition = null;
-  }
-
-  loadHighlights();
+  if (book) book.destroy();
+  if (rendition) rendition = null;
 
   book = ePub(epubUrl);
-
   book.ready.then(() => {
     rendition = book.renderTo('viewer', {
       width: '100%',
@@ -444,197 +410,73 @@ function readBook(epubUrl) {
     rendition.display(lastCfi || undefined);
 
     setupRendition();
-  }).catch(error => {
-    console.error('Error loading book:', error);
-    showToast('Error loading book. Please try again.');
   });
 }
-  // Set up rendition event listeners
+
+// Setup Rendition
 function setupRendition() {
-  rendition.on('relocated', location => {
-    const cfi = location.start.cfi;
-    localStorage.setItem(`position-${currentBookUrl}`, cfi);
+  rendition.on('relocated', (location) => {
+    const currentPage = location.start.displayed?.page || 1;
+    const totalPages = location.start.displayed?.total || 1;
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
 
-    if (rendition.flow === 'paginated' && location.start.displayed) {
-      const currentPage = location.start.displayed.page;
-      const totalPages = location.start.displayed.total;
-      pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-    } else {
-      pageInfo.textContent = 'Reading...';
-    }
-  });
-
-  rendition.on('rendered', (section) => {
-    applyHighlights();
-  });
-
-  setupTapZones();
-
-  prevBtn.addEventListener('click', () => {
-    rendition.prev();
-  });
-
-  nextBtn.addEventListener('click', () => {
-    rendition.next();
-  });
-
-  document.addEventListener('keydown', event => {
-    if (readerContainer.style.display === 'none') return;
-    if (highlightMode) return;
-
-    if (event.key === 'ArrowLeft') {
-      rendition.prev();
-    } else if (event.key === 'ArrowRight') {
-      rendition.next();
-    }
+    localStorage.setItem(`position-${currentBookUrl}`, location.start.cfi);
   });
 
   rendition.hooks.content.register(contents => {
     const doc = contents.document;
 
-    doc.addEventListener('click', event => {
+    doc.addEventListener('mouseup', () => {
       if (!highlightMode) return;
-
-      let target = event.target;
-
-      while (target && !['P', 'DIV', 'SPAN', 'SECTION', 'ARTICLE'].includes(target.tagName) && target !== doc.body) {
-        target = target.parentNode;
-      }
-
-      if (target && target !== doc.body) {
-        if (selectedElement) {
-          selectedElement.style.border = 'none';
-        }
-
-        selectedElement = target;
-        selectedElement.style.border = '2px dashed #666';
-
-        const iframeRect = viewerElement.getBoundingClientRect();
-        const rect = target.getBoundingClientRect();
-        const menuHeight = highlightMenu.offsetHeight;
-
-        const absoluteTop = iframeRect.top + rect.top;
-        const absoluteLeft = iframeRect.left + rect.left + rect.width / 2;
-
-        if (rect.top > menuHeight + 20) {
-          highlightMenu.style.top = (absoluteTop - menuHeight - 10) + 'px';
-        } else {
-          highlightMenu.style.top = (absoluteTop + rect.height + 10) + 'px';
-        }
-        highlightMenu.style.left = absoluteLeft + 'px';
-        highlightMenu.style.transform = 'translateX(-50%)';
-        highlightMenu.style.display = 'block';
-      }
+      highlightSelection(doc);
     });
 
     applyTheme(doc);
   });
+
+  prevBtn.addEventListener('click', () => rendition.prev());
+  nextBtn.addEventListener('click', () => rendition.next());
 }
 
-// Tap zones
-function setupTapZones() {
-  if (tapLeft && tapLeft.parentNode) tapLeft.remove();
-  if (tapRight && tapRight.parentNode) tapRight.remove();
+// Highlight selected text
+function highlightSelection(doc) {
+  const selection = doc.getSelection();
+  if (!selection.rangeCount) return;
 
-  if (highlightMode) return;
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) return;
 
-  tapLeft = document.createElement('div');
-  tapLeft.id = 'tap-left';
-  tapLeft.style.cssText = 'position: absolute; top: 0; left: 0; height: 100%; width: 30%; z-index: 100;';
-  
-  tapRight = document.createElement('div');
-  tapRight.id = 'tap-right';
-  tapRight.style.cssText = 'position: absolute; top: 0; right: 0; height: 100%; width: 30%; z-index: 100;';
+  const span = doc.createElement('span');
+  span.className = `highlight-${selectedColor}`;
+  span.appendChild(range.extractContents());
+  range.insertNode(span);
 
-  viewerElement.appendChild(tapLeft);
-  viewerElement.appendChild(tapRight);
-
-  tapLeft.addEventListener('click', () => {
-    if (!highlightMode) rendition.prev();
-  });
-  tapRight.addEventListener('click', () => {
-    if (!highlightMode) rendition.next();
-  });
+  selection.removeAllRanges();
 }
 
-// Highlight mode toggle
+// Highlight Mode Toggle
 highlightToggle.addEventListener('click', () => {
   highlightMode = !highlightMode;
   highlightToggle.classList.toggle('active');
 
   if (highlightMode) {
-    if (tapLeft) tapLeft.remove();
-    if (tapRight) tapRight.remove();
-    showToast('Highlight mode activated. Click text to highlight.');
+    showToast('Highlight mode ON. Select text.');
     if (rendition) {
       const cfi = rendition.currentLocation().start.cfi;
       rendition.flow('scrolled');
       rendition.display(cfi);
     }
   } else {
-    if (selectedElement) {
-      selectedElement.style.border = 'none';
-      selectedElement = null;
-    }
-    highlightMenu.style.display = 'none';
-    setupTapZones();
-    showToast('Highlight mode deactivated');
+    showToast('Highlight mode OFF.');
     if (rendition) {
       const cfi = rendition.currentLocation().start.cfi;
       rendition.flow('paginated');
-      rendition.spread('auto');
       rendition.display(cfi);
     }
   }
 });
 
-// Load and save highlights
-function loadHighlights() {
-  const key = `highlights-${currentBookUrl}`;
-  const saved = localStorage.getItem(key);
-  if (saved) {
-    try {
-      highlights = JSON.parse(saved);
-    } catch {
-      highlights = {};
-    }
-  } else {
-    highlights = {};
-  }
-}
-
-function saveHighlights() {
-  const key = `highlights-${currentBookUrl}`;
-  localStorage.setItem(key, JSON.stringify(highlights));
-}
-
-function applyHighlights() {
-  if (!rendition || !highlights) return;
-
-  rendition.getContents().forEach(contents => {
-    const doc = contents.document;
-    const cfiBase = contents.cfiBase;
-
-    Object.keys(highlights).forEach(cfi => {
-      if (cfiBase && !cfi.includes(cfiBase)) return;
-
-      try {
-        let element = contents.element(cfi);
-        if (element) {
-          element.style.backgroundColor = getColorForHighlight(highlights[cfi].color);
-          element.style.padding = '4px';
-          element.style.borderRadius = '4px';
-          element.setAttribute('data-highlighted', 'true');
-          element.setAttribute('data-highlight-color', highlights[cfi].color);
-        }
-      } catch (e) {
-        console.warn('Highlight apply failed:', e);
-      }
-    });
-  });
-}
-
-// Color picker
+// Color Picker
 colorOptions.forEach(option => {
   option.addEventListener('click', () => {
     selectedColor = option.getAttribute('data-color');
@@ -643,71 +485,7 @@ colorOptions.forEach(option => {
   });
 });
 
-// Save highlight
-saveHighlightBtn.addEventListener('click', () => {
-  if (!selectedElement || !rendition) return;
-
-  try {
-    const contents = rendition.getContents()[0];
-    let cfi;
-    try {
-      cfi = contents.cfiFromElement(selectedElement);
-    } catch {
-      const uniqueId = 'highlight-' + Date.now();
-      selectedElement.setAttribute('id', uniqueId);
-      cfi = contents.cfiFromElement(selectedElement);
-    }
-
-    if (!cfi) {
-      showToast('Could not save highlight.');
-      return;
-    }
-
-    highlights[cfi] = {
-      color: selectedColor,
-      timestamp: new Date().toISOString(),
-      text: selectedElement.textContent?.substring(0, 50) || ''
-    };
-
-    saveHighlights();
-
-    selectedElement.style.backgroundColor = getColorForHighlight(selectedColor);
-    selectedElement.style.border = 'none';
-    selectedElement.style.padding = '4px';
-    selectedElement.style.borderRadius = '4px';
-    selectedElement.setAttribute('data-highlighted', 'true');
-    selectedElement.setAttribute('data-highlight-color', selectedColor);
-
-    selectedElement = null;
-    highlightMenu.style.display = 'none';
-    showToast('Highlight saved');
-  } catch (error) {
-    console.error('Error saving highlight:', error);
-    showToast('Failed to save highlight');
-  }
-});
-
-// Cancel highlight
-cancelHighlightBtn.addEventListener('click', () => {
-  if (selectedElement) {
-    selectedElement.style.border = 'none';
-    selectedElement = null;
-  }
-  highlightMenu.style.display = 'none';
-});
-
-// Get highlight color
-function getColorForHighlight(color) {
-  switch (color) {
-    case 'yellow': return 'rgba(255, 255, 0, 0.3)';
-    case 'green': return 'rgba(0, 255, 0, 0.2)';
-    case 'blue': return 'rgba(0, 191, 255, 0.2)';
-    case 'pink': return 'rgba(255, 105, 180, 0.2)';
-    default: return 'rgba(255, 255, 0, 0.3)';
-  }
-}
-
-// Theme toggle
+// Theme Toggle
 themeToggle.addEventListener('click', () => {
   isDarkMode = !isDarkMode;
   document.body.classList.toggle('dark-mode', isDarkMode);
@@ -719,6 +497,7 @@ themeToggle.addEventListener('click', () => {
   }
 });
 
+// Theme Application
 function applyTheme(doc) {
   if (isDarkMode) {
     doc.body.style.backgroundColor = '#1a1a1a';
@@ -729,16 +508,16 @@ function applyTheme(doc) {
   }
 }
 
-// Back to library
+// Back to Library
 backToLibraryBtn.addEventListener('click', () => {
   readerContainer.style.display = 'none';
   libraryContainer.style.display = 'block';
 });
 
-// Toast helper
+// Toast Messages
 function showToast(message, duration = 2000) {
-  const existingToasts = document.querySelectorAll('.toast');
-  existingToasts.forEach(toast => toast.remove());
+  const existing = document.querySelectorAll('.toast');
+  existing.forEach(toast => toast.remove());
 
   const toast = document.createElement('div');
   toast.className = 'toast';
