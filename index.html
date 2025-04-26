@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lightweight E-Reader</title>
+  <title>EPUB Reader with Highlighting</title>
+  
+  <!-- JSZip and epub.js for the reader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+  
   <style>
     :root {
       --primary: #3498db;
       --bg-color: #f8f9fa;
       --text-color: #333;
       --card-bg: #fff;
+      --toolbar-bg: #eee;
       --highlight-yellow: rgba(255, 255, 0, 0.3);
       --highlight-green: rgba(0, 255, 0, 0.2);
       --highlight-blue: rgba(0, 191, 255, 0.2);
@@ -21,42 +27,110 @@
         --bg-color: #1a1a1a;
         --text-color: #e0e0e0;
         --card-bg: #2d2d2d;
+        --toolbar-bg: #333;
         --primary: #64b5f6;
-        --highlight-yellow: rgba(255, 255, 0, 0.25);
-        --highlight-green: rgba(0, 255, 0, 0.15);
-        --highlight-blue: rgba(0, 191, 255, 0.15);
-        --highlight-pink: rgba(255, 105, 180, 0.15);
       }
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
       padding: 0;
       background: var(--bg-color);
       color: var(--text-color);
-      line-height: 1.6;
-    }
-
-    .app {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-
-    header {
+      height: 100vh;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(125,125,125,0.2);
-      margin-bottom: 16px;
+      flex-direction: column;
+    }
+
+    /* === Layout === */
+    .app {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* === Library View === */
+    #library-container {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
     }
 
     h1 {
-      font-size: 24px;
-      font-weight: 500;
-      margin: 0;
+      text-align: center;
+      margin: 0 0 1rem;
+    }
+
+    .library-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    #library {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .book {
+      background: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .book:hover {
+      transform: translateY(-4px);
+    }
+
+    .book img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+
+    .book-info {
+      padding: 10px;
+    }
+
+    .book-title {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .book-author {
+      font-size: 12px;
+      color: #777;
+    }
+
+    /* === Reader View === */
+    #reader-container {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: var(--toolbar-bg);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      gap: 10px;
     }
 
     button {
@@ -65,28 +139,12 @@
       border: none;
       border-radius: 4px;
       padding: 8px 12px;
-      font-size: 14px;
       cursor: pointer;
-      transition: background 0.2s;
+      font-size: 14px;
     }
 
     button:hover {
       opacity: 0.9;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    button.icon-btn {
-      background: none;
-      color: var(--primary);
-      padding: 6px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
     button.active {
@@ -94,122 +152,42 @@
       color: #333;
     }
 
-    .library {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-    }
-
-    .book-card {
-      background: var(--card-bg);
-      border-radius: 8px;
+    /* EPUB Viewer */
+    #viewer {
+      flex: 1;
+      position: relative;
       overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-      cursor: pointer;
     }
 
-    .book-card:hover {
-      transform: translateY(-4px);
-    }
-
-    .book-cover {
-      height: 200px;
-      background: #ddd;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-    }
-
-    .book-cover img {
-      width: 100%;
+    /* Navigation Zones */
+    #tap-left, #tap-right {
+      position: absolute;
+      top: 0;
       height: 100%;
-      object-fit: cover;
+      width: 30%;
+      z-index: 100;
     }
 
-    .book-info {
-      padding: 12px;
+    #tap-left {
+      left: 0;
     }
 
-    .book-title {
-      font-weight: 600;
-      margin: 0 0 4px;
-      font-size: 16px;
+    #tap-right {
+      right: 0;
     }
 
-    .book-author {
-      color: #777;
-      font-size: 14px;
-      margin: 0;
-    }
-
-    .reader {
-      display: none;
-      background: var(--card-bg);
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 20px;
-    }
-
-    .toolbar {
+    /* Pagination Controls */
+    .pagination {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      padding: 10px;
+      background: var(--toolbar-bg);
+      border-top: 1px solid rgba(0,0,0,0.1);
     }
 
-    .content {
-      font-size: 18px;
-      line-height: 1.7;
-    }
-
-    .content p {
-      margin-bottom: 1em;
-    }
-
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid rgba(125,125,125,0.2);
-    }
-
-    /* Highlight styles */
-    p.selected {
-      border: 2px dashed #666;
-      padding: 8px;
-      border-radius: 4px;
-    }
-
-    .highlight-yellow {
-      background-color: var(--highlight-yellow);
-      padding: 2px 0;
-      border-radius: 2px;
-    }
-
-    .highlight-green {
-      background-color: var(--highlight-green);
-      padding: 2px 0;
-      border-radius: 2px;
-    }
-
-    .highlight-blue {
-      background-color: var(--highlight-blue);
-      padding: 2px 0;
-      border-radius: 2px;
-    }
-
-    .highlight-pink {
-      background-color: var(--highlight-pink);
-      padding: 2px 0;
-      border-radius: 2px;
-    }
-
-    /* Highlight menu */
-    .highlight-menu {
+    /* Highlight Menu */
+    #highlight-menu {
       display: none;
       position: fixed;
       top: 50%;
@@ -218,36 +196,59 @@
       background: var(--card-bg);
       padding: 16px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 100;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      z-index: 1000;
       width: 280px;
-      max-width: 90vw;
+    }
+
+    .menu-title {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 16px;
+      text-align: center;
     }
 
     .color-options {
       display: flex;
       justify-content: center;
       gap: 12px;
-      margin: 12px 0;
+      margin-bottom: 16px;
     }
 
     .color-option {
-      width: 24px;
-      height: 24px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .color-option:hover {
-      transform: scale(1.1);
     }
 
     .color-option.selected {
       border: 2px solid #333;
     }
 
-    /* Toast */
+    .menu-buttons {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Highlighting Styles */
+    .highlight-yellow {
+      background-color: var(--highlight-yellow);
+    }
+
+    .highlight-green {
+      background-color: var(--highlight-green);
+    }
+
+    .highlight-blue {
+      background-color: var(--highlight-blue);
+    }
+
+    .highlight-pink {
+      background-color: var(--highlight-pink);
+    }
+
+    /* Toast Notifications */
     .toast {
       position: fixed;
       bottom: 20px;
@@ -261,76 +262,70 @@
       z-index: 1000;
     }
 
-    /* Spinner */
+    /* Loader */
     .spinner {
-      width: 24px;
-      height: 24px;
       border: 3px solid rgba(0,0,0,0.1);
       border-radius: 50%;
-      border-top-color: var(--primary);
+      border-top: 3px solid var(--primary);
+      width: 30px;
+      height: 30px;
       animation: spin 1s linear infinite;
-      margin: 40px auto;
+      margin: 20px auto;
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Responsiveness */
-    @media (max-width: 600px) {
-      .library {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      }
-      
-      .book-cover {
-        height: 160px;
-      }
-      
-      .content {
-        font-size: 16px;
-      }
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>E-Reader</h1>
-    </header>
-
-    <div id="library" class="library">
-      <div id="library-loading" class="spinner"></div>
+    <!-- Library View -->
+    <div id="library-container">
+      <div class="library-header">
+        <h1>📚 EPUB Library</h1>
+        <button id="toggle-reader-btn" style="display: none;">Continue Reading</button>
+      </div>
+      <div id="library">
+        <div class="spinner" id="library-loading"></div>
+      </div>
     </div>
 
-    <div id="reader" class="reader">
+    <!-- Reader View -->
+    <div id="reader-container">
       <div class="toolbar">
-        <button id="back-btn">← Back</button>
-        <button id="highlight-btn">Highlight</button>
+        <div class="toolbar-left">
+          <button id="back-to-library-btn">← Library</button>
+          <button id="highlight-toggle">Highlight</button>
+        </div>
+        <div class="toolbar-right">
+          <button id="theme-toggle">☀️</button>
+        </div>
       </div>
-      
-      <h2 id="book-title">Book Title</h2>
-      <p id="book-author">Author Name</p>
-      
-      <div id="content" class="content">
-        <div id="content-loading" class="spinner"></div>
+
+      <div id="viewer">
+        <div id="tap-left"></div>
+        <div id="tap-right"></div>
       </div>
-      
-      <div class="controls">
-        <button id="prev-btn">Previous Page</button>
-        <span id="page-info">Page 1 of 1</span>
-        <button id="next-btn">Next Page</button>
+
+      <div class="pagination">
+        <button id="prev-btn">Previous</button>
+        <span id="page-info">Page 1</span>
+        <button id="next-btn">Next</button>
       </div>
     </div>
 
-    <div id="highlight-menu" class="highlight-menu">
-      <h3>Add Highlight</h3>
+    <!-- Highlight Menu -->
+    <div id="highlight-menu">
+      <h3 class="menu-title">Add Highlight</h3>
       <div class="color-options">
         <div class="color-option selected" style="background-color:#ffff00;" data-color="yellow"></div>
         <div class="color-option" style="background-color:#00ff00;" data-color="green"></div>
         <div class="color-option" style="background-color:#00bfff;" data-color="blue"></div>
         <div class="color-option" style="background-color:#ff69b4;" data-color="pink"></div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
+      <div class="menu-buttons">
         <button id="save-highlight">Save</button>
         <button id="cancel-highlight">Cancel</button>
       </div>
@@ -339,252 +334,386 @@
 
   <script>
     // DOM Elements
+    const libraryContainer = document.getElementById('library-container');
+    const readerContainer = document.getElementById('reader-container');
     const library = document.getElementById('library');
-    const reader = document.getElementById('reader');
-    const content = document.getElementById('content');
-    const backBtn = document.getElementById('back-btn');
-    const highlightBtn = document.getElementById('highlight-btn');
+    const viewerElement = document.getElementById('viewer');
+    const backToLibraryBtn = document.getElementById('back-to-library-btn');
+    const toggleReaderBtn = document.getElementById('toggle-reader-btn');
+    const highlightToggle = document.getElementById('highlight-toggle');
+    const themeToggle = document.getElementById('theme-toggle');
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const pageInfo = document.getElementById('page-info');
-    const bookTitle = document.getElementById('book-title');
-    const bookAuthor = document.getElementById('book-author');
+    const tapLeft = document.getElementById('tap-left');
+    const tapRight = document.getElementById('tap-right');
     const highlightMenu = document.getElementById('highlight-menu');
     const saveHighlightBtn = document.getElementById('save-highlight');
     const cancelHighlightBtn = document.getElementById('cancel-highlight');
     const colorOptions = document.querySelectorAll('.color-option');
     const libraryLoading = document.getElementById('library-loading');
-    const contentLoading = document.getElementById('content-loading');
-    
-    // Global Variables
-    let books = [];
-    let currentBook = null;
-    let currentContent = [];
-    let currentPage = 0;
-    let paragraphsPerPage = 5;
+
+    // Global variables
+    let book, rendition;
+    let currentBookUrl = '';
     let highlightMode = false;
-    let selectedParagraph = null;
+    let selectedElement = null;
     let selectedColor = 'yellow';
     let highlights = {};
-    
-    // Initialize the app
-    window.addEventListener('DOMContentLoaded', () => {
+    let isDarkMode = false;
+
+    // Initialize app
+    document.addEventListener('DOMContentLoaded', () => {
       loadLibrary();
+      
+      // Check for last read book
+      const lastBook = localStorage.getItem('last-book');
+      if (lastBook) {
+        toggleReaderBtn.style.display = 'block';
+        toggleReaderBtn.addEventListener('click', () => {
+          readBook(lastBook);
+        });
+      }
     });
-    
-    // Load library data
+
+    // Load library from JSON
     function loadLibrary() {
+      library.innerHTML = '<div class="spinner" id="library-loading"></div>';
+      
       fetch('/ebooks/library.json')
         .then(response => {
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error! Status: ${response.status}`);
           }
           return response.json();
         })
-        .then(data => {
-          books = data;
-          displayLibrary();
+        .then(books => {
+          displayLibrary(books);
         })
         .catch(error => {
           console.error('Error loading library:', error);
-          libraryLoading.style.display = 'none';
-          
-          // Use sample data if fetch fails
-          books = [{
-            id: 'sample1',
-            title: 'Sample Book',
-            author: 'Demo Author',
-            description: 'This is a sample book to test the e-reader.'
-          }];
-          displayLibrary();
+          library.innerHTML = '<p>Failed to load library. Please try again later.</p>';
         });
     }
-    
-    // Display the library
-    function displayLibrary() {
-      libraryLoading.style.display = 'none';
+
+    // Display library books
+    function displayLibrary(books) {
+      library.innerHTML = '';
       
-      // Clear previous books
-      const existingBooks = document.querySelectorAll('.book-card');
-      existingBooks.forEach(book => book.remove());
+      if (!books || books.length === 0) {
+        library.innerHTML = '<p>No books found in the library.</p>';
+        return;
+      }
       
-      // Display books
       books.forEach(book => {
-        const bookCard = document.createElement('div');
-        bookCard.className = 'book-card';
+        const bookElement = document.createElement('div');
+        bookElement.className = 'book';
+        bookElement.innerHTML = `
+          <img src="${book.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZGRkIj48cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjIwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI4IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZmlsbD0iIzU1NSI+8J+TjTwvdGV4dD48L3N2Zz4='}" alt="${book.title}">
+          <div class="book-info">
+            <div class="book-title">${book.title}</div>
+            <div class="book-author">${book.author || 'Unknown Author'}</div>
+          </div>
+        `;
         
-        const coverDiv = document.createElement('div');
-        coverDiv.className = 'book-cover';
+        bookElement.addEventListener('click', () => {
+          readBook(book.fileUrl);
+        });
         
-        if (book.coverUrl) {
-          const img = document.createElement('img');
-          img.src = book.coverUrl;
-          img.alt = book.title;
-          coverDiv.appendChild(img);
-        } else {
-          coverDiv.textContent = '📚';
-        }
-        
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'book-info';
-        
-        const titleElem = document.createElement('h3');
-        titleElem.className = 'book-title';
-        titleElem.textContent = book.title;
-        
-        const authorElem = document.createElement('p');
-        authorElem.className = 'book-author';
-        authorElem.textContent = book.author;
-        
-        infoDiv.appendChild(titleElem);
-        infoDiv.appendChild(authorElem);
-        
-        bookCard.appendChild(coverDiv);
-        bookCard.appendChild(infoDiv);
-        
-        bookCard.addEventListener('click', () => openBook(book));
-        
-        library.appendChild(bookCard);
+        library.appendChild(bookElement);
       });
     }
-    
-    // Open a book
-    function openBook(book) {
-      currentBook = book;
-      currentPage = 0;
+
+    // Open and read a book
+    function readBook(epubUrl) {
+      currentBookUrl = epubUrl;
+      localStorage.setItem('last-book', epubUrl);
       
-      // Update UI
-      bookTitle.textContent = book.title;
-      bookAuthor.textContent = book.author;
-      content.innerHTML = '';
-      contentLoading.style.display = 'block';
+      // Clean up previous instance
+      if (book) {
+        book.destroy();
+      }
+      if (rendition) {
+        rendition.off('relocated');
+        rendition.off('rendered');
+        rendition = null;
+      }
       
-      // Load book content
-      fetch(book.contentUrl || `/ebooks/${book.id}.json`)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          // Handle different json structures
-          if (Array.isArray(data)) {
-            currentContent = data;
-          } else if (data.content && Array.isArray(data.content)) {
-            currentContent = data.content;
-          } else {
-            throw new Error('Invalid content format');
-          }
-          
-          // Load highlights
-          loadHighlights(book.id);
-          
-          // Display first page
-          displayPage();
-          
-          // Show reader view
-          library.style.display = 'none';
-          reader.style.display = 'block';
-        })
-        .catch(error => {
-          console.error('Error loading book:', error);
-          contentLoading.style.display = 'none';
-          
-          // Use sample content
-          currentContent = [
-            "This is sample paragraph 1.",
-            "This is sample paragraph 2.",
-            "This is sample paragraph 3.",
-            "This is sample paragraph 4.",
-            "This is sample paragraph 5.",
-            "This is sample paragraph 6.",
-            "This is sample paragraph 7.",
-            "This is sample paragraph 8."
-          ];
-          
-          loadHighlights(book.id);
-          displayPage();
-          
-          library.style.display = 'none';
-          reader.style.display = 'block';
-          
-          showToast('Using sample content');
+      // Load highlights for this book
+      loadHighlights();
+      
+      // Initialize epub.js book
+      book = ePub(epubUrl);
+      
+      // Set up the rendition
+      book.ready.then(() => {
+        rendition = book.renderTo('viewer', {
+          width: '100%',
+          height: '100%',
+          flow: 'paginated',
+          spread: 'auto'
         });
+        
+        // Load last position or start from beginning
+        const lastCfi = localStorage.getItem(`position-${currentBookUrl}`);
+        rendition.display(lastCfi || undefined);
+        
+        // Set up event listeners
+        setupRendition();
+        
+        // Switch to reader view
+        libraryContainer.style.display = 'none';
+        readerContainer.style.display = 'flex';
+      }).catch(error => {
+        console.error('Error loading book:', error);
+        showToast('Error loading book. Please try again.');
+      });
     }
-    
-    // Display current page
-    function displayPage() {
-      contentLoading.style.display = 'none';
-      content.innerHTML = '';
-      
-      const start = currentPage * paragraphsPerPage;
-      const end = Math.min(start + paragraphsPerPage, currentContent.length);
-      
-      // Update page info
-      const totalPages = Math.ceil(currentContent.length / paragraphsPerPage);
-      pageInfo.textContent = `Page ${currentPage + 1} of ${totalPages}`;
-      
-      // Enable/disable pagination buttons
-      prevBtn.disabled = currentPage === 0;
-      nextBtn.disabled = currentPage >= totalPages - 1;
-      
-      // Add paragraphs
-      for (let i = start; i < end; i++) {
-        const p = document.createElement('p');
-        p.textContent = currentContent[i];
-        p.setAttribute('data-index', i);
+
+    // Set up rendition event listeners
+    function setupRendition() {
+      // Track location
+      rendition.on('relocated', location => {
+        const cfi = location.start.cfi;
+        localStorage.setItem(`position-${currentBookUrl}`, cfi);
         
-        // Apply highlight if exists
-        if (highlights[currentBook.id] && highlights[currentBook.id].find(h => h.index === i)) {
-          const highlight = highlights[currentBook.id].find(h => h.index === i);
-          p.className = `highlight-${highlight.color}`;
+        // Update page info
+        const currentPage = location.start.displayed.page;
+        const totalPages = location.start.displayed.total;
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+      });
+      
+      // Apply highlights when content is rendered
+      rendition.on('rendered', (section) => {
+        applyHighlights();
+      });
+      
+      // Navigation via tap zones
+      tapLeft.addEventListener('click', () => {
+        rendition.prev();
+      });
+      
+      tapRight.addEventListener('click', () => {
+        rendition.next();
+      });
+      
+      // Navigation via buttons
+      prevBtn.addEventListener('click', () => {
+        rendition.prev();
+      });
+      
+      nextBtn.addEventListener('click', () => {
+        rendition.next();
+      });
+      
+      // Keyboard navigation
+      document.addEventListener('keydown', event => {
+        if (readerContainer.style.display === 'none') return;
+        
+        if (event.key === 'ArrowLeft') {
+          rendition.prev();
+        } else if (event.key === 'ArrowRight') {
+          rendition.next();
         }
+      });
+      
+      // Configure content hooks
+      rendition.hooks.content.register(contents => {
+        // Get the document
+        const doc = contents.document;
         
-        // Add click handler for highlight mode
-        p.addEventListener('click', () => {
+        // Add click handlers for highlight mode
+        doc.addEventListener('click', event => {
           if (!highlightMode) return;
           
-          // Clear previous selection
-          if (selectedParagraph) {
-            selectedParagraph.classList.remove('selected');
+          // Find the paragraph that was clicked
+          let target = event.target;
+          while (target && target.tagName !== 'P' && target.tagName !== 'DIV' && target !== doc.body) {
+            target = target.parentNode;
           }
           
-          selectedParagraph = p;
-          p.classList.add('selected');
-          
-          // Show highlight menu
-          highlightMenu.style.display = 'block';
+          if (target && (target.tagName === 'P' || target.tagName === 'DIV') && target !== doc.body) {
+            // Clear previous selection
+            if (selectedElement) {
+              selectedElement.style.border = 'none';
+            }
+            
+            // Mark the selected element
+            selectedElement = target;
+            selectedElement.style.border = '2px dashed #666';
+            
+            // Show highlight menu
+            highlightMenu.style.display = 'block';
+          }
         });
         
-        content.appendChild(p);
-      }
+        // Apply current theme
+        applyTheme(doc);
+      });
     }
-    
+
     // Load highlights from localStorage
-    function loadHighlights(bookId) {
-      const saved = localStorage.getItem('reader-highlights');
+    function loadHighlights() {
+      const key = `highlights-${currentBookUrl}`;
+      const saved = localStorage.getItem(key);
+      
       if (saved) {
         try {
           highlights = JSON.parse(saved);
-          
-          if (!highlights[bookId]) {
-            highlights[bookId] = [];
-          }
-        } catch (e) {
-          console.error('Error loading highlights:', e);
-          highlights = { [bookId]: [] };
+        } catch (error) {
+          console.error('Error parsing highlights:', error);
+          highlights = {};
         }
       } else {
-        highlights = { [bookId]: [] };
+        highlights = {};
       }
     }
-    
+
     // Save highlights to localStorage
     function saveHighlights() {
-      localStorage.setItem('reader-highlights', JSON.stringify(highlights));
+      const key = `highlights-${currentBookUrl}`;
+      localStorage.setItem(key, JSON.stringify(highlights));
     }
-    
+
+    // Apply highlights to rendered content
+    function applyHighlights() {
+      if (!rendition || !highlights) return;
+      
+      // Get all current contents (iframes)
+      rendition.getContents().forEach(contents => {
+        const doc = contents.document;
+        const cfiBase = contents.cfiBase;
+        
+        // Apply each highlight
+        Object.keys(highlights).forEach(cfi => {
+          try {
+            // Check if this highlight belongs to this section
+            if (!cfi.includes(cfiBase)) return;
+            
+            const highlight = highlights[cfi];
+            const range = rendition.getRange(cfi);
+            
+            if (range) {
+              // Create a span to wrap the highlighted content
+              const highlightElement = doc.createElement('span');
+              highlightElement.setAttribute('data-epubcfi', cfi);
+              highlightElement.className = `highlight-${highlight.color}`;
+              
+              // Apply the highlight
+              range.surroundContents(highlightElement);
+            }
+          } catch (error) {
+            console.warn('Error applying highlight:', error);
+          }
+        });
+      });
+    }
+
+    // Toggle highlight mode
+    highlightToggle.addEventListener('click', () => {
+      highlightMode = !highlightMode;
+      highlightToggle.classList.toggle('active');
+      
+      if (highlightMode) {
+        showToast('Highlight mode activated. Click on text to highlight.');
+      } else {
+        showToast('Highlight mode deactivated');
+        
+        // Clear selection if any
+        if (selectedElement) {
+          selectedElement.style.border = 'none';
+          selectedElement = null;
+        }
+        
+        // Hide menu
+        highlightMenu.style.display = 'none';
+      }
+    });
+
+    // Color selection
+    colorOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        selectedColor = option.getAttribute('data-color');
+        
+        // Update UI
+        colorOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+      });
+    });
+
+    // Save highlight
+    saveHighlightBtn.addEventListener('click', () => {
+      if (!selectedElement || !rendition) return;
+      
+      try {
+        // Generate CFI for the selected element
+        const cfi = rendition.getContents()[0].cfiFromElement(selectedElement);
+        
+        // Store highlight info
+        highlights[cfi] = {
+          color: selectedColor,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Save to localStorage
+        saveHighlights();
+        
+        // Apply the highlight
+        selectedElement.classList.add(`highlight-${selectedColor}`);
+        selectedElement.style.border = 'none';
+        
+        // Reset state
+        selectedElement = null;
+        highlightMenu.style.display = 'none';
+        
+        showToast('Highlight saved');
+      } catch (error) {
+        console.error('Error saving highlight:', error);
+        showToast('Failed to save highlight');
+      }
+    });
+
+    // Cancel highlight
+    cancelHighlightBtn.addEventListener('click', () => {
+      if (selectedElement) {
+        selectedElement.style.border = 'none';
+        selectedElement = null;
+      }
+      
+      highlightMenu.style.display = 'none';
+    });
+
+    // Toggle dark/light theme
+    themeToggle.addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      document.body.classList.toggle('dark-mode', isDarkMode);
+      themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+      
+      // Apply theme to content
+      if (rendition) {
+        rendition.getContents().forEach(contents => {
+          applyTheme(contents.document);
+        });
+      }
+    });
+
+    // Apply theme to content
+    function applyTheme(doc) {
+      if (isDarkMode) {
+        doc.body.style.backgroundColor = '#1a1a1a';
+        doc.body.style.color = '#e0e0e0';
+      } else {
+        doc.body.style.backgroundColor = '#fff';
+        doc.body.style.color = '#333';
+      }
+    }
+
+    // Back to library
+    backToLibraryBtn.addEventListener('click', () => {
+      readerContainer.style.display = 'none';
+      libraryContainer.style.display = 'block';
+    });
+
     // Show toast notification
     function showToast(message, duration = 2000) {
       // Remove existing toasts
@@ -600,107 +729,6 @@
       // Remove after duration
       setTimeout(() => toast.remove(), duration);
     }
-    
-    // Toggle highlight mode
-    highlightBtn.addEventListener('click', () => {
-      highlightMode = !highlightMode;
-      highlightBtn.classList.toggle('active');
-      
-      if (highlightMode) {
-        showToast('Highlight mode active. Tap on a paragraph.');
-      } else {
-        showToast('Highlight mode off');
-        
-        // Clear selection
-        if (selectedParagraph) {
-          selectedParagraph.classList.remove('selected');
-          selectedParagraph = null;
-        }
-      }
-    });
-    
-    // Color selection
-    colorOptions.forEach(option => {
-      option.addEventListener('click', () => {
-        selectedColor = option.getAttribute('data-color');
-        
-        // Update UI
-        colorOptions.forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-      });
-    });
-    
-    // Save highlight
-    saveHighlightBtn.addEventListener('click', () => {
-      if (!selectedParagraph || !currentBook) return;
-      
-      const index = parseInt(selectedParagraph.getAttribute('data-index'));
-      
-      // Apply highlight
-      selectedParagraph.className = `highlight-${selectedColor}`;
-      selectedParagraph.classList.remove('selected');
-      
-      // Save highlight
-      const highlight = {
-        id: Date.now(),
-        index: index,
-        color: selectedColor,
-        timestamp: new Date().toISOString()
-      };
-      
-      highlights[currentBook.id].push(highlight);
-      saveHighlights();
-      
-      // Close menu
-      highlightMenu.style.display = 'none';
-      selectedParagraph = null;
-      
-      showToast('Highlight saved');
-    });
-    
-    // Cancel highlight
-    cancelHighlightBtn.addEventListener('click', () => {
-      if (selectedParagraph) {
-        selectedParagraph.classList.remove('selected');
-        selectedParagraph = null;
-      }
-      
-      highlightMenu.style.display = 'none';
-    });
-    
-    // Navigation
-    backBtn.addEventListener('click', () => {
-      reader.style.display = 'none';
-      library.style.display = 'grid';
-    });
-    
-    prevBtn.addEventListener('click', () => {
-      if (currentPage > 0) {
-        currentPage--;
-        displayPage();
-        window.scrollTo(0, 0);
-      }
-    });
-    
-    nextBtn.addEventListener('click', () => {
-      const totalPages = Math.ceil(currentContent.length / paragraphsPerPage);
-      if (currentPage < totalPages - 1) {
-        currentPage++;
-        displayPage();
-        window.scrollTo(0, 0);
-      }
-    });
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', event => {
-      if (reader.style.display === 'none') return;
-      
-      if (event.key === 'ArrowLeft' && !prevBtn.disabled) {
-        prevBtn.click();
-      } else if (event.key === 'ArrowRight' && !nextBtn.disabled) {
-        nextBtn.click();
-      }
-    });
   </script>
 </body>
 </html>
