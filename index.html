@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Slick ePub Reader with Highlights</title>
+  <title>Mobile‐First ePub Reader with Highlighting</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-  <!-- JSZip and epub.js -->
+  <!-- JSZip & epub.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    /* ===== Global & Reset ===== */
+    /* ===== Mobile‐First Reader CSS ===== */
     html, body {
       margin: 0; padding: 0;
       height: 100%; width: 100%;
@@ -18,200 +18,205 @@
       background: #f5f5f5;
       overflow: hidden;
     }
-    button {
-      -webkit-appearance: none;
-      appearance: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px; height: 44px;
-      padding: 0;
-      border: none; border-radius: 8px;
-      background: #007bff; color: #fff; cursor: pointer;
-      font-size: 20px;
-    }
-    button:active { transform: translateY(1px) }
-
-    /* ===== Overlay ===== */
     #overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.5);
       opacity: 0; pointer-events: none;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s;
       z-index: 900;
     }
     #overlay.visible {
       opacity: 1; pointer-events: auto;
     }
-
-    /* ===== Library Drawer ===== */
     #library-container {
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
+      position: fixed; top: 0; bottom: 0; left: 0;
       width: 80%; max-width: 300px;
-      background: #fff;
+      background: #fff; overflow-y: auto;
+      transform: translateX(-100%); transition: transform 0.3s;
       box-shadow: 2px 0 8px rgba(0,0,0,0.1);
-      overflow-y: auto;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
       z-index: 1000;
     }
     #library-container.open { transform: translateX(0); }
-    #library-container h1 {
-      margin: 1rem; font-size: 1.2rem; text-align: center;
-    }
-    #library { list-style: none; padding: 0; margin: 0; }
+    #library-container h1 { margin: 1rem; text-align: center; }
+    #library { list-style:none; padding:0; margin:0; }
     #library li {
-      padding: 12px; border-bottom: 1px solid #eee;
-      text-align: center;
+      padding:12px; border-bottom:1px solid #eee;
+      text-align:center;
     }
-    #library li img {
-      max-width: 100px; margin-bottom: 8px;
-    }
-    #library li h3 { margin: .5rem 0 .3rem; font-size: 1rem; }
-    #library li p  { margin: 0 0 .5rem; font-size: .9rem; color: #555 }
+    #library li img { max-width:100px; margin-bottom:8px; }
+    #library li h3 { margin:.5rem 0 .3rem; font-size:1rem; }
+    #library li p { margin:0 0 .5rem; font-size:.9rem; color:#555; }
     #library li button {
-      padding: 6px 12px; border-radius: 4px;
-      background: #007bff; color: #fff; cursor: pointer;
+      padding:6px 12px; border:none; border-radius:4px;
+      background:#007bff; color:#fff; cursor:pointer;
     }
-    #library li button:hover { background: #0056b3; }
+    #library li button:hover { background:#0056b3; }
 
-    /* ===== Reader Container ===== */
     #reader-container {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      display: flex; flex-direction: column;
+      position:absolute; top:0; left:0; right:0; bottom:0;
+      display:flex; flex-direction:column;
     }
-    #viewer {
-      position: relative; flex: 1; background: #fff;
-    }
+    #viewer { flex:1; background:#fff; position:relative; }
 
-    /* ===== Bottom Toolbar ===== */
     #toolbar {
-      position: fixed;
-      left: 0; right: 0; bottom: env(safe-area-inset-bottom);
-      padding-bottom: calc(env(safe-area-inset-bottom) + 4px);
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(10px);
-      display: flex; justify-content: space-around; align-items: center;
-      box-shadow: 0 -1px 4px rgba(0,0,0,0.1);
-      z-index: 1001;
+      position:fixed;
+      left:0; right:0; bottom:env(safe-area-inset-bottom);
+      padding-bottom:calc(env(safe-area-inset-bottom)+4px);
+      background:rgba(255,255,255,0.95);
+      backdrop-filter:blur(10px);
+      display:flex; justify-content:space-around; align-items:center;
+      box-shadow:0 -1px 4px rgba(0,0,0,0.1); z-index:1001;
     }
+    #toolbar button {
+      width:44px; height:44px; border:none; border-radius:8px;
+      background:#007bff; color:#fff; font-size:20px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #toolbar button:active { transform:translateY(1px); }
 
-    /* ===== Highlight Styles (unchanged) ===== */
-    .highlight-yellow { background-color: rgba(255,255,0,0.3); padding:5px; border-radius:4px; }
-    .highlight-green  { background-color: rgba(0,255,0,0.2); padding:5px; border-radius:4px; }
-    .highlight-blue   { background-color: rgba(0,191,255,0.2); padding:5px; border-radius:4px; }
-    .highlight-pink   { background-color: rgba(255,105,180,0.2); padding:5px; border-radius:4px; }
-    .selected { outline:2px dashed #666; }
-
-    /* ===== Highlight menu (unchanged) ===== */
+    /* ===== Static Highlight Mode CSS (unchanged) ===== */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .toolbar { display:flex; justify-content:space-between; margin-bottom:20px; padding:10px; background:#eee; border-radius:4px; }
+    button { padding:8px 12px; border:none; border-radius:4px; cursor:pointer; background:#4285f4; color:#fff; }
+    button:hover { background:#3367d6; }
+    button.active { background:#ffcc00; color:black; }
+    .page-content p { line-height:1.6; margin-bottom:15px; }
+    p.selected { border:2px dashed #666; padding:10px; border-radius:4px; }
+    .highlight-yellow { background:rgba(255,255,0,0.3); padding:5px; border-radius:4px; }
+    .highlight-green { background:rgba(0,255,0,0.2); padding:5px; border-radius:4px; }
+    .highlight-blue { background:rgba(0,191,255,0.2); padding:5px; border-radius:4px; }
+    .highlight-pink { background:rgba(255,105,180,0.2); padding:5px; border-radius:4px; }
     #highlight-menu {
-      display: none;
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      background:white; padding:20px;
-      border-radius:8px;
-      box-shadow:0 4px 15px rgba(0,0,0,0.3);
-      z-index:1002;
-      width:300px;
+      display:none; position:fixed; top:50%; left:50%;
+      transform:translate(-50%,-50%); background:white; padding:20px;
+      border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);
+      z-index:1000; width:300px;
     }
-    .color-options {
-      display:flex; justify-content:center;
-      gap:15px; margin:15px 0;
+    .color-options { display:flex; justify-content:center; gap:15px; margin:15px 0; }
+    .color-option { width:30px; height:30px; border-radius:50%; cursor:pointer; }
+    .color-option.selected { border:3px solid #333; }
+    textarea { width:100%; height:80px; margin:10px 0; padding:8px; border:1px solid #ccc; border-radius:4px; resize:none; }
+    .menu-buttons { display:flex; justify-content:space-between; }
+    #highlights-view { display:none; }
+    .highlight-item {
+      background:#f9f9f9; padding:15px; margin-bottom:15px; border-radius:4px; position:relative;
     }
-    .color-option {
-      width:30px; height:30px; border-radius:50%;
-      cursor:pointer;
+    .highlight-text { font-style:italic; padding-right:30px; }
+    .highlight-note { margin-top:10px; padding:8px; background:#f0f0f0; border-left:3px solid #ccc; font-size:14px; padding-right:30px; }
+    .highlight-actions {
+      position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:10px;
     }
-    .color-option.selected {
-      border:3px solid #333;
-    }
-    textarea {
-      width:100%; height:80px; margin:10px 0;
-      padding:8px; border:1px solid #ccc;
-      border-radius:4px; resize:none;
-    }
-    .menu-buttons {
-      display:flex; justify-content:space-between;
-    }
-
-    /* ===== Edit-note popup (unchanged) ===== */
+    .action-btn { border:none; background:none; cursor:pointer; font-size:16px; opacity:0.6; transition:opacity .2s; }
+    .action-btn:hover { opacity:1; }
     #edit-note-popup {
-      display:none;
-      position:fixed; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:white; padding:20px;
-      border-radius:8px;
-      box-shadow:0 4px 15px rgba(0,0,0,0.3);
-      z-index:1002; width:300px;
+      display:none; position:fixed; top:50%; left:50%;
+      transform:translate(-50%,-50%); background:white; padding:20px;
+      border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3);
+      z-index:1000; width:300px;
     }
-
-    /* ===== Toast ===== */
     .toast {
       position:fixed; bottom:20px; left:50%;
-      transform:translateX(-50%);
-      background:rgba(0,0,0,0.8); color:white;
-      padding:10px 20px; border-radius:20px;
-      z-index:1002;
+      transform:translateX(-50%); background:rgba(0,0,0,0.8);
+      color:#fff; padding:10px 20px; border-radius:20px; z-index:1000;
     }
   </style>
 </head>
-<body class="light-mode">
-  <div id="overlay"></div>
+<body>
 
-  <!-- LIBRARY DRAWER -->
+  <!-- Overlay & Library Drawer -->
+  <div id="overlay"></div>
   <div id="library-container">
     <h1>📚 My Library</h1>
     <ul id="library"><li>Loading…</li></ul>
   </div>
 
-  <!-- READER -->
+  <!-- Static Highlight‐Mode UI -->
+  <div class="container">
+    <h1>ePub Reader with Highlighting</h1>
+    <div id="book-view">
+      <div class="toolbar">
+        <button id="view-highlights-btn">View Highlights</button>
+        <button id="highlight-toggle">Highlight Mode</button>
+      </div>
+      <div class="page-content">
+        <p data-index="0">This is the first paragraph...</p>
+        <p data-index="1">This is the second paragraph...</p>
+        <p data-index="2">This is the third paragraph...</p>
+        <p data-index="3">This is another paragraph...</p>
+        <p data-index="4">When you activate highlight mode...</p>
+        <p data-index="5">After selecting a color...</p>
+        <p data-index="6">You can view all your highlights...</p>
+      </div>
+    </div>
+    <div id="highlights-view">
+      <div class="toolbar">
+        <button id="back-to-book-btn">Back to Book</button>
+      </div>
+      <h2>My Highlights and Notes</h2>
+      <div id="highlights-container">
+        <p id="no-highlights-message">No highlights yet. Use highlight mode to create some!</p>
+      </div>
+    </div>
+
+    <!-- Highlight Menu -->
+    <div id="highlight-menu">
+      <h3>Create Highlight</h3>
+      <div class="color-options">
+        <div class="color-option selected" style="background-color:#ffff00;" data-color="yellow"></div>
+        <div class="color-option" style="background-color:#00ff00;" data-color="green"></div>
+        <div class="color-option" style="background-color:#00bfff;" data-color="blue"></div>
+        <div class="color-option" style="background-color:#ff69b4;" data-color="pink"></div>
+      </div>
+      <label for="note-input">Add a note (optional):</label>
+      <textarea id="note-input" placeholder="Enter your note here..."></textarea>
+      <div class="menu-buttons">
+        <button id="save-highlight">Save Highlight</button>
+        <button id="cancel-highlight">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Edit Note Popup -->
+    <div id="edit-note-popup">
+      <h3>Edit Note</h3>
+      <textarea id="edit-note-input" placeholder="Edit your note..."></textarea>
+      <div class="menu-buttons">
+        <button id="save-edit">Save</button>
+        <button id="cancel-edit">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Reader -->
   <div id="reader-container">
     <div id="viewer"></div>
   </div>
 
-  <!-- BOTTOM TOOLBAR -->
+  <!-- Bottom Toolbar -->
   <div id="toolbar">
     <button id="menu-toggle">☰</button>
     <button id="toc-toggle">📖</button>
     <button id="bookmark-toggle">☆</button>
     <button id="settings-toggle">Aa</button>
     <button id="theme-toggle">🌙</button>
-    <button id="highlight-toggle">🖍️</button>
-  </div>
-
-  <!-- Highlight Menu -->
-  <div id="highlight-menu">
-    <h3>Create Highlight</h3>
-    <div class="color-options">
-      <div class="color-option selected" style="background-color:#ffff00;" data-color="yellow"></div>
-      <div class="color-option" style="background-color:#00ff00;" data-color="green"></div>
-      <div class="color-option" style="background-color:#00bfff;" data-color="blue"></div>
-      <div class="color-option" style="background-color:#ff69b4;" data-color="pink"></div>
-    </div>
-    <label for="note-input">Add a note (optional):</label>
-    <textarea id="note-input" placeholder="Enter your note here..."></textarea>
-    <div class="menu-buttons">
-      <button id="save-highlight">Save Highlight</button>
-      <button id="cancel-highlight">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Edit Note Popup -->
-  <div id="edit-note-popup">
-    <h3>Edit Note</h3>
-    <textarea id="edit-note-input" placeholder="Edit your note..."></textarea>
-    <div class="menu-buttons">
-      <button id="save-edit">Save</button>
-      <button id="cancel-edit">Cancel</button>
-    </div>
+    <button id="highlight-toggle-mobile">🖍️</button>
   </div>
 
   <script>
-    // ==== Reader + Library Logic (unchanged) ====
+    /***** Dynamic Library & ePub.js Reader Logic *****/
     let book, rendition, currentBookUrl = null;
-    let highlightMode = false;
 
     function toggleLibrary(open) {
       document.getElementById('library-container').classList.toggle('open', open);
@@ -230,9 +235,7 @@
         books.forEach(b => {
           const li = document.createElement('li');
           li.innerHTML = `
-            <img src="${b.cover}" alt="${b.title}">
-            <h3>${b.title}</h3>
-            <p>${b.author}</p>
+            <img src="${b.cover}" alt="${b.title}"><h3>${b.title}</h3><p>${b.author}</p>
             <button>Read</button>
           `;
           li.querySelector('button').onclick = () => readBook(b.fileUrl);
@@ -259,33 +262,63 @@
       if (rendition) rendition.destroy();
       if (book) book.destroy();
       book = ePub(url);
-      rendition = book.renderTo('viewer',{width:'100%',height:'100%',flow:localStorage.getItem('reading-mode')||'paginated',snap:true,spread:'always'});
-      rendition.display(localStorage.getItem('last-location-'+url)||undefined);
+      rendition = book.renderTo('viewer', {
+        width: '100%', height: '100%',
+        flow: localStorage.getItem('reading-mode')||'paginated',
+        snap: true, spread: 'always'
+      });
+      const lastCfi = localStorage.getItem('last-location-'+url);
+      rendition.display(lastCfi||undefined);
     }
 
-    // Bottom toolbar stubs
-    document.getElementById('toc-toggle').onclick      = ()=>{/* your TOC */};
-    document.getElementById('bookmark-toggle').onclick = ()=>{/* your bookmarks */};
-    document.getElementById('settings-toggle').onclick = ()=>{/* your settings */};
-    document.getElementById('theme-toggle').onclick    = ()=>{/* your theme */};
+    document.getElementById('toc-toggle').onclick      = ()=>{/* TOC */};
+    document.getElementById('bookmark-toggle').onclick = ()=>{/* Bookmarks */};
+    document.getElementById('settings-toggle').onclick = ()=>{/* Settings */};
+    document.getElementById('theme-toggle').onclick    = ()=>{/* Theme toggle */};
 
     window.addEventListener('DOMContentLoaded',()=>{
       loadLibrary();
-      const params = new URLSearchParams(location.search);
-      const b = params.get('book')||localStorage.getItem('last-book');
-      if (b) initBook(decodeURIComponent(b));
-      else   toggleLibrary(true);
+      const p = new URLSearchParams(location.search).get('book')||localStorage.getItem('last-book');
+      if (p) initBook(decodeURIComponent(p));
+      else toggleLibrary(true);
     });
+  </script>
 
-    // ==== YOUR Highlight Mode Logic (unchanged) ====
-    const saveHighlightBtn   = document.getElementById('save-highlight');
-    const cancelHighlightBtn = document.getElementById('cancel-highlight');
-    const noteInput          = document.getElementById('note-input');
-    const colorOptions       = document.querySelectorAll('.color-option');
-    const highlights         = JSON.parse(localStorage.getItem('bookHighlights')||'[]');
-    let selectedColor = 'yellow', selectedRange = null;
-    let currentEditingId = null;
+  <script>
+    /***** Static Highlight Mode Logic (unchanged) *****/
+    const viewHighlightsBtn   = document.getElementById('view-highlights-btn');
+    const backToBookBtn       = document.getElementById('back-to-book-btn');
+    const highlightToggle     = document.getElementById('highlight-toggle');
+    const paragraphs          = document.querySelectorAll('.page-content p');
+    const highlightMenu       = document.getElementById('highlight-menu');
+    const saveHighlightBtn    = document.getElementById('save-highlight');
+    const cancelHighlightBtn  = document.getElementById('cancel-highlight');
+    const noteInput           = document.getElementById('note-input');
+    const colorOptions        = document.querySelectorAll('.color-option');
+    const highlightsContainer = document.getElementById('highlights-container');
+    const noHighlightsMessage = document.getElementById('no-highlights-message');
+    const editNotePopup       = document.getElementById('edit-note-popup');
+    const editNoteInput       = document.getElementById('edit-note-input');
+    const saveEditBtn         = document.getElementById('save-edit');
+    const cancelEditBtn       = document.getElementById('cancel-edit');
 
+    let highlightModeStatic = false;
+    let selectedParagraph = null;
+    let selectedColor = 'yellow';
+    let highlights = JSON.parse(localStorage.getItem('bookHighlights')||'[]');
+    let currentEditingHighlight = null;
+
+    function loadHighlights() {
+      if (highlights.length) {
+        highlights.forEach(h=>{
+          const p = paragraphs[h.paragraphIndex];
+          if (p) p.className = 'highlight-'+h.color;
+        });
+      }
+    }
+    function saveHighlights() {
+      localStorage.setItem('bookHighlights', JSON.stringify(highlights));
+    }
     function showToast(msg,d=2000){
       document.querySelectorAll('.toast').forEach(t=>t.remove());
       const t = document.createElement('div');
@@ -294,61 +327,131 @@
       setTimeout(()=>t.remove(),d);
     }
 
-    document.getElementById('highlight-toggle').addEventListener('click',()=>{
-      highlightMode = !highlightMode;
-      document.getElementById('highlight-toggle').classList.toggle('active');
-      highlightMode
-        ? showToast('Highlight mode on. Tap text to select.')
-        : showToast('Highlight mode off.');
+    highlightToggle.addEventListener('click', ()=>{
+      highlightModeStatic = !highlightModeStatic;
+      highlightToggle.classList.toggle('active');
+      if (!highlightModeStatic && selectedParagraph) {
+        selectedParagraph.classList.remove('selected');
+        selectedParagraph = null;
+      }
+      showToast(highlightModeStatic? 'Highlight mode ON' : 'Highlight mode OFF');
     });
 
-    // We’ll use a simple text‐selection approach inside the rendition iframe
-    rendition && rendition.on('selected', cfiRange => {
-      if (!highlightMode) return rendition.clearSelection();
-      selectedRange = cfiRange;
-      highlightMenu.style.display='block';
-      noteInput.value='';
+    paragraphs.forEach(p=>{
+      p.addEventListener('click', ()=>{
+        if (!highlightModeStatic) return;
+        if (selectedParagraph) selectedParagraph.classList.remove('selected');
+        selectedParagraph = p;
+        p.classList.add('selected');
+        noteInput.value = '';
+        highlightMenu.style.display = 'block';
+      });
     });
 
     colorOptions.forEach(o=>{
-      o.addEventListener('click',()=>{
-        selectedColor=o.dataset.color;
+      o.addEventListener('click', ()=>{
+        selectedColor = o.dataset.color;
         colorOptions.forEach(x=>x.classList.remove('selected'));
         o.classList.add('selected');
       });
     });
 
-    saveHighlightBtn.onclick = ()=>{
-      if (!selectedRange) return;
-      // Apply
-      rendition.annotations.add('highlight', selectedRange, {}, (e)=>{}, selectedColor);
-      // Save meta
+    saveHighlightBtn.addEventListener('click', ()=>{
+      if (!selectedParagraph) return;
+      const idx = +selectedParagraph.dataset.index;
+      const note = noteInput.value.trim();
+      selectedParagraph.className = 'highlight-'+selectedColor;
+      selectedParagraph.classList.remove('selected');
       highlights.push({
         id: Date.now(),
-        cfi: selectedRange,
+        paragraphIndex: idx,
+        text: selectedParagraph.textContent,
         color: selectedColor,
-        note: noteInput.value||''
+        note,
+        timestamp: new Date().toISOString()
       });
-      localStorage.setItem('bookHighlights',JSON.stringify(highlights));
-      highlightMenu.style.display='none';
-      rendition.clearSelection();
-      showToast('Highlight saved');
-    };
-
-    cancelHighlightBtn.onclick = ()=>{
-      highlightMenu.style.display='none';
-      rendition.clearSelection();
-    };
-
-    // Edit‐note popup hooks (for brevity, you can wire these exactly as in your standalone)
-    // … your save-edit, cancel-edit, updateHighlightsList functions …
-
-    // On book load, re‐apply saved highlights:
-    book && book.ready.then(()=>{
-      highlights.forEach(h=>{
-        rendition.annotations.add('highlight',h.cfi,{},()=>{},h.color);
-      });
+      saveHighlights();
+      highlightMenu.style.display = 'none';
+      selectedParagraph = null;
+      showToast(note? 'Highlight & note saved' : 'Highlight saved');
     });
+
+    cancelHighlightBtn.addEventListener('click', ()=>{
+      if (selectedParagraph) selectedParagraph.classList.remove('selected');
+      selectedParagraph = null;
+      highlightMenu.style.display = 'none';
+    });
+
+    function updateHighlightsList() {
+      if (!highlights.length) {
+        noHighlightsMessage.style.display='block';
+        return;
+      }
+      noHighlightsMessage.style.display='none';
+      document.querySelectorAll('.highlight-item').forEach(i=>i.remove());
+      highlights.sort((a,b)=>a.paragraphIndex-b.paragraphIndex)
+        .forEach(h=>{
+          const item = document.createElement('div');
+          item.className='highlight-item';
+          item.style.borderLeft='4px solid '+getColorCode(h.color);
+          const t = document.createElement('div');
+          t.className='highlight-text'; t.textContent=h.text;
+          item.appendChild(t);
+          if (h.note) {
+            const n = document.createElement('div');
+            n.className='highlight-note'; n.textContent=h.note;
+            item.appendChild(n);
+          }
+          const acts = document.createElement('div');
+          acts.className='highlight-actions';
+          const editBtn = document.createElement('button');
+          editBtn.className='action-btn'; editBtn.innerHTML='✏️';
+          editBtn.onclick = ()=>{ currentEditingHighlight=h.id; editNoteInput.value=h.note||''; editNotePopup.style.display='block'; };
+          const delBtn = document.createElement('button');
+          delBtn.className='action-btn'; delBtn.innerHTML='🗑️';
+          delBtn.onclick = ()=>{
+            highlights = highlights.filter(x=>x.id!==h.id);
+            paragraphs[h.paragraphIndex].className='';
+            saveHighlights();
+            item.remove();
+            if (!highlights.length) noHighlightsMessage.style.display='block';
+            showToast('Highlight deleted');
+          };
+          acts.appendChild(editBtn); acts.appendChild(delBtn);
+          item.appendChild(acts);
+          highlightsContainer.appendChild(item);
+        });
+    }
+
+    viewHighlightsBtn.addEventListener('click', ()=>{
+      document.getElementById('book-view').style.display='none';
+      document.getElementById('highlights-view').style.display='block';
+      updateHighlightsList();
+    });
+    backToBookBtn.addEventListener('click', ()=>{
+      document.getElementById('highlights-view').style.display='none';
+      document.getElementById('book-view').style.display='block';
+    });
+
+    saveEditBtn.addEventListener('click', ()=>{
+      const idx = highlights.findIndex(h=>h.id===currentEditingHighlight);
+      if (idx!==-1) {
+        highlights[idx].note = editNoteInput.value.trim();
+        saveHighlights();
+        editNotePopup.style.display='none';
+        updateHighlightsList();
+        showToast('Note updated');
+      }
+    });
+    cancelEditBtn.addEventListener('click', ()=>{
+      editNotePopup.style.display='none';
+    });
+
+    function getColorCode(name){
+      return { yellow:'#ffff00', green:'#00ff00', blue:'#00bfff', pink:'#ff69b4' }[name];
+    }
+
+    loadHighlights();
   </script>
 </body>
 </html>
