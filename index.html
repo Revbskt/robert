@@ -2,545 +2,401 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>E-Reader with Highlighting</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lightweight E-Reader</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
+    :root {
+      --primary: #3498db;
+      --bg-color: #f8f9fa;
+      --text-color: #333;
+      --card-bg: #fff;
+      --highlight-yellow: rgba(255, 255, 0, 0.3);
+      --highlight-green: rgba(0, 255, 0, 0.2);
+      --highlight-blue: rgba(0, 191, 255, 0.2);
+      --highlight-pink: rgba(255, 105, 180, 0.2);
     }
 
-    .container {
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1a1a1a;
+        --text-color: #e0e0e0;
+        --card-bg: #2d2d2d;
+        --primary: #64b5f6;
+        --highlight-yellow: rgba(255, 255, 0, 0.25);
+        --highlight-green: rgba(0, 255, 0, 0.15);
+        --highlight-blue: rgba(0, 191, 255, 0.15);
+        --highlight-pink: rgba(255, 105, 180, 0.15);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+
+    .app {
       max-width: 800px;
       margin: 0 auto;
-      background-color: white;
-      padding: 20px;
+      padding: 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(125,125,125,0.2);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button.icon-btn {
+      background: none;
+      color: var(--primary);
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button.active {
+      background: #f1c40f;
+      color: #333;
+    }
+
+    .library {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .book-card {
+      background: var(--card-bg);
       border-radius: 8px;
+      overflow: hidden;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+      cursor: pointer;
+    }
+
+    .book-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .book-cover {
+      height: 200px;
+      background: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .book-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .book-info {
+      padding: 12px;
+    }
+
+    .book-title {
+      font-weight: 600;
+      margin: 0 0 4px;
+      font-size: 16px;
+    }
+
+    .book-author {
+      color: #777;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .reader {
+      display: none;
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
     }
 
     .toolbar {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 20px;
-      padding: 10px;
-      background-color: #eee;
-      border-radius: 4px;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
-    button {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      background-color: #4285f4;
-      color: white;
-      margin-right: 5px;
+    .content {
+      font-size: 18px;
+      line-height: 1.7;
     }
 
-    button:hover {
-      background-color: #3367d6;
+    .content p {
+      margin-bottom: 1em;
     }
 
-    button.active {
-      background-color: #ffcc00;
-      color: black;
-    }
-
-    .page-content p {
-      line-height: 1.6;
-      margin-bottom: 15px;
-    }
-
-    p.selected {
-      border: 2px dashed #666;
-      padding: 10px;
-      border-radius: 4px;
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(125,125,125,0.2);
     }
 
     /* Highlight styles */
-    .highlight-yellow {
-      background-color: rgba(255, 255, 0, 0.3);
-      padding: 5px;
+    p.selected {
+      border: 2px dashed #666;
+      padding: 8px;
       border-radius: 4px;
+    }
+
+    .highlight-yellow {
+      background-color: var(--highlight-yellow);
+      padding: 2px 0;
+      border-radius: 2px;
     }
 
     .highlight-green {
-      background-color: rgba(0, 255, 0, 0.2);
-      padding: 5px;
-      border-radius: 4px;
+      background-color: var(--highlight-green);
+      padding: 2px 0;
+      border-radius: 2px;
     }
 
     .highlight-blue {
-      background-color: rgba(0, 191, 255, 0.2);
-      padding: 5px;
-      border-radius: 4px;
+      background-color: var(--highlight-blue);
+      padding: 2px 0;
+      border-radius: 2px;
     }
 
     .highlight-pink {
-      background-color: rgba(255, 105, 180, 0.2);
-      padding: 5px;
-      border-radius: 4px;
+      background-color: var(--highlight-pink);
+      padding: 2px 0;
+      border-radius: 2px;
     }
 
     /* Highlight menu */
-    #highlight-menu {
+    .highlight-menu {
       display: none;
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background-color: white;
-      padding: 20px;
+      background: var(--card-bg);
+      padding: 16px;
       border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      z-index: 1000;
-      width: 300px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 100;
+      width: 280px;
+      max-width: 90vw;
     }
 
     .color-options {
       display: flex;
       justify-content: center;
-      gap: 15px;
-      margin: 15px 0;
+      gap: 12px;
+      margin: 12px 0;
     }
 
     .color-option {
-      width: 30px;
-      height: 30px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .color-option:hover {
+      transform: scale(1.1);
     }
 
     .color-option.selected {
-      border: 3px solid #333;
+      border: 2px solid #333;
     }
 
-    textarea {
-      width: 100%;
-      height: 80px;
-      margin: 10px 0;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      resize: none;
-    }
-
-    .menu-buttons {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    /* Highlights list */
-    #highlights-view {
-      display: none;
-    }
-
-    .highlight-item {
-      background-color: #f9f9f9;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-radius: 4px;
-      position: relative;
-    }
-
-    .highlight-text {
-      font-style: italic;
-      padding-right: 30px; /* Make room for icons */
-    }
-
-    .highlight-note {
-      margin-top: 10px;
-      padding: 8px;
-      background-color: #f0f0f0;
-      border-left: 3px solid #ccc;
-      font-size: 14px;
-      padding-right: 30px; /* Make room for icons */
-    }
-
-    .highlight-actions {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .action-btn {
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 0;
-      opacity: 0.6;
-      transition: opacity 0.2s ease;
-    }
-
-    .action-btn:hover {
-      opacity: 1;
-    }
-
-    /* Edit note popup */
-    #edit-note-popup {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      z-index: 1000;
-      width: 300px;
-    }
-
-    /* Visual feedback */
+    /* Toast */
     .toast {
       position: fixed;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background-color: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.8);
       color: white;
-      padding: 10px 20px;
+      padding: 8px 16px;
       border-radius: 20px;
+      font-size: 14px;
       z-index: 1000;
     }
 
-    /* Library View */
-    #library-view {
-      display: block;
-    }
-
-    .book-card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .book-card:hover {
-      background-color: #f0f0f0;
-    }
-
-    .book-cover {
-      width: 80px;
-      height: 120px;
-      background-color: #ddd;
-      margin-right: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .book-cover img {
-      max-width: 100%;
-      max-height: 100%;
-    }
-
-    .book-info {
-      flex: 1;
-    }
-
-    .book-title {
-      font-weight: bold;
-      font-size: 18px;
-      margin-bottom: 5px;
-    }
-
-    .book-author {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 5px;
-    }
-
-    .book-description {
-      font-size: 14px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    /* Pagination */
-    .pagination-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 20px;
-      padding: 10px;
-      background-color: #eee;
-      border-radius: 4px;
-    }
-
-    .page-number {
-      font-size: 14px;
-    }
-
-    /* Loading spinner */
+    /* Spinner */
     .spinner {
-      border: 4px solid rgba(0, 0, 0, 0.1);
-      width: 36px;
-      height: 36px;
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(0,0,0,0.1);
       border-radius: 50%;
-      border-left-color: #4285f4;
+      border-top-color: var(--primary);
       animation: spin 1s linear infinite;
-      margin: 20px auto;
+      margin: 40px auto;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to { transform: rotate(360deg); }
     }
-    
-    /* Debug panel styles */
-    #debug-panel {
-      background-color: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-top: 20px;
-      padding: 15px;
-      font-family: monospace;
-      font-size: 14px;
-      white-space: pre-wrap;
-      overflow-x: auto;
-      color: #333;
-    }
-    
-    #debug-panel h3 {
-      margin-top: 0;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 5px;
-    }
-    
-    .error {
-      color: #e53935;
-      font-weight: bold;
-    }
-    
-    .warning {
-      color: #f57c00;
-    }
-    
-    .success {
-      color: #43a047;
+
+    /* Responsiveness */
+    @media (max-width: 600px) {
+      .library {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      }
+      
+      .book-cover {
+        height: 160px;
+      }
+      
+      .content {
+        font-size: 16px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>E-Reader with Highlighting</h1>
-    
-    <!-- Debug Panel -->
-    <div id="debug-panel">
-      <h3>Debug Information</h3>
-      <div id="debug-output">Initializing e-reader...</div>
+  <div class="app">
+    <header>
+      <h1>E-Reader</h1>
+    </header>
+
+    <div id="library" class="library">
+      <div id="library-loading" class="spinner"></div>
     </div>
-    
-    <!-- Library View -->
-    <div id="library-view">
+
+    <div id="reader" class="reader">
       <div class="toolbar">
-        <h2>My Library</h2>
+        <button id="back-btn">← Back</button>
+        <button id="highlight-btn">Highlight</button>
       </div>
       
-      <div id="books-container">
-        <!-- Books will be populated here -->
-        <div class="spinner" id="library-loading"></div>
-        <p id="no-books-message" style="display: none;">No books available in the library.</p>
+      <h2 id="book-title">Book Title</h2>
+      <p id="book-author">Author Name</p>
+      
+      <div id="content" class="content">
+        <div id="content-loading" class="spinner"></div>
+      </div>
+      
+      <div class="controls">
+        <button id="prev-btn">Previous Page</button>
+        <span id="page-info">Page 1 of 1</span>
+        <button id="next-btn">Next Page</button>
       </div>
     </div>
-    
-    <!-- Main Reading View -->
-    <div id="book-view" style="display: none;">
-      <div class="toolbar">
-        <div>
-          <button id="back-to-library-btn">Back to Library</button>
-          <button id="view-highlights-btn">View Highlights</button>
-        </div>
-        <button id="highlight-toggle">Highlight Mode</button>
-      </div>
-      
-      <div id="book-title-container">
-        <h2 id="book-title">Book Title</h2>
-        <p id="book-author">Author Name</p>
-      </div>
-      
-      <div class="page-content" id="page-content">
-        <!-- Content will be populated dynamically -->
-        <div class="spinner" id="content-loading"></div>
-      </div>
-      
-      <div class="pagination-controls">
-        <button id="prev-page-btn">Previous Page</button>
-        <span class="page-number" id="page-number">Page 1 of 1</span>
-        <button id="next-page-btn">Next Page</button>
-      </div>
-    </div>
-    
-    <!-- Highlights View -->
-    <div id="highlights-view">
-      <div class="toolbar">
-        <button id="back-to-book-btn">Back to Book</button>
-      </div>
-      
-      <h2>My Highlights and Notes</h2>
-      <div id="highlights-container">
-        <!-- Highlights will be populated here -->
-        <p id="no-highlights-message">No highlights yet. Use highlight mode to create some!</p>
-      </div>
-    </div>
-    
-    <!-- Highlight Menu -->
-    <div id="highlight-menu">
-      <h3>Create Highlight</h3>
+
+    <div id="highlight-menu" class="highlight-menu">
+      <h3>Add Highlight</h3>
       <div class="color-options">
         <div class="color-option selected" style="background-color:#ffff00;" data-color="yellow"></div>
         <div class="color-option" style="background-color:#00ff00;" data-color="green"></div>
         <div class="color-option" style="background-color:#00bfff;" data-color="blue"></div>
         <div class="color-option" style="background-color:#ff69b4;" data-color="pink"></div>
       </div>
-      <label for="note-input">Add a note (optional):</label>
-      <textarea id="note-input" placeholder="Enter your note here..."></textarea>
-      <div class="menu-buttons">
-        <button id="save-highlight">Save Highlight</button>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button id="save-highlight">Save</button>
         <button id="cancel-highlight">Cancel</button>
-      </div>
-    </div>
-    
-    <!-- Edit Note Popup -->
-    <div id="edit-note-popup">
-      <h3>Edit Note</h3>
-      <textarea id="edit-note-input" placeholder="Edit your note..."></textarea>
-      <div class="menu-buttons">
-        <button id="save-edit">Save</button>
-        <button id="cancel-edit">Cancel</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Debug function
-    function debugLog(message, type = 'info') {
-      const debugOutput = document.getElementById('debug-output');
-      const timestamp = new Date().toLocaleTimeString();
-      const logEntry = document.createElement('div');
-      logEntry.className = type;
-      logEntry.textContent = `[${timestamp}] ${message}`;
-      debugOutput.appendChild(logEntry);
-      console.log(`[${type}] ${message}`);
-    }
-    
     // DOM Elements
-    const libraryView = document.getElementById('library-view');
-    const bookView = document.getElementById('book-view');
-    const highlightsView = document.getElementById('highlights-view');
-    const booksContainer = document.getElementById('books-container');
-    const noBooksMessage = document.getElementById('no-books-message');
-    const pageContent = document.getElementById('page-content');
-    const bookTitleElem = document.getElementById('book-title');
-    const bookAuthorElem = document.getElementById('book-author');
-    const pageNumberElem = document.getElementById('page-number');
-    const prevPageBtn = document.getElementById('prev-page-btn');
-    const nextPageBtn = document.getElementById('next-page-btn');
-    const backToLibraryBtn = document.getElementById('back-to-library-btn');
-    const viewHighlightsBtn = document.getElementById('view-highlights-btn');
-    const backToBookBtn = document.getElementById('back-to-book-btn');
-    const highlightToggle = document.getElementById('highlight-toggle');
+    const library = document.getElementById('library');
+    const reader = document.getElementById('reader');
+    const content = document.getElementById('content');
+    const backBtn = document.getElementById('back-btn');
+    const highlightBtn = document.getElementById('highlight-btn');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const pageInfo = document.getElementById('page-info');
+    const bookTitle = document.getElementById('book-title');
+    const bookAuthor = document.getElementById('book-author');
     const highlightMenu = document.getElementById('highlight-menu');
     const saveHighlightBtn = document.getElementById('save-highlight');
     const cancelHighlightBtn = document.getElementById('cancel-highlight');
-    const noteInput = document.getElementById('note-input');
     const colorOptions = document.querySelectorAll('.color-option');
-    const highlightsContainer = document.getElementById('highlights-container');
-    const noHighlightsMessage = document.getElementById('no-highlights-message');
-    const editNotePopup = document.getElementById('edit-note-popup');
-    const editNoteInput = document.getElementById('edit-note-input');
-    const saveEditBtn = document.getElementById('save-edit');
-    const cancelEditBtn = document.getElementById('cancel-edit');
     const libraryLoading = document.getElementById('library-loading');
     const contentLoading = document.getElementById('content-loading');
     
     // Global Variables
-    let library = [];
+    let books = [];
     let currentBook = null;
-    let currentBookContent = [];
+    let currentContent = [];
     let currentPage = 0;
-    let paragraphsPerPage = 5; // Number of paragraphs to show per page
+    let paragraphsPerPage = 5;
     let highlightMode = false;
     let selectedParagraph = null;
     let selectedColor = 'yellow';
     let highlights = {};
-    let currentEditingHighlight = null;
     
     // Initialize the app
     window.addEventListener('DOMContentLoaded', () => {
-      debugLog('DOM fully loaded and parsed');
-      try {
-        // Check if running locally vs on a server
-        const isLocalFile = window.location.protocol === 'file:';
-        if (isLocalFile) {
-          debugLog('Running from a local file. Some features may not work due to browser security restrictions.', 'warning');
-          // Use sample data when running locally
-          useSampleData();
-        } else {
-          loadLibrary();
-        }
-      } catch (error) {
-        debugLog(`Initialization error: ${error.message}`, 'error');
-      }
+      loadLibrary();
     });
-    
-    // Use sample data for testing
-    function useSampleData() {
-      debugLog('Using sample library data for testing');
-      library = [
-        {
-          id: 'sample1',
-          title: 'Sample Book',
-          author: 'Demo Author',
-          description: 'This is a sample book for testing purposes.',
-          coverUrl: '',
-          contentUrl: '' // We'll use hardcoded content
-        }
-      ];
-      
-      debugLog('Sample library loaded with 1 book');
-      displayLibrary();
-    }
     
     // Load library data
     function loadLibrary() {
-      const libraryUrl = 'https://raw.githubusercontent.com/Revbskt/robert/main/ebooks/library.json';
-      debugLog(`Fetching library data from: ${libraryUrl}`);
-      
-      fetch(libraryUrl)
+      fetch('/ebooks/library.json')
         .then(response => {
           if (!response.ok) {
-            debugLog(`HTTP error! status: ${response.status}`, 'error');
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          debugLog('Library data fetched successfully');
           return response.json();
         })
         .then(data => {
-          library = data;
-          debugLog(`Library loaded with ${library.length} books`);
+          books = data;
           displayLibrary();
         })
         .catch(error => {
-          debugLog(`Error loading library: ${error.message}`, 'error');
-          debugLog('Trying fallback method with sample data');
-          useSampleData();
+          console.error('Error loading library:', error);
+          libraryLoading.style.display = 'none';
+          
+          // Use sample data if fetch fails
+          books = [{
+            id: 'sample1',
+            title: 'Sample Book',
+            author: 'Demo Author',
+            description: 'This is a sample book to test the e-reader.'
+          }];
+          displayLibrary();
         });
     }
     
@@ -548,34 +404,23 @@
     function displayLibrary() {
       libraryLoading.style.display = 'none';
       
-      if (library.length === 0) {
-        debugLog('No books found in library', 'warning');
-        noBooksMessage.style.display = 'block';
-        return;
-      }
-      
       // Clear previous books
       const existingBooks = document.querySelectorAll('.book-card');
-      existingBooks.forEach(book => {
-        booksContainer.removeChild(book);
-      });
+      existingBooks.forEach(book => book.remove());
       
-      debugLog(`Displaying ${library.length} books in the library`);
-      
-      // Add each book to the container
-      library.forEach(book => {
+      // Display books
+      books.forEach(book => {
         const bookCard = document.createElement('div');
         bookCard.className = 'book-card';
-        bookCard.setAttribute('data-id', book.id);
         
         const coverDiv = document.createElement('div');
         coverDiv.className = 'book-cover';
         
         if (book.coverUrl) {
-          const coverImg = document.createElement('img');
-          coverImg.src = book.coverUrl;
-          coverImg.alt = `${book.title} cover`;
-          coverDiv.appendChild(coverImg);
+          const img = document.createElement('img');
+          img.src = book.coverUrl;
+          img.alt = book.title;
+          coverDiv.appendChild(img);
         } else {
           coverDiv.textContent = '📚';
         }
@@ -583,32 +428,23 @@
         const infoDiv = document.createElement('div');
         infoDiv.className = 'book-info';
         
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'book-title';
-        titleDiv.textContent = book.title;
+        const titleElem = document.createElement('h3');
+        titleElem.className = 'book-title';
+        titleElem.textContent = book.title;
         
-        const authorDiv = document.createElement('div');
-        authorDiv.className = 'book-author';
-        authorDiv.textContent = book.author;
+        const authorElem = document.createElement('p');
+        authorElem.className = 'book-author';
+        authorElem.textContent = book.author;
         
-        const descDiv = document.createElement('div');
-        descDiv.className = 'book-description';
-        descDiv.textContent = book.description || 'No description available.';
-        
-        infoDiv.appendChild(titleDiv);
-        infoDiv.appendChild(authorDiv);
-        infoDiv.appendChild(descDiv);
+        infoDiv.appendChild(titleElem);
+        infoDiv.appendChild(authorElem);
         
         bookCard.appendChild(coverDiv);
         bookCard.appendChild(infoDiv);
         
-        // Add click event to open the book
-        bookCard.addEventListener('click', () => {
-          debugLog(`Book selected: ${book.title}`);
-          openBook(book);
-        });
+        bookCard.addEventListener('click', () => openBook(book));
         
-        booksContainer.appendChild(bookCard);
+        library.appendChild(bookCard);
       });
     }
     
@@ -617,146 +453,95 @@
       currentBook = book;
       currentPage = 0;
       
-      debugLog(`Opening book: ${book.title}`);
+      // Update UI
+      bookTitle.textContent = book.title;
+      bookAuthor.textContent = book.author;
+      content.innerHTML = '';
+      contentLoading.style.display = 'block';
       
       // Load book content
-      contentLoading.style.display = 'block';
-      pageContent.innerHTML = '';
-      
-      // Check if running locally
-      const isLocalFile = window.location.protocol === 'file:';
-      
-      if (isLocalFile || !book.contentUrl) {
-        debugLog('Using sample content for book');
-        // Use sample content for testing
-        currentBookContent = [
-          "This is the first paragraph of the sample book. You can tap on this paragraph when highlight mode is active to highlight it.",
-          "This is the second paragraph. The highlighting feature works by selecting entire paragraphs, which works well on mobile devices where precise text selection can be difficult.",
-          "This is the third paragraph. You can choose from multiple highlight colors and all your highlights will be saved between sessions.",
-          "This is another paragraph. Try the highlight button in the toolbar and then tap on this paragraph.",
-          "When you activate highlight mode, tapping on any paragraph will select it. A menu will appear with color options.",
-          "After selecting a color, click the 'Save Highlight' button to apply the highlight to the paragraph and close the menu.",
-          "You can view all your highlights by clicking the View Highlights button at the top of the screen.",
-          "This is the eighth paragraph to demonstrate pagination. You should see the 'Next Page' button become active.",
-          "This is the ninth paragraph. Continue reading to explore more content.",
-          "This is the tenth paragraph, showing how pagination works in the e-reader."
-        ];
-        
-        // Load highlights for this book
-        loadHighlights(book.id);
-        
-        // Update the UI
-        bookTitleElem.textContent = book.title;
-        bookAuthorElem.textContent = book.author;
-        
-        // Display the first page
-        displayPage();
-        
-        // Switch to book view
-        libraryView.style.display = 'none';
-        bookView.style.display = 'block';
-        highlightsView.style.display = 'none';
-        
-        return;
-      }
-      
-      fetch(book.contentUrl)
+      fetch(book.contentUrl || `/ebooks/${book.id}.json`)
         .then(response => {
           if (!response.ok) {
-            debugLog(`HTTP error loading book content! status: ${response.status}`, 'error');
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          debugLog('Book content fetched successfully');
           return response.json();
         })
         .then(data => {
-          if (!data.content || !Array.isArray(data.content)) {
-            debugLog('Invalid book content format', 'error');
-            throw new Error('Invalid book content format. Expected an array of paragraphs.');
+          // Handle different json structures
+          if (Array.isArray(data)) {
+            currentContent = data;
+          } else if (data.content && Array.isArray(data.content)) {
+            currentContent = data.content;
+          } else {
+            throw new Error('Invalid content format');
           }
           
-          currentBookContent = data.content;
-          debugLog(`Book content loaded with ${currentBookContent.length} paragraphs`);
-          
-          // Load highlights for this book
+          // Load highlights
           loadHighlights(book.id);
           
-          // Update the UI
-          bookTitleElem.textContent = book.title;
-          bookAuthorElem.textContent = book.author;
-          
-          // Display the first page
+          // Display first page
           displayPage();
           
-          // Switch to book view
-          libraryView.style.display = 'none';
-          bookView.style.display = 'block';
-          highlightsView.style.display = 'none';
+          // Show reader view
+          library.style.display = 'none';
+          reader.style.display = 'block';
         })
         .catch(error => {
-          debugLog(`Error loading book content: ${error.message}`, 'error');
-          showToast('Error loading book content. Using sample content instead.');
+          console.error('Error loading book:', error);
+          contentLoading.style.display = 'none';
           
-          // Use sample content as fallback
-          currentBookContent = [
-            "This is a fallback paragraph since the book content couldn't be loaded.",
-            "The e-reader is still functional with this sample content.",
-            "You can still test the highlighting features.",
-            "Try navigating between pages using the buttons below.",
-            "You can also try the highlight feature by clicking the highlight button."
+          // Use sample content
+          currentContent = [
+            "This is sample paragraph 1.",
+            "This is sample paragraph 2.",
+            "This is sample paragraph 3.",
+            "This is sample paragraph 4.",
+            "This is sample paragraph 5.",
+            "This is sample paragraph 6.",
+            "This is sample paragraph 7.",
+            "This is sample paragraph 8."
           ];
           
-          // Load highlights for this book
           loadHighlights(book.id);
-          
-          // Update the UI
-          bookTitleElem.textContent = book.title;
-          bookAuthorElem.textContent = book.author;
-          
-          // Display the first page
           displayPage();
           
-          // Switch to book view
-          libraryView.style.display = 'none';
-          bookView.style.display = 'block';
-          highlightsView.style.display = 'none';
+          library.style.display = 'none';
+          reader.style.display = 'block';
+          
+          showToast('Using sample content');
         });
     }
     
-    // Display the current page
+    // Display current page
     function displayPage() {
       contentLoading.style.display = 'none';
+      content.innerHTML = '';
       
-      // Clear page content
-      pageContent.innerHTML = '';
+      const start = currentPage * paragraphsPerPage;
+      const end = Math.min(start + paragraphsPerPage, currentContent.length);
       
-      // Calculate start and end indices for the current page
-      const startIdx = currentPage * paragraphsPerPage;
-      const endIdx = Math.min(startIdx + paragraphsPerPage, currentBookContent.length);
-      
-      debugLog(`Displaying page ${currentPage + 1} with paragraphs ${startIdx} to ${endIdx - 1}`);
-      
-      // Display page number
-      const totalPages = Math.ceil(currentBookContent.length / paragraphsPerPage);
-      pageNumberElem.textContent = `Page ${currentPage + 1} of ${totalPages}`;
+      // Update page info
+      const totalPages = Math.ceil(currentContent.length / paragraphsPerPage);
+      pageInfo.textContent = `Page ${currentPage + 1} of ${totalPages}`;
       
       // Enable/disable pagination buttons
-      prevPageBtn.disabled = currentPage === 0;
-      nextPageBtn.disabled = currentPage >= totalPages - 1;
+      prevBtn.disabled = currentPage === 0;
+      nextBtn.disabled = currentPage >= totalPages - 1;
       
-      // Add paragraphs to the page
-      for (let i = startIdx; i < endIdx; i++) {
+      // Add paragraphs
+      for (let i = start; i < end; i++) {
         const p = document.createElement('p');
-        p.textContent = currentBookContent[i];
+        p.textContent = currentContent[i];
         p.setAttribute('data-index', i);
         
         // Apply highlight if exists
-        if (highlights[currentBook.id] && highlights[currentBook.id].find(h => h.paragraphIndex === i)) {
-          const highlight = highlights[currentBook.id].find(h => h.paragraphIndex === i);
+        if (highlights[currentBook.id] && highlights[currentBook.id].find(h => h.index === i)) {
+          const highlight = highlights[currentBook.id].find(h => h.index === i);
           p.className = `highlight-${highlight.color}`;
         }
         
-        // Add click event for highlighting
+        // Add click handler for highlight mode
         p.addEventListener('click', () => {
           if (!highlightMode) return;
           
@@ -765,61 +550,46 @@
             selectedParagraph.classList.remove('selected');
           }
           
-          // Select current paragraph
           selectedParagraph = p;
           p.classList.add('selected');
           
           // Show highlight menu
           highlightMenu.style.display = 'block';
-          
-          // Clear previous note
-          noteInput.value = '';
         });
         
-        pageContent.appendChild(p);
+        content.appendChild(p);
       }
     }
     
     // Load highlights from localStorage
     function loadHighlights(bookId) {
-      const savedHighlights = localStorage.getItem('bookHighlights');
-      if (savedHighlights) {
+      const saved = localStorage.getItem('reader-highlights');
+      if (saved) {
         try {
-          highlights = JSON.parse(savedHighlights);
+          highlights = JSON.parse(saved);
           
-          // Initialize highlights for this book if not exists
           if (!highlights[bookId]) {
             highlights[bookId] = [];
           }
-          
-          debugLog(`Loaded ${highlights[bookId].length} highlights for book ${bookId}`);
         } catch (e) {
-          debugLog(`Error parsing saved highlights: ${e.message}`, 'error');
+          console.error('Error loading highlights:', e);
           highlights = { [bookId]: [] };
         }
       } else {
-        debugLog('No saved highlights found');
         highlights = { [bookId]: [] };
       }
     }
     
     // Save highlights to localStorage
     function saveHighlights() {
-      try {
-        localStorage.setItem('bookHighlights', JSON.stringify(highlights));
-        debugLog('Highlights saved to localStorage');
-      } catch (e) {
-        debugLog(`Error saving highlights: ${e.message}`, 'error');
-      }
+      localStorage.setItem('reader-highlights', JSON.stringify(highlights));
     }
     
     // Show toast notification
     function showToast(message, duration = 2000) {
       // Remove existing toasts
       const existingToasts = document.querySelectorAll('.toast');
-      existingToasts.forEach(toast => {
-        document.body.removeChild(toast);
-      });
+      existingToasts.forEach(toast => toast.remove());
       
       // Create new toast
       const toast = document.createElement('div');
@@ -827,56 +597,26 @@
       toast.textContent = message;
       document.body.appendChild(toast);
       
-      debugLog(`Toast message: ${message}`);
-      
       // Remove after duration
-      setTimeout(() => {
-        if (document.body.contains(toast)) {
-          document.body.removeChild(toast);
-        }
-      }, duration);
+      setTimeout(() => toast.remove(), duration);
     }
     
     // Toggle highlight mode
-    highlightToggle.addEventListener('click', () => {
+    highlightBtn.addEventListener('click', () => {
       highlightMode = !highlightMode;
-      highlightToggle.classList.toggle('active');
-      
-      debugLog(`Highlight mode ${highlightMode ? 'activated' : 'deactivated'}`);
+      highlightBtn.classList.toggle('active');
       
       if (highlightMode) {
-        showToast('Highlight mode activated. Tap any paragraph to highlight it.');
+        showToast('Highlight mode active. Tap on a paragraph.');
       } else {
-        showToast('Highlight mode deactivated');
+        showToast('Highlight mode off');
         
-        // Clear selection if any
+        // Clear selection
         if (selectedParagraph) {
           selectedParagraph.classList.remove('selected');
           selectedParagraph = null;
         }
       }
-    });
-    
-    // View highlights
-    viewHighlightsBtn.addEventListener('click', () => {
-      bookView.style.display = 'none';
-      highlightsView.style.display = 'block';
-      debugLog('Switched to highlights view');
-      updateHighlightsList();
-    });
-    
-    // Back to book
-    backToBookBtn.addEventListener('click', () => {
-      highlightsView.style.display = 'none';
-      bookView.style.display = 'block';
-      debugLog('Returned to book view');
-    });
-    
-    // Back to library
-    backToLibraryBtn.addEventListener('click', () => {
-      bookView.style.display = 'none';
-      libraryView.style.display = 'block';
-      debugLog('Returned to library view');
     });
     
     // Color selection
@@ -885,56 +625,37 @@
         selectedColor = option.getAttribute('data-color');
         
         // Update UI
-        colorOptions.forEach(opt => {
-          opt.classList.remove('selected');
-        });
+        colorOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
-        
-        debugLog(`Selected highlight color: ${selectedColor}`);
       });
     });
     
     // Save highlight
     saveHighlightBtn.addEventListener('click', () => {
-      if (!selectedParagraph || !currentBook) {
-        debugLog('Cannot save highlight: No paragraph selected or no book open', 'warning');
-        return;
-      }
+      if (!selectedParagraph || !currentBook) return;
       
-      // Get paragraph index
-      const paragraphIndex = parseInt(selectedParagraph.getAttribute('data-index'));
-      
-      // Get note text
-      const note = noteInput.value.trim();
+      const index = parseInt(selectedParagraph.getAttribute('data-index'));
       
       // Apply highlight
-      selectedParagraph.className = 'highlight-' + selectedColor;
+      selectedParagraph.className = `highlight-${selectedColor}`;
       selectedParagraph.classList.remove('selected');
       
-      // Create highlight object
+      // Save highlight
       const highlight = {
         id: Date.now(),
-        paragraphIndex: paragraphIndex,
-        text: selectedParagraph.textContent,
+        index: index,
         color: selectedColor,
-        note: note,
         timestamp: new Date().toISOString()
       };
       
-      debugLog(`Created highlight for paragraph ${paragraphIndex} with color ${selectedColor}`);
-      
-      // Add to highlights array
       highlights[currentBook.id].push(highlight);
-      
-      // Save to localStorage
       saveHighlights();
       
       // Close menu
       highlightMenu.style.display = 'none';
       selectedParagraph = null;
       
-      // Show confirmation
-      showToast(note ? 'Highlight and note saved' : 'Highlight saved');
+      showToast('Highlight saved');
     });
     
     // Cancel highlight
@@ -945,212 +666,39 @@
       }
       
       highlightMenu.style.display = 'none';
-      debugLog('Highlight canceled');
     });
     
-    // Save edited note
-    saveEditBtn.addEventListener('click', () => {
-      if (!currentEditingHighlight || !currentBook) {
-        debugLog('Cannot save edit: No highlight being edited or no book open', 'warning');
-        return;
-      }
-      
-      // Update note
-      const updatedNote = editNoteInput.value.trim();
-      
-      debugLog(`Updating note for highlight ${currentEditingHighlight}`);
-      
-      // Find and update the highlight
-      const highlightIndex = highlights[currentBook.id].findIndex(h => h.id === currentEditingHighlight);
-      if (highlightIndex !== -1) {
-        highlights[currentBook.id][highlightIndex].note = updatedNote;
-        
-        // Save to localStorage
-        saveHighlights();
-        
-        // Close popup
-        editNotePopup.style.display = 'none';
-        currentEditingHighlight = null;
-        
-        // Update highlights list
-        updateHighlightsList();
-        
-        // Show confirmation
-        showToast('Note updated');
-      } else {
-        debugLog(`Could not find highlight with ID ${currentEditingHighlight} to update`, 'error');
-      }
+    // Navigation
+    backBtn.addEventListener('click', () => {
+      reader.style.display = 'none';
+      library.style.display = 'grid';
     });
     
-    // Cancel edit
-    cancelEditBtn.addEventListener('click', () => {
-      editNotePopup.style.display = 'none';
-      currentEditingHighlight = null;
-      debugLog('Edit canceled');
-    });
-    
-    // Update highlights list
-    function updateHighlightsList() {
-      if (!currentBook) {
-        debugLog('Cannot update highlights list: No book is open', 'warning');
-        return;
-      }
-      
-      debugLog(`Updating highlights list for book ${currentBook.id}`);
-      
-      // Clear previous highlights
-      const existingItems = document.querySelectorAll('.highlight-item');
-      existingItems.forEach(item => {
-        highlightsContainer.removeChild(item);
-      });
-      
-      // Show/hide no highlights message
-      const bookHighlights = highlights[currentBook.id] || [];
-      if (bookHighlights.length === 0) {
-        debugLog('No highlights found for this book');
-        noHighlightsMessage.style.display = 'block';
-        return;
-      } else {
-        noHighlightsMessage.style.display = 'none';
-      }
-      
-      // Sort highlights by paragraph index
-      const sortedHighlights = [...bookHighlights].sort((a, b) => a.paragraphIndex - b.paragraphIndex);
-      
-      debugLog(`Displaying ${sortedHighlights.length} highlights`);
-      
-      // Add each highlight to the container
-      sortedHighlights.forEach(highlight => {
-        const item = document.createElement('div');
-        item.className = 'highlight-item';
-        item.style.borderLeft = '4px solid ' + getColorCode(highlight.color);
-        
-        const text = document.createElement('div');
-        text.className = 'highlight-text';
-        text.textContent = highlight.text;
-        item.appendChild(text);
-        
-        // Add note if present
-        if (highlight.note) {
-          const noteElem = document.createElement('div');
-          noteElem.className = 'highlight-note';
-          noteElem.textContent = highlight.note;
-          item.appendChild(noteElem);
-        }
-        
-        // Add action buttons
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'highlight-actions';
-        
-        // Add edit button
-        const editBtn = document.createElement('button');
-        editBtn.className = 'action-btn edit-btn';
-        editBtn.innerHTML = '✏️';
-        editBtn.title = 'Edit Note';
-        editBtn.addEventListener('click', () => {
-          // Set current editing highlight
-          currentEditingHighlight = highlight.id;
-          
-          debugLog(`Editing note for highlight ${highlight.id}`);
-          
-          // Set current note in the input
-          editNoteInput.value = highlight.note || '';
-          
-          // Show edit popup
-          editNotePopup.style.display = 'block';
-        });
-        
-        // Add delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'action-btn delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete Highlight';
-        deleteBtn.addEventListener('click', () => {
-          debugLog(`Deleting highlight ${highlight.id}`);
-          
-          // Remove from array
-          highlights[currentBook.id] = highlights[currentBook.id].filter(h => h.id !== highlight.id);
-          
-          // Remove highlight from paragraph if it's on the current page
-          const paragraphIndex = highlight.paragraphIndex;
-          const startIdx = currentPage * paragraphsPerPage;
-          const endIdx = startIdx + paragraphsPerPage;
-          
-          if (paragraphIndex >= startIdx && paragraphIndex < endIdx) {
-            const p = document.querySelector(`p[data-index="${paragraphIndex}"]`);
-            if (p) {
-              p.className = '';
-            }
-          }
-          
-          // Save to localStorage
-          saveHighlights();
-          
-          // Remove from UI
-          highlightsContainer.removeChild(item);
-          
-          // Show empty message if needed
-          if (highlights[currentBook.id].length === 0) {
-            noHighlightsMessage.style.display = 'block';
-          }
-          
-          showToast('Highlight deleted');
-        });
-        
-        actionsDiv.appendChild(editBtn);
-        actionsDiv.appendChild(deleteBtn);
-        item.appendChild(actionsDiv);
-        
-        highlightsContainer.appendChild(item);
-      });
-    }
-    
-    // Helper function to get color code from name
-    function getColorCode(colorName) {
-      const colors = {
-        yellow: '#ffff00',
-        green: '#00ff00',
-        blue: '#00bfff',
-        pink: '#ff69b4'
-      };
-      return colors[colorName] || '#ffff00';
-    }
-    
-    // Pagination event listeners
-    prevPageBtn.addEventListener('click', () => {
+    prevBtn.addEventListener('click', () => {
       if (currentPage > 0) {
         currentPage--;
-        debugLog(`Navigating to previous page (page ${currentPage + 1})`);
         displayPage();
         window.scrollTo(0, 0);
       }
     });
     
-    nextPageBtn.addEventListener('click', () => {
-      const totalPages = Math.ceil(currentBookContent.length / paragraphsPerPage);
+    nextBtn.addEventListener('click', () => {
+      const totalPages = Math.ceil(currentContent.length / paragraphsPerPage);
       if (currentPage < totalPages - 1) {
         currentPage++;
-        debugLog(`Navigating to next page (page ${currentPage + 1})`);
         displayPage();
         window.scrollTo(0, 0);
       }
     });
     
-    // Handle keyboard navigation
-    document.addEventListener('keydown', (event) => {
-      // Only process keyboard events when in book view
-      if (bookView.style.display === 'none') return;
+    // Keyboard navigation
+    document.addEventListener('keydown', event => {
+      if (reader.style.display === 'none') return;
       
-      // Left arrow key for previous page
-      if (event.key === 'ArrowLeft' && !prevPageBtn.disabled) {
-        debugLog('Left arrow key pressed - going to previous page');
-        prevPageBtn.click();
-      }
-      
-      // Right arrow key for next page
-      if (event.key === 'ArrowRight' && !nextPageBtn.disabled) {
-        debugLog('Right arrow key pressed - going to next page');
-        nextPageBtn.click();
+      if (event.key === 'ArrowLeft' && !prevBtn.disabled) {
+        prevBtn.click();
+      } else if (event.key === 'ArrowRight' && !nextBtn.disabled) {
+        nextBtn.click();
       }
     });
   </script>
