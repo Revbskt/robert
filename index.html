@@ -579,31 +579,66 @@
     function applyHighlights() {
       if (!rendition || !highlights) return;
       
+      console.log('Applying highlights...');
+      
       // Get all current contents (iframes)
       rendition.getContents().forEach(contents => {
         const doc = contents.document;
         const cfiBase = contents.cfiBase;
         
+        console.log('Processing content with base:', cfiBase);
+        console.log('Available highlights:', Object.keys(highlights).length);
+        
         // Apply each highlight
         Object.keys(highlights).forEach(cfi => {
           try {
             // Check if this highlight belongs to this section
-            if (!cfi.includes(cfiBase)) return;
+            if (cfiBase && !cfi.includes(cfiBase)) {
+              console.log('CFI does not match base:', cfi);
+              return;
+            }
             
+            console.log('Applying highlight for CFI:', cfi);
             const highlight = highlights[cfi];
-            const range = rendition.getRange(cfi);
             
-            if (range) {
-              // Create a span to wrap the highlighted content
-              const highlightElement = doc.createElement('span');
-              highlightElement.setAttribute('data-epubcfi', cfi);
-              highlightElement.className = `highlight-${highlight.color}`;
+            try {
+              // Get the element from CFI
+              const element = contents.element(cfi);
               
-              // Apply the highlight
-              range.surroundContents(highlightElement);
+              if (element) {
+                console.log('Found element for highlight:', element.tagName);
+                // Apply highlight directly
+                element.style.backgroundColor = getColorForHighlight(highlight.color);
+                element.style.padding = '4px';
+                element.style.borderRadius = '4px';
+              } else {
+                console.warn('Element not found for CFI:', cfi);
+              }
+            } catch (rangeError) {
+              console.warn('Error getting element from CFI:', rangeError);
+              
+              // Fallback to range method
+              try {
+                const range = rendition.getRange(cfi);
+                
+                if (range) {
+                  console.log('Using range fallback for highlight');
+                  // Create a span to wrap the highlighted content
+                  const highlightElement = doc.createElement('span');
+                  highlightElement.setAttribute('data-epubcfi', cfi);
+                  highlightElement.style.backgroundColor = getColorForHighlight(highlight.color);
+                  highlightElement.style.padding = '2px';
+                  highlightElement.style.borderRadius = '2px';
+                  
+                  // Apply the highlight
+                  range.surroundContents(highlightElement);
+                }
+              } catch (surroundError) {
+                console.warn('Error applying range highlight:', surroundError);
+              }
             }
           } catch (error) {
-            console.warn('Error applying highlight:', error);
+            console.warn('Error processing highlight:', error);
           }
         });
       });
@@ -647,7 +682,10 @@
       
       try {
         // Generate CFI for the selected element
-        const cfi = rendition.getContents()[0].cfiFromElement(selectedElement);
+        const contents = rendition.getContents()[0];
+        const cfi = contents.cfiFromElement(selectedElement);
+        
+        console.log('Generated CFI:', cfi);
         
         // Store highlight info
         highlights[cfi] = {
@@ -658,9 +696,11 @@
         // Save to localStorage
         saveHighlights();
         
-        // Apply the highlight
-        selectedElement.classList.add(`highlight-${selectedColor}`);
+        // Apply the highlight directly
+        selectedElement.style.backgroundColor = getColorForHighlight(selectedColor);
         selectedElement.style.border = 'none';
+        selectedElement.style.padding = '4px';
+        selectedElement.style.borderRadius = '4px';
         
         // Reset state
         selectedElement = null;
@@ -672,6 +712,17 @@
         showToast('Failed to save highlight');
       }
     });
+    
+    // Helper function to get color values
+    function getColorForHighlight(color) {
+      switch(color) {
+        case 'yellow': return 'rgba(255, 255, 0, 0.3)';
+        case 'green': return 'rgba(0, 255, 0, 0.2)';
+        case 'blue': return 'rgba(0, 191, 255, 0.2)';
+        case 'pink': return 'rgba(255, 105, 180, 0.2)';
+        default: return 'rgba(255, 255, 0, 0.3)';
+      }
+    }
 
     // Cancel highlight
     cancelHighlightBtn.addEventListener('click', () => {
